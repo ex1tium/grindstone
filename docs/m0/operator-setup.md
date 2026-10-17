@@ -14,7 +14,7 @@ Settings → Code security: turn on Dependabot alerts and security updates, secr
 
 ## 2. Create the GitHub test repository (M0-04; needed by SPK-4)
 
-Create `ex1tium/grindstone-testbed` and make it **public**: the free plan enforces rulesets only on public repositories, and the testbed only ever holds the fixture project. (Done: created 17 October 2026; the fixture project is pushed from a cloud session.) Grindstone pushes to it, opens pull requests and sets statuses on it; it is never Grindstone's own repository, so tests cannot disturb real work (the dogfooding risk in the Roadmap).
+Create `ex1tium/grindstone-testbed` and make it **public**: the free plan enforces rulesets only on public repositories, and the testbed only ever holds the fixture project. (Done 17 October 2026: created, and the fixture project pushed to its default branch `main`.) Grindstone pushes to it, opens pull requests and sets statuses on it; it is never Grindstone's own repository, so tests cannot disturb real work (the dogfooding risk in the Roadmap).
 
 Its ruleset: import `.github/rulesets/testbed-main.json`, then set the source of the required check `grindstone/verification` to the Grindstone App (after step 3). That source restriction is what makes the status unforgeable from inside the repository: a GitHub Actions workflow posting the same context must not satisfy it. SPK-4 verifies it.
 
