@@ -67,12 +67,12 @@ The names are prefixed so the tools themselves never pick them up implicitly; sp
 
 ## Checklist
 
-- [ ] Ruleset imported on `ex1tium/grindstone` from `grindstone-main.json`; squash-only merges; head branches auto-deleted
+- [x] Ruleset imported on `ex1tium/grindstone` from `grindstone-main.json`; squash-only merges; head branches auto-deleted
 - [ ] Code security features on
 - [x] `ex1tium/grindstone-testbed` created and attached to this session
 - [x] Testbed switched to public
 - [ ] Testbed attached to the cloud environment for future sessions
-- [ ] GitHub App created, key generated, installed on the testbed only
-- [ ] Testbed ruleset imported from `testbed-main.json`, check source set to the App
-- [ ] Cloud environment: token and key variables, network allow-list
+- [x] GitHub App created, key generated, installed on the testbed only
+- [x] Testbed ruleset imported from `testbed-main.json`, check source set to the App
+- [x] Cloud environment: token and key variables, network allow-list
 - [ ] SessionStart hook merged to `main`

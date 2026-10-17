@@ -22,10 +22,14 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 2. SPEC-02 to SPEC-10 from the spike results and ADR-42 to ADR-44, each reviewed by a session that did not write it.
 3. M0 milestone review: the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
+## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
+- **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
+- **Operator login:** a local password. One operator account, the password hashed with Argon2, a session cookie, and the UI and API bound to loopback by default (SPEC-10 owns it; SPEC-05 provisions the secret).
+- **Models for M1's agents:** set later. The specifications keep the model as capability configuration with a stated default (implementer and test reviewer on different Claude models, ADR-41); the operator chooses before M1-01's live run.
+- **SPK-1's VS Code half:** deferred to M4, with SPEC-22, on the operator's machine (M4-05 needs it; M1 does not).
+
 ## Open with the operator
-- Where M1's real delivery runs: a cloud session can never act as the GitHub App (SPK-4), so M1-01 and M1-08 need a host with direct GitHub access. The M1 specifications carry it as an open item defaulting to the operator's machine unless decided sooner.
-- Open a pull request for this branch when ready: the new `fixture` CI job runs only on pull requests and `main`.
-- SPK-1's VS Code half (experiment 6): attach VS Code to a host as a remote agent host, on a machine VS Code can reach. Small; can wait for the first session on such a machine.
-- Anything that must act as the App runs on the operator's machine (decided 17 October 2026; `docs/spikes/SPK-4-local-run.md`): a cloud session's GitHub proxy never lets it act as the App. The same holds for M1 delivery.
-- Both repositories are public (decided 17 October 2026), so Actions minutes are free and the `main` ruleset on `ex1tium/grindstone` can be enforced: import `.github/rulesets/grindstone-main.json` if not done. With both public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
-- Where the stable self-hosting instance runs: decided at the M1 review.
+- Re-import `.github/rulesets/grindstone-main.json` on `ex1tium/grindstone`: it now also requires the `fixture` CI job (M0-04). The ruleset is otherwise active (checked 17 October 2026).
+- Open a pull request for this branch when ready: the `fixture` CI job runs only on pull requests and `main`.
+- Anything that must act as the App runs on the operator's machine (`docs/spikes/SPK-4-local-run.md`).
+- With both repositories public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.

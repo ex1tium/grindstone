@@ -1,6 +1,6 @@
 # SPK-1 — Host, Claude and VS Code
 
-Status: done, except the VS Code half of experiment 6 · Box: 2 days · Settles: Q-1, Q-2, Q-6; the Claude credential-precedence list (M0-03); the assumption that an AHP host on `@ahpd/sdk` can run Claude Code sessions with a per-session MCP server (Architecture, "Constraints, assumptions and capacity")
+Status: done; the VS Code half of experiment 6 is deferred to M4 (SPEC-22) by the operator · Box: 2 days · Settles: Q-1, Q-2, Q-6; the Claude credential-precedence list (M0-03); the assumption that an AHP host on `@ahpd/sdk` can run Claude Code sessions with a per-session MCP server (Architecture, "Constraints, assumptions and capacity")
 
 ## Why
 
