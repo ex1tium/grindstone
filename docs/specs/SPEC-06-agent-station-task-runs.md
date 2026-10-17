@@ -183,7 +183,7 @@ Exactly one remaining is the match. Otherwise the task is `blocked` with an `esc
    - `MCP_TOOL_TIMEOUT` above the consult ceiling, as SPK-5 advises;
    - for a read-only workspace, the agent's file-writing tools denied.
 4. `prompt` (key `run-<id>:t<k>`).
-5. Loop on `DBOS.recv(f"turn-{k}", timeout=60 s)`. Host events arrive as messages keyed by event ID (REQ-0616). Each wake checks liveness: `stations.sessions.last_activity` against the timeout, unless SPEC-07's `open_calls(run)` is non-zero or a permission request is pending (REQ-0612).
+5. Loop on `DBOS.recv(f"turn-{k}", timeout=60 s)`. Host events arrive as messages keyed by event ID (REQ-0616). Each wake checks liveness: `stations.sessions.last_activity` against the timeout, unless `stations.open_calls(run)`, which SPEC-07's tool wrapper maintains, is non-zero or a permission request is pending (REQ-0612). Each tool call also counts as activity (`stations.touch`).
 6. On turn end:
    - with an accepted report, return its outcome;
    - with none, and no corrective prompt sent yet, send one (key `run-<id>:t<k>c`) naming the missing `report` call and keep waiting;
@@ -293,7 +293,7 @@ Package pins, each the latest on the npm registry on 17 October 2026: `@ahpd/sdk
 
 **Interfaces.**
 - `work`: `start_template`, `create_task`, `submit_report(run, turn, report) → errors | accepted`, `suspend`, `context_for(run)` (for SPEC-07's scoping), `on_check_result` and `on_delivery` consumers, `resume_run` continuation.
-- `stations`: `host` client, `dispatch_job`, `open_session_count`, the host event route mounted on the station listener by the composition root.
+- `stations`: `host` client, `dispatch_job`, the in-memory activity registry (`touch`, `open_calls`), the host event route mounted on the station listener by the composition root.
 
 **Configuration** (instance sections owned here):
 - `[stations.<id>]`: `kind`, `tier`, `control_url` or `runs_dir`, `lanes`.
