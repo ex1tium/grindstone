@@ -1,4 +1,4 @@
-# Project Grindstone — Foundation v4.4
+# Project Grindstone — Foundation v4.5
 
 17 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
@@ -598,7 +598,7 @@ A capability is a specialist: everything the kernel needs to start an agent that
 
 **One specialist, three uses.** The same capability can do a task, answer a consult or perform a check. What changes is the task's mode, workspace and limits, not the specialist's definition. Make and prove still applies per subject: a capability that made a subject cannot prove it, even in a different mode.
 
-**Skills.** A skill is a Markdown instruction pack, optionally declaring extra tools, versioned with its factory. The skills a capability loads at start are materialized, read-only, into the session's private configuration directory outside the workspace, where agents that discover skills natively find them; they are part of the context pack. Loading one mid-session (`load_skill`) returns its instructions inline as the tool result, which works with every agent, adds its tools, and is recorded on the run (ADR-39). It never changes the capability's permissions, workspace mode or tier.
+**Skills.** A skill is a Markdown instruction pack, optionally declaring extra tools, versioned with its factory. The skills a capability loads at start are materialized, read-only, into the session's private configuration directory outside the workspace, where agents that discover skills natively find them; they are part of the context pack. Loading one mid-session (`load_skill`) returns its instructions inline as the tool result, which works with every agent, and is recorded on the run; its tools are listed from session start and refused until it is loaded (ADR-39, ADR-43). It never changes the capability's permissions, workspace mode or tier.
 
 ## Station
 
@@ -938,7 +938,7 @@ Five components run outside the `grindstone` process. None holds kernel state; e
 
 | Component | Language and base | Responsibility | Talks to | Holds |
 | --- | --- | --- | --- | --- |
-| Agent host (`agent-host`) | TypeScript on `@ahpd/sdk`, with a vendored ACP agent plugin (ADR-15) | Starts, prompts, cancels and disposes agent sessions; runs each agent as a child process under its own Unix user; sets the workspace and the per-task MCP server; forwards permission requests; serves AHP to the UI and VS Code | The control plane's host control API (in) and event endpoint (out); model providers | Model credentials; host tokens readable only by the host process |
+| Agent host (`agent-host`) | TypeScript on `@ahpd/sdk`, unmodified, with a backend wrapper and a vendored launcher in front of each ACP agent (ADR-15, ADR-42) | Starts, prompts, cancels and disposes agent sessions; runs each agent as a child process under its own Unix user; sets the workspace and the per-task MCP server; forwards permission requests; serves AHP to the UI and VS Code | The control plane's host control API (in) and event endpoint (out); model providers | Model credentials; host tokens readable only by the host process |
 | Runner (`runner`) | A small Python job executor inside the project's declared image | Picks up one job directory at a time, runs the declared command, tests or reproduction steps, writes results and logs as files | The `runs` volume only | Nothing |
 | Web UI (`web`) | SvelteKit (static build) with Svelte 5, served by the control plane | Decision cards, item pages and graph, ChangeSet diffs, task and template runs, delegation trees with costs, live sessions, operations view | REST and the event stream; AHP for live sessions | A session cookie |
 | VS Code extension | TypeScript | Item navigation and editing, decisions, attach to live sessions | REST, events, AHP | A per-client token |
@@ -1396,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty-one records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now.
+Forty-three records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 are **Proposed**, from the M0 spike results (SPK-1, SPK-5), and bind once the operator approves them.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1541,6 +1541,8 @@ Forty-one records cover every choice that is expensive to reverse. Each states t
 **Why.** One model gives one place for retries, budgets, provenance and cancellation, and makes consults and delegations ordinary tasks. **Rejected:** separate models per kind of work (duplicated recovery logic); unstructured sessions with no report contract (no reliable end state).
 
 #### ADR-15 — Grindstone runs its own thin AHP host; agents connect over ACP
+
+**Status.** Amended by ADR-42 (no patch; a launcher and a backend wrapper), proposed.
 
 **Decision.** All agent work runs as AHP sessions on a host built on `@ahpd/sdk`, with a vendored, patched ACP agent plugin; agents connect over ACP and run as child processes under their own Unix user. The control plane drives sessions through a small typed control API that is idempotent on client keys, and receives HMAC-signed, at-least-once events with event IDs and turn numbers. Permission requests are answered only through the control API, from their decision. Steering prompts from the UI or VS Code are recorded but never end a run. Correctness never depends on a session surviving a restart.
 
@@ -1698,6 +1700,8 @@ Forty-one records cover every choice that is expensive to reverse. Each states t
 
 #### ADR-39 — Skills are materialized per session outside the workspace and returned inline
 
+**Status.** Amended by ADR-43 (skill tools listed from session start), proposed.
+
 **Decision.** At session start the agent host materializes the skills a capability loads at start, read-only, into that session's private configuration directory outside the workspace — in the location the agent discovers skills from natively — and records them in the context pack. `load_skill` for any other skill in the capability's library returns the skill's instructions inline as the tool result and adds its declared tools, which works with every agent whether or not it discovers skills natively, and is recorded on the run. Skills, settings and hooks shipped inside a repository or workspace are still never loaded (ADR-18), and nothing materialized is reachable from the workspace or the copy-back (I-14).
 
 **Why.** Native discovery uses each agent's own skill mechanism for the skills it always needs; inline return keeps mid-session loading uniform and fully recorded across Claude Code, Codex and later agents. **Rejected:** skills only inline (loses native behaviour for start skills); materializing into the workspace (configuration next to agent-writable files and repository content, against I-14); materializing the whole library natively (agents could use skills the run never records).
@@ -1714,6 +1718,22 @@ Forty-one records cover every choice that is expensive to reverse. Each states t
 
 **Why.** The operator has a Claude subscription and no other provider; paying for a second only to meet a default is cost without a user. Make and prove does not depend on model family; family diversity reduces correlated blind spots, which a different model and a fresh, context-free review partly recover. **Consequences.** SPK-3 is deferred, with Q-3 and Q-4; M0-03 no longer waits on it; M3-06 is restated; SPEC-18 drops its Codex variants. Author and reviewer errors are more likely to be correlated; the mechanical provers (CI suite, tests on the check station) and the test reviewer's criterion-by-criterion verdicts carry more of the weight, and the risk is revisited when a provider is added. All agent work now depends on one vendor's terms; switching to an API key stays configuration only (ADR-18). **Rejected:** keeping Codex at M3 (a cost the operator declined); building on the Claude Agent SDK directly instead of ACP (locks the host to one vendor, as ADR-15 and ADR-18 already rejected); dropping the reviewer-independence policy (loses the protection a different model and fresh context still give).
 
+
+#### ADR-42 — The agent host uses its packages unmodified, behind a launcher and a backend wrapper
+
+**Status.** Proposed, from SPK-1; binds once the operator approves it.
+
+**Decision.** Amends ADR-15. The agent host uses `@ahpd/sdk`, `@ahpd/agent-acp` and each agent's ACP adapter unmodified. Grindstone adds two pieces of its own. **A backend wrapper** around the ACP backend creates each session's agent with that session's environment, Unix user and kernel MCP server — an HTTP server entry with the per-task bearer token in its headers — read from the control API's own session record, never from session configuration an AHP client can read. **A vendored launcher** in front of each agent's ACP adapter runs the credential self-test (ADR-18) and merges Grindstone's per-session agent options into every session it opens — for Claude Code, every settings source off — so no repository configuration reaches a session. The host is given a people directory, because the AHP SDK checks a client's grants only when it has one; a viewer is never granted the answer to a permission request.
+
+**Why.** SPK-1 found no need for a patch: `@ahpd/agent-acp` passes a session's MCP servers, with headers, to ACP's session creation, and Claude's ACP adapter takes per-session options from the session's metadata. A patch is a fork to rebase on every release of a package that releases every few days; a wrapper and a launcher use only published interfaces. **Consequences.** Q-1 is resolved without a patch. An upgrade of these packages is a deliberate commit that re-runs the host's protocol smoke test (the risk table's mitigation is unchanged). **Rejected:** patching the vendored ACP plugin, the default this record replaces (a fork to maintain against a fast-moving upstream); host-wide MCP servers with one shared token (breaks per-task authority, ADR-16).
+
+#### ADR-43 — A skill's tools are listed from session start and refused until the skill is loaded
+
+**Status.** Proposed, from SPK-5; binds once the operator approves it.
+
+**Decision.** Amends ADR-39. `load_skill` still returns the skill's instructions inline and is recorded on the run. The tools that the skills in a capability's library declare are listed on the kernel MCP surface from session start, and the kernel refuses a call to a skill's tool until that skill is loaded in the run, with the structured error `skill_not_loaded` naming the skill to load. The tool list a session sees never changes after it starts.
+
+**Why.** SPK-5 found that Claude Code (2.1.300) never re-lists a server's tools after a tool-list change in a non-interactive session over HTTP: it holds no stream a notification could arrive on, so a tool added mid-session never reaches the agent, in that turn or the next. A fixed list with refusal works with every agent whether or not it handles list changes, and every use is still recorded, which is what ADR-39 rejected native whole-library loading for. **Consequences.** The kernel MCP surface carries every library tool of the capability from the start; a capability with a large library pays in listed tools, which agents with deferred tool search absorb. **Rejected:** adding the skill's tools by a tool-list change (does not reach Claude Code); one generic dispatcher tool for every skill tool (hides each tool's schema from the agent; kept as the fallback if a capability's library grows too large to list).
 
 # Roadmap
 
@@ -1822,11 +1842,11 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 
 | ID | Question | Answer | Status |
 | --- | --- | --- | --- |
-| Q-1 | Can the stock ACP agent plugin, or a community fork, pass a per-session MCP server with its own token? | Keep the vendored, patched plugin | Decided; SPK-1 confirms the patch |
+| Q-1 | Can the stock ACP agent plugin, or a community fork, pass a per-session MCP server with its own token? | Yes, unmodified: a backend wrapper adds the session's server and token, and a vendored launcher sets the agent's options (ADR-42) | Resolved by SPK-1 |
 | Q-2 | Which AHP protocol line does `@ahpd/sdk` implement, and how does current VS Code attach to it? | AHP 1.0, accepting 0.9 clients; VS Code attaches as a remote agent host with the token | Decided; SPK-1 confirms |
 | Q-3 | Does Codex's subscription login work headless in a container? | Use subscription login if SPK-3 shows it works headless; an API key is the configuration-only fallback, as for Claude | Deferred with SPK-3 (ADR-41) |
 | Q-4 | How does the Codex ACP adapter receive Codex's sandbox mode? | Codex's own configuration file, supplied by the capability | Deferred with SPK-3 (ADR-41) |
-| Q-5 | Does pi's ACP adapter pass per-session environment, and how do agents load skills? | Start skills materialized per session outside the workspace; `load_skill` returns bodies inline (ADR-39). pi's environment handling waits for R2 | Decided (ADR-39); SPK-1 and SPK-3 confirm native discovery |
+| Q-5 | Does pi's ACP adapter pass per-session environment, and how do agents load skills? | Start skills materialized per session outside the workspace; `load_skill` returns bodies inline (ADR-39); skill tools are listed from start and refused until loaded (ADR-43). pi's environment handling waits for R2 | Decided (ADR-39); SPK-1 and SPK-3 confirm native discovery |
 | Q-6 | Does FastMCP run on the current official MCP SDK, mount in FastAPI and verify a bearer token per request? | FastMCP mounted in FastAPI; otherwise the official SDK's server directly | Decided; SPK-1 confirms |
 | Q-7 | How do auto-merge, a strict required status and branch updates interact for an App-set status? | Auto-merge waits for the update and a fresh status at the new head | Decided; SPK-4 confirms |
 | Q-8 | Are the success-measure targets right? | The initial targets stand | Confirmed; reset at the M3 review from measured baselines |
@@ -1932,7 +1952,7 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | Long-open MCP tool calls are unreliable in some agents | SPK-5; park-and-resume fallback with the same semantics | SPK-5, M3-05 |
 | Factories weaken invariants through prompts or adapters | Conformance kit in each factory's CI; make/prove and namespace rules enforced by the loader; factories are operator-installed and pinned | M1-07, M2-05 |
 | Cross-factory work produces stale results nobody notices | Results cross only as pinned items and blobs; interface items carry review edges; the regression sweep re-checks both sides | K3; S6 in R1 |
-| The agent-host ecosystem is young and moves fast | Exact pins, a thin host, one vendored plugin under a permissive licence, a CI protocol smoke test, upgrades only as deliberate commits; pi deferred to R2 | SPK-1, M4-05 |
+| The agent-host ecosystem is young and moves fast | Exact pins, a thin host using its packages unmodified behind a wrapper and a launcher (ADR-42), a CI protocol smoke test, upgrades only as deliberate commits; pi deferred to R2 | SPK-1, M4-05 |
 | Claude subscription terms or credential selection change | Switching to an API key is configuration only; start-up guard and self-test against outranking credentials; credential list re-read on every adapter upgrade; token-expiry warning | SPK-1, M1-01 |
 | Agent-run code reads model credentials, which have network egress | Accepted at T1; per-provider spend limits; rotation runbook; per-run isolation at T2 (R3) | M1-05, M5-06 |
 | Agent-written code reaches Grindstone's credentials or forges evidence | Evidence only from the check station or another capability; host tokens unreadable by agents; signed host events; private clones with hooks disabled; CI cannot set the status | M1-02, M1-05, M1-07 |
@@ -2099,6 +2119,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.5 | 17 October 2026 | Proposed, from the M0 spikes, awaiting the operator's approval: ADR-42 (the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher; amends ADR-15; resolves Q-1) and ADR-43 (a skill's tools are listed from session start and refused until it is loaded; amends ADR-39). The agent-host component, the skills concept, Q-1, Q-5 and the risk table follow. |
 | 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
 | 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
 | 4.2 | 17 October 2026 | M0 kickoff: open questions Q-1 to Q-11 answered by the operator; ADR-37 replaces budgets with limits (supersedes ADR-20), ADR-38 holds consults open until they answer under a ceiling, ADR-39 materializes start skills per session and returns `load_skill` bodies inline; QS-15 added; the task lifecycle table restated in text, since the diagram that held it was not reproduced; diagram placeholders replaced by captions; the export's duplicate title removed. This repository copy is the maintained source from this version on. |
