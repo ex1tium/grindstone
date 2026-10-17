@@ -10,7 +10,7 @@ Time-boxed experiments in M0 that settle facts the design depends on (Roadmap, "
 | SPK-4 GitHub mechanics | 1 day | [SPK-4](SPK-4-github-mechanics.md) | SPEC-08, SPEC-09 |
 | SPK-5 Cooperation mechanics | 2 days | [SPK-5](SPK-5-cooperation.md) | SPEC-17 (M3); ADR-38 configuration |
 
-Order: SPK-1 and SPK-2 first and in parallel (the largest integration risks), then SPK-4, then SPK-5 and SPK-3. Everything runs on the operator's spike host (`docs/m0/operator-setup.md`).
+Order: SPK-1 and SPK-2 first and in parallel (the largest integration risks), then SPK-4, then SPK-5 and SPK-3. Everything runs in Claude Code cloud sessions prepared by the SessionStart hook, with credentials from the cloud environment (`docs/m0/operator-setup.md`, step 5).
 
 ## Rules
 

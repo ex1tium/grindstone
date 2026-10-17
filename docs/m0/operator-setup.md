@@ -1,15 +1,14 @@
 # Operator setup for M0
 
-What only the operator can do, in the order the work needs it. Each step says which exit criterion or spike it unblocks. Secrets never enter this repository or a cloud session: they live on the operator's hosts, in files under `secrets/` (ignored by git) or in a password manager.
+What only the operator can do, in the order the work needs it. Each step says which exit criterion or spike it unblocks. Development runs in Claude Code cloud sessions (decided after kickoff); the repository's SessionStart hook prepares each session. Secrets never enter this repository or a chat: they live in the cloud environment's settings, in `secrets/` files on a host (ignored by git), or in a password manager.
 
 ## 1. Protect `main` on `ex1tium/grindstone` (now)
 
-Settings → Rules → Rulesets → New branch ruleset, targeting the default branch:
+Settings → Rules → Rulesets → New ruleset → **Import a ruleset**, and choose `.github/rulesets/grindstone-main.json`: pull requests only, squash merge, linear history, no force pushes or deletions, and both CI jobs required on an up-to-date branch. `.github/rulesets/README.md` explains each rule.
 
-- Require a pull request before merging; allow **squash** merges only; require linear history.
-- Require status checks to pass, with the branch up to date before merging: `Lint, types, tests, fitness functions` and `Compose smoke test (M0-01)`. Both appear in the picker after the first CI run on a pull request.
-- Block force pushes and deletions.
-- Bypass: none. The operator's plain pull requests that touch no published file stay possible (ADR-33), but they go through CI like everything else.
+Also under Settings → General → Pull Requests: allow squash merging only, and turn on automatically deleting head branches.
+
+**Plan check:** rulesets on private repositories are enforced only on paid plans (GitHub Pro for a personal account). On the Free plan they are saved but not enforced.
 
 Settings → Code security: turn on Dependabot alerts and security updates, secret scanning and push protection.
 
@@ -19,11 +18,9 @@ Create **private** `ex1tium/grindstone-testbed`, initialised with a README. Grin
 
 The fixture project inside it (a small Python package with tests annotated `@verifies AC-…`) is committed by the first M0-04 task; you only create the empty repository.
 
-Its ruleset (Settings → Rules → Rulesets, default branch):
+Its ruleset: import `.github/rulesets/testbed-main.json`, then set the source of the required check `grindstone/verification` to the Grindstone App (after step 3). That source restriction is what makes the status unforgeable from inside the repository: a GitHub Actions workflow posting the same context must not satisfy it. SPK-4 verifies it. If your plan does not enforce rulesets on private repositories, make the testbed public; it only ever holds the fixture project.
 
-- Require a pull request; require status checks with the branch up to date.
-- Required check: `grindstone/verification`, with **its source restricted to the Grindstone App** (after step 3). This is what makes the status unforgeable from inside the repository: a GitHub Actions workflow posting the same context name must not satisfy it. SPK-4 verifies that.
-- Block force pushes and deletions.
+Then attach the testbed to the Claude cloud environment (or start a session with it selected), so sessions can push the fixture project and run SPK-4.
 
 ## 3. Create the GitHub App (needed by SPK-4; M1 delivery)
 
@@ -46,32 +43,38 @@ secrets/github_app_installation_id  # from the installation URL
 secrets/github_app_private_key.pem  # chmod 600
 ```
 
-Only the `grindstone` container will ever mount them (I-08, I-09).
+On a host, only the `grindstone` container will ever mount them (I-08, I-09). For cloud sessions, see step 5.
 
 ## 4. Agent credentials (needed by SPK-1, SPK-3, SPK-5)
 
-- **Claude Code on your subscription** (ADR-18). On the spike host, sign in with the Claude Code CLI and create a long-lived token for headless use, following the current Claude Code documentation. SPK-1 records the exact command, how the token is supplied, and the full list of credential sources that would outrank it. Store it as `secrets/claude_oauth_token`. Do not also set `ANTHROPIC_API_KEY` in that environment: an API key outranks the subscription.
-- **Codex** (Q-3). SPK-3 first tries subscription login headless in a container. Have an OpenAI API key ready as the fallback, with a monthly spend limit set in the OpenAI dashboard; store it as `secrets/openai_api_key`.
+- **Claude Code on your subscription** (ADR-18). Create a long-lived token for headless use with the Claude Code CLI, following the current Claude Code documentation; SPK-1 records the exact command and the full list of credential sources that would outrank it. Do not also provide `ANTHROPIC_API_KEY` to the same environment: an API key outranks the subscription.
+- **Codex** (Q-3). SPK-3 first tries subscription login headless. Have an OpenAI API key ready as the fallback, with a monthly spend limit set in the OpenAI dashboard.
 - Set provider-side spend limits wherever an API key is used. With per-task budgets removed (ADR-37), the provider limit and the optional project cap are the spend ceilings.
 
-## 5. The spike host
+## 5. Cloud environment (the spike host)
 
-The spikes need Docker, the credentials above, and real agent sessions. Run them on your own server:
+Spikes and day-to-day development run in Claude Code cloud sessions. The SessionStart hook (`.claude/hooks/session-start.sh`) installs Node and pnpm, syncs the locked dependencies, and starts Docker with a Docker Hub mirror and builds through the session proxy, so `make check`, `make up` and `make smoke` work in a fresh session. It takes effect for sessions started from `main` once merged.
 
-- Linux with Docker Engine and Compose, 8 cores, 32 GB memory and 500 GB disk (the capacity assumption checked at the M3 review).
-- Docker Hub pulls authenticated (`docker login`), or a pull-through mirror: anonymous pulls are rate-limited per IP.
-- A clone of this repository, `make setup`, and `make smoke` passing first.
-- VS Code on a machine that can reach the host, for the attach test in SPK-1.
+In the environment's settings (the cloud environment menu in the session's title bar → Edit):
 
-Each spike's plan in `docs/spikes/` lists its steps, what to record and its pass criteria; a Claude Code session on that host can run a plan and file the report.
+| Setting | Value | Needed by |
+| --- | --- | --- |
+| Environment variable `GRINDSTONE_CLAUDE_OAUTH_TOKEN` | The subscription token from step 4 | SPK-1, SPK-5 |
+| Environment variable `GRINDSTONE_OPENAI_API_KEY` | The fallback key from step 4 | SPK-3, SPK-5 |
+| Environment variables `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY` | From step 3 (the key's PEM text) | SPK-4 |
+| Network access | Allow `api.openai.com`, `auth.openai.com` and `chatgpt.com` (Codex), `github.com` and `api.github.com`, `ghcr.io`, `mirror.gcr.io`, `nodejs.org` | SPK-3, SPK-4, the hook |
+
+The names are prefixed so the tools themselves never pick them up implicitly; spike code passes each one explicitly to the one process that needs it, mirroring how the containers scope secrets.
+
+**What this trades.** The App's private key, which can push and set statuses on the testbed, and your subscription token now live in the hosted environment's settings rather than only on your own machine. That is acceptable while the App is installed on the testbed alone. Before the App is installed on `ex1tium/grindstone` (end of M1, M1-08), decide where the stable self-hosting instance runs and keep the production key there; the kickoff deferred that choice to the M1 review.
 
 ## Checklist
 
-- [ ] `main` ruleset on `ex1tium/grindstone`, with both CI checks required
+- [ ] Ruleset imported on `ex1tium/grindstone` from `grindstone-main.json`; squash-only merges; head branches auto-deleted
+- [ ] Plan enforces rulesets on private repositories (or the testbed is public)
 - [ ] Code security features on
-- [ ] `ex1tium/grindstone-testbed` created (private)
+- [ ] `ex1tium/grindstone-testbed` created and attached to the cloud environment
 - [ ] GitHub App created, key generated, installed on the testbed only
-- [ ] Testbed ruleset requiring `grindstone/verification` from the App
-- [ ] Claude subscription token on the spike host
-- [ ] OpenAI API key with a spend limit, as the Codex fallback
-- [ ] Spike host ready: Docker, authenticated pulls, `make smoke` green
+- [ ] Testbed ruleset imported from `testbed-main.json`, check source set to the App
+- [ ] Cloud environment: token and key variables, network allow-list
+- [ ] SessionStart hook merged to `main`

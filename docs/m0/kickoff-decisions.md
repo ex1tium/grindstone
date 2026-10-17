@@ -41,7 +41,7 @@ The Q-9 and Q-10 redesigns touch QG-5, QS-10, QS-11, I-17, ADR-14, ADR-20, ADR-2
 | Task runner | Makefile |
 | Upgrades | Dependabot (pip/uv, npm, Docker, GitHub Actions) |
 | GitHub test repository | New private `ex1tium/grindstone-testbed` with a ruleset and a GitHub App installation, created by the operator |
-| Where work runs | Mixed: mostly on the operator's own servers or locally; cloud sessions for code and docs. Secrets stay on the operator's hosts |
+| Where work runs | Claude Code cloud sessions as much as possible (revised after kickoff); the SessionStart hook prepares each session. Agent and GitHub App credentials live in the cloud environment's settings while the App is installed on the testbed only |
 | Specification review | A fresh session that wrote none of the specs reviews against the checklist, a different model family where available, then the operator approves |
 
 ```
