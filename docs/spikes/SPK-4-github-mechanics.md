@@ -35,7 +35,7 @@ If experiment 2 fails, a forged status could merge a pull request in enforced mo
 
 ## Report (partial, 17 October 2026)
 
-Run from a Claude Code cloud session. Spike code: `spk4/` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (never merged); spike pull request ex1tium/grindstone-testbed#1, closed.
+Run from a Claude Code cloud session. Spike code: `spk4/run.py` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (never merged); spike pull request ex1tium/grindstone-testbed#1, closed.
 
 ### Blocker: the cloud session cannot act as the App
 
@@ -70,4 +70,4 @@ On the public testbed, `GET /repos/{repo}/rules/branches/main` returns the `requ
 
 ### Remaining
 
-Experiments 1 to 5 and 8 to 11, from a host with direct access to `api.github.com`, after Actions are enabled on the testbed.
+Experiments 1 to 5 and 8 to 11, run by the operator from their machine with `spk4/run.py`, which also repeats 6, 7 and 9 as the App: `SPK-4-local-run.md`.

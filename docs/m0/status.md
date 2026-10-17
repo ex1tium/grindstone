@@ -14,14 +14,13 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 - SPEC-01 drafted (`docs/specs/`), with one proposed decision record (hashes omit defaulted fields); awaiting independent review.
 
 ## Next, in order
-1. **SPK-4, the App experiments (1 to 5, 8 to 11)**, from a host that reaches `api.github.com` directly. A cloud session cannot: its GitHub proxy substitutes its own credentials for any token and refuses `/app/*`, commit-status writes and the Actions API (report in `docs/spikes/SPK-4-github-mechanics.md`). Spike code is `spk4/` on the testbed branch `claude/youthful-franklin-oq4j5j`. Needs the operator (see below).
+1. **SPK-4, the App experiments (1 to 5, 8 to 11)**, from a host that reaches `api.github.com` directly. A cloud session cannot: its GitHub proxy substitutes its own credentials for any token and refuses `/app/*`, commit-status writes and the Actions API (report in `docs/spikes/SPK-4-github-mechanics.md`). The operator runs `spk4/run.py` (testbed branch `claude/youthful-franklin-oq4j5j`) locally, following `docs/spikes/SPK-4-local-run.md`, and pushes `spk4/results/`; the next session reads them and completes the report.
 2. **SPK-2 DBOS in FastAPI** (runs in a cloud session; can start while step 1 waits) and **SPK-1 host and Claude** (SPK-1 uses `GRINDSTONE_CLAUDE_OAUTH_TOKEN`).
 3. **SPK-5 cooperation**, after SPK-1.
 4. Remaining M0-04: runner toolchain image and the benchmark project generator; wire the testbed into CI.
 5. Independent review of SPEC-01; then SPEC-02 to SPEC-10 from the spike results.
 
 ## Open with the operator
-- Where SPK-4's App experiments run: the operator's machine (run `spk4/` with the `GRINDSTONE_GITHUB_APP_*` variables) or another host with direct GitHub access. The same constraint holds for M1 delivery: a cloud session can never act as the App.
-- Testbed Actions look disabled (no workflows registered although `forge-status.yml` is on `main`): enable them under Settings → Actions for experiment 2.
+- SPK-4 App experiments: the operator runs them locally (decided 17 October 2026; guide in `docs/spikes/SPK-4-local-run.md`, including enabling testbed Actions and auto-merge first). The same constraint holds for M1 delivery: a cloud session can never act as the App.
 - Both repositories are public (decided 17 October 2026), so Actions minutes are free and the `main` ruleset on `ex1tium/grindstone` can be enforced: import `.github/rulesets/grindstone-main.json` if not done. With both public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
 - Where the stable self-hosting instance runs: decided at the M1 review.
