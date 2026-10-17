@@ -1,0 +1,126 @@
+# Grindstone on one host (ADR-01). Volumes are mounted only where ADR-01
+# allows; networks keep each station away from the database and from the
+# other station; nothing mounts the Docker socket (I-09).
+# Start: make up (creates development secrets first). Check: make smoke.
+name: grindstone
+
+services:
+  postgres:
+    image: postgres:18.6-trixie@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+    environment:
+      POSTGRES_USER: grindstone
+      POSTGRES_DB: grindstone
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks: [db]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grindstone -d grindstone"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  grindstone:
+    build:
+      context: .
+      dockerfile: docker/grindstone.Dockerfile
+    environment:
+      GRINDSTONE_DB_HOST: postgres
+      GRINDSTONE_DB_NAME: grindstone
+      GRINDSTONE_DB_USER: grindstone
+      GRINDSTONE_DB_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - blobs:/var/lib/grindstone/blobs
+      - repos:/var/lib/grindstone/repos
+      - workspaces:/var/lib/grindstone/workspaces
+      - runs:/var/lib/grindstone/runs
+    # db and agents are internal; control-egress reaches GitHub and carries
+    # the published operator port (Docker publishes no ports on internal networks).
+    networks: [db, agents, control-egress]
+    ports:
+      # Operator UI and API, on loopback only; put a TLS proxy in front to expose it.
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/readyz', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  agent-host:
+    build:
+      context: .
+      dockerfile: docker/agent-host.Dockerfile
+    volumes:
+      - workspaces:/var/lib/grindstone/workspaces
+    # agents: reach the control plane's MCP and event endpoints.
+    # egress: reach model providers and package registries.
+    networks: [agents, agent-egress]
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8090/readyz').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  runner:
+    build:
+      context: .
+      dockerfile: docker/runner.Dockerfile
+    volumes:
+      - runs:/var/lib/grindstone/runs
+    # Package registries only; no route to the control plane or the database.
+    networks: [runner-egress]
+    healthcheck:
+      test: ["CMD", "python", "-m", "grindstone_runner", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+networks:
+  db:
+    internal: true
+  agents:
+    internal: true
+  control-egress: {}
+  agent-egress: {}
+  runner-egress: {}
+
+volumes:
+  pgdata: {}
+  blobs: {}
+  repos: {}
+  workspaces: {}
+  runs: {}
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password

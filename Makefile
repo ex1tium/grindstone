@@ -71,5 +71,5 @@ down: ## Stop the stack (volumes are kept)
 
 .PHONY: smoke
 smoke: up ## M0-01: start the stack, verify health and mounts, stop it
-	scripts/compose-smoke.sh
+	uv run --locked python scripts/compose_smoke.py
 	docker compose down
