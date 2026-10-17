@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "DependencyHealth": {
+      "additionalProperties": false,
+      "description": "The state of one thing a service needs, such as its database.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short reason for a non-ok status, safe to show to the operator."
+        },
+        "name": {
+          "description": "Stable name of the dependency, e.g. `postgres`.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/HealthStatus"
+        }
+      },
+      "required": ["name", "status", "detail"],
+      "title": "DependencyHealth",
+      "type": "object"
+    },
+    "HealthStatus": {
+      "description": "Overall state of a service or one of its dependencies.",
+      "enum": ["ok", "degraded", "down"],
+      "title": "HealthStatus",
+      "type": "string"
+    },
+    "ServiceHealth": {
+      "additionalProperties": false,
+      "description": "Readiness report of one Grindstone service.",
+      "properties": {
+        "dependencies": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DependencyHealth"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "service": {
+          "enum": ["grindstone", "agent-host", "runner"],
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/HealthStatus"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "service", "version", "status", "dependencies"],
+      "title": "ServiceHealth",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GrindstoneContracts"
+}

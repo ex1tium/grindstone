@@ -1,0 +1,14 @@
+{
+  "name": "@grindstone/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "TypeScript types generated from the Pydantic contracts. Do not edit: run `make gen` (FF-02).",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ."
+  }
+}

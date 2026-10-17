@@ -1,0 +1,75 @@
+# uv workspace root. Not a distributable package: it only holds the shared
+# development toolchain and the configuration every Python member uses.
+[project]
+name = "grindstone-workspace"
+version = "0.0.0"
+requires-python = "==3.14.*"
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/grindstone", "factories/*", "runner"]
+
+[tool.uv.sources]
+grindstone = { workspace = true }
+grindstone-sdlc = { workspace = true }
+grindstone-notes = { workspace = true }
+grindstone-runner = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "grindstone",
+  "grindstone-sdlc",
+  "grindstone-notes",
+  "grindstone-runner",
+  "httpx2==2.13.1",
+  "hypothesis==6.170.1",
+  "import-linter==2.15",
+  "pytest==9.1.1",
+  "ruff==0.17.1",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["packages/grindstone/src", "factories/*/src", "runner/src", "scripts", "tests"]
+extend-exclude = ["tests/fitness/fixtures"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF", "PL", "PT",
+  "S", "BLE", "FBT", "T20", "DTZ", "TRY", "PERF", "ANN", "ASYNC", "PTH", "ERA",
+]
+ignore = [
+  "TRY003",   # long messages in typed errors are intended
+  "PLR2004",  # magic values in tests and small scripts
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "ANN", "PLR2004", "S603", "S607", "FBT001"]
+"tests/**" = ["S101", "ANN", "PLR2004", "S603", "S607", "FBT001"]
+"scripts/**" = ["T20", "S603", "S607"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
+pythonpath = ["."]
+testpaths = ["packages/grindstone/tests", "factories", "runner/tests", "tests"]
+norecursedirs = ["fixtures", "node_modules", ".venv"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+[tool.pyright]
+include = ["packages/grindstone", "factories", "runner", "scripts", "tests"]
+exclude = ["**/node_modules", "**/.venv", "tests/fitness/fixtures"]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "error"
+reportUnnecessaryTypeIgnoreComment = "error"
+reportImplicitOverride = "error"

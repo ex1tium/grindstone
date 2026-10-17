@@ -1,0 +1,16 @@
+{
+  "name": "@grindstone/agent-host",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "Thin AHP host for Grindstone agent sessions (ADR-15). M0: health endpoint only.",
+  "scripts": {
+    "start": "node src/main.ts",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@grindstone/contracts": "workspace:*"
+  }
+}

@@ -1,0 +1,11 @@
+packages:
+  - agent-host
+  - packages/contracts-ts
+
+# Supply chain: exact versions only, and never install a release younger than
+# seven days (matches the Dependabot cooldown).
+saveExact: true
+minimumReleaseAge: 10080
+engineStrict: true
+# No dependency may run install scripts unless listed here.
+onlyBuiltDependencies: []

@@ -1,7 +1,23 @@
+# Secrets never enter the repository (FF-05 checks mounts from M1).
 .env
 *.env
 secrets/
+
+# Python
 __pycache__/
 .venv/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.import_linter_cache/
+*.egg-info/
+
+# Node
 node_modules/
+
+# Build output
+dist/
+build/
+.svelte-kit/
+
 .DS_Store

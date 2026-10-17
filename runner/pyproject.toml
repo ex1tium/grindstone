@@ -1,0 +1,21 @@
+# The runner executes check jobs inside the project's own toolchain image, so it
+# must run on whatever Python that image provides: standard library only, no
+# dependencies, and no import of the control plane (FF-01, Components tab).
+[project]
+name = "grindstone-runner"
+version = "0.0.0"
+description = "Credential-less check-station job executor for Grindstone."
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+grindstone-runner = "grindstone_runner.__main__:main"
+
+[build-system]
+requires = ["uv_build==0.13.1"]
+build-backend = "uv_build"
+
+[tool.ruff]
+extend = "../pyproject.toml"
+target-version = "py311"

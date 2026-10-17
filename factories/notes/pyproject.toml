@@ -1,0 +1,11 @@
+[project]
+name = "grindstone-notes"
+version = "0.0.0"
+description = "The code-free notes fixture factory that proves the kernel is domain-neutral. Test only; never offered to users."
+license = "Apache-2.0"
+requires-python = "==3.14.*"
+dependencies = ["grindstone"]
+
+[build-system]
+requires = ["uv_build==0.13.1"]
+build-backend = "uv_build"

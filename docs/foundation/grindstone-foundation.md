@@ -1,10 +1,6 @@
-# Project Grindstone — Foundation v4.1
+# Project Grindstone — Foundation v4.4
 
-Exported from the Foundation v4 doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5) on 17 October 2026. Diagrams are omitted in this copy.
-
-# Project Grindstone — Foundation v4
-
-Oct 17, 2026 · @Matti
+17 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
 Grindstone is a self-hosted orchestrator that makes agent work trustworthy enough to delegate: intent is typed and versioned, every result is proven by someone other than its maker against the exact intent it claims to satisfy, and a person decides only what a person should.
 
@@ -76,7 +72,7 @@ Three properties make that possible, and every part of the design serves one of 
 2. Get approved work done by agents without watching them — code first, other domains as factories arrive.
 3. Know at any moment which requirements or findings are proven, by which evidence, against which subject.
 4. Change my mind — or let the work change it — and see and approve every consequence before it lands.
-5. Let agents bring in the right specialist at the right moment, within a budget I set, with everything they exchange on the record.
+5. Let agents bring in the right specialist at the right moment, within limits I set, with everything they exchange on the record.
 6. Delegate more decisions over time, with every delegated answer recorded and reversible.
 
 ## Promise and the universal loop
@@ -101,7 +97,7 @@ The full ASDLC loop, with its diagram and commands, is in the Factories tab.
 - **Agents propose.** They draft, make, report, ask and delegate — always through typed reports, proposals and decisions; never by writing intent, setting status or shipping.
 - **The kernel applies.** Grindstone turns accepted proposals into recorded revisions, one atomic change at a time, after showing everything each change affects.
 - **Only independent evidence closes work.** A task is done when someone other than its maker — a credential-less check station, a different specialist, or you — has proven its output against the exact intent revisions and subject.
-- **Specialists cooperate through the ledger.** Switching mode, consulting and delegating are recorded, budgeted tasks; results cross only as pinned items and files.
+- **Specialists cooperate through the ledger.** Switching mode, consulting and delegating are recorded, bounded tasks; results cross only as pinned items and files.
 
 ## Factories in scope
 
@@ -151,14 +147,14 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 
 ## MVP outcome and success measures
 
-**The MVP is done when** an operator can take a new or an existing GitHub repository from an idea to merged pull requests through Grindstone — discovery, planning, breakdown, execution by Claude Code or Codex with specialists consulted and proving as needed, verification and merge — where every merged change traces to approved requirement revisions with fresh, independent evidence, every change of intent was shown in full before it applied, and the operator's time goes to decisions rather than supervising sessions; **and** the kernel has been shown to carry a second, code-free factory with no change. Grindstone builds itself from the end of M1, so its own repository is the first and hardest test project.
+**The MVP is done when** an operator can take a new or an existing GitHub repository from an idea to merged pull requests through Grindstone — discovery, planning, breakdown, execution by Claude Code, with further agents added by configuration, with specialists consulted and proving as needed, verification and merge — where every merged change traces to approved requirement revisions with fresh, independent evidence, every change of intent was shown in full before it applied, and the operator's time goes to decisions rather than supervising sessions; **and** the kernel has been shown to carry a second, code-free factory with no change. Grindstone builds itself from the end of M1, so its own repository is the first and hardest test project.
 
 **Success measures.** Grindstone computes each from its own records. Targets are initial hypotheses, confirmed or reset at the M3 review from measured baselines (Q-8).
 
 | Measure | Definition | Initial target at MVP |
 | --- | --- | --- |
 | Delegation rate | Share of merged ticket PRs with no commit authored by a person on the branch | ≥ 60% on Grindstone's own repository |
-| Evidence integrity | Share of merges whose every criterion had fresh, independent, passing evidence at the merge commit | 100%, with zero merges bypassing the status |
+| Evidence integrity | Share of merges whose every criterion had fresh, independent, passing evidence at the merge commit | 100%; zero bypassing merges where the remote enforces the gate, and every bypass detected and counted where it does not (ADR-40) |
 | Regression catch | Share of broken proven criteria found by re-checks or the regression sweep before a person reports them | ≥ 90% |
 | Decision load | Decisions a person answers per merged ticket, and median wait for an answer | Baseline at M3; falling month over month once L2 is available (M5), with no tripwire trips caused by policy answers |
 | Lead time | Median time from specification approval to all its tickets merged | Baseline at M3; trend tracked |
@@ -174,14 +170,13 @@ Every term the set uses with a specific meaning. Specifications use these words 
 
 | Term | Meaning |
 | --- | --- |
-| ACP | Agent Client Protocol: how the agent host talks to each agent runtime (Claude Code, Codex) |
+| ACP | Agent Client Protocol: how the agent host talks to each agent runtime (Claude Code in the MVP; others by configuration) |
 | Agent host | The process on an agent station that runs agent sessions; built on `@ahpd/sdk` |
 | AHP | Agent Host Protocol: how the UI and VS Code attach to live agent sessions |
 | Artifact | A container kind with one header item and member items, such as a specification |
 | ASDLC | Agent-driven software development loop: the SDLC factory's workflow |
 | Autonomy level | L0–L3: how much the project's policy may answer on the operator's behalf |
 | Blob | An immutable file in the content-addressed store, identified by SHA-256 |
-| Budget | Per-run limits plus a tree budget set at the root, with one counter per unit (tasks, turns, wall time, tokens, spend), and caps on depth and live children |
 | Capability | A specialist defined as data: prompt, agent, skills, toolbox, workspace mode, permissions, offers |
 | ChangeSet | The only way intent changes: drafted, walked for impact to a fixed point, approved, applied atomically |
 | Check | One recorded attempt to prove a target item holds for a subject, by someone other than its maker |
@@ -190,7 +185,7 @@ Every term the set uses with a specific meaning. Specifications use these words 
 | Context pack | What a task run sees: pinned items, principles, learnings, interfaces and skills, recorded by hash |
 | Control plane | The `grindstone` process: kernel, factories, workflows, APIs, delivery |
 | Decision | A typed question only a person or approved policy may answer, with a recommendation |
-| Delegate | A child task in work mode, in any enabled factory, with its own checks and budget |
+| Delegate | A child task in work mode, in any enabled factory, with its own checks, within the depth and live-children caps |
 | Delivery adapter | A factory component that ships verified subjects outside Grindstone after a decision |
 | Evidence | The immutable record a check produces |
 | Factory | A package that gives the kernel one domain: kinds, capabilities, templates, methods, subjects, adapters, interfaces |
@@ -200,6 +195,7 @@ Every term the set uses with a specific meaning. Specifications use these words 
 | Item | A typed, hashed, versioned unit of intent or knowledge |
 | Kernel | The domain-neutral core: concepts, invariants, services and the SDK |
 | Lane | A queue on an agent station: writing (one at a time) or read-only (small concurrency) |
+| Limits | Structural guards against runaway work that do not depend on a task's size: delegation depth and live children, a liveness timeout, a consult ceiling, and an optional project cap. Cost is recorded, never gating (ADR-37) |
 | Make and prove | The rule that whoever makes a subject never produces the evidence that gates it |
 | Need | A namespaced label for what a task or agent asks for; capabilities offer needs |
 | Operator | The one person who runs Grindstone and answers its decisions |
@@ -209,7 +205,7 @@ Every term the set uses with a specific meaning. Specifications use these words 
 | Skill | A Markdown instruction pack, optionally with tools, that a capability may load mid-session |
 | Station | Where work or checks run, with an isolation tier T0–T3 |
 | Subject | The versioned thing a check proves and delivery ships: a commit, a blob, a blob set, an item revision |
-| Task | One unit of work with pinned inputs, an output contract, a check plan and a budget |
+| Task | One unit of work with pinned inputs, an output contract, a check plan and limits |
 | Task run | One attempt at a task, in a fresh workspace |
 | Template | A factory workflow: a bounded graph of six step types, exposed as a command |
 | Tier | Station isolation level: T0 read-only, T1 container, T2 microVM, T3 full VM or hardware |
@@ -231,7 +227,7 @@ Seven goals, ranked. When two conflict, the higher one wins. Each is made concre
 | QG-2 | **Durability** | Crashes cost time, never correctness |
 | QG-3 | **Containment** | Work content is untrusted and cannot reach Grindstone's authority |
 | QG-4 | **Traceability and safe change** | Every change shows its full consequences before it lands |
-| QG-5 | **Bounded cost** | Agent work, including cooperation, cannot spend without limit |
+| QG-5 | **Bounded cost** | Agent work, including cooperation, cannot loop, stall or fan out without limit, and every cost is visible |
 | QG-6 | **Operability and simplicity** | One operator can install, run, explain and recover the whole system |
 | QG-7 | **Generality without kernel change** | New domains arrive as factories, not as kernel edits |
 
@@ -250,11 +246,12 @@ Generality ranks last on purpose: when making the kernel more general would make
 | QS-07 | QG-3 | Imported content (issue, review comment, binary) contains instructions | Intake | Marked `untrusted`; derived ChangeSets wait for a person at every autonomy level | 0 untrusted ChangeSets applied by policy (M3-04) |
 | QS-08 | QG-4 | The operator edits a requirement that three specifications and five tickets depend on | Work in progress | Every affected item is listed with a verdict before apply; only dependent checks re-run | Walk reaches a fixed point; re-runs equal the dependency set (M2-03, M3-01) |
 | QS-09 | QG-4 | An applied change turns out wrong | Next day | A revert ChangeSet restores the previous revisions, walked like any change | Revert applies or raises `revert_conflict`; nothing deleted (M3-03) |
-| QS-10 | QG-5 | An agent delegates in a loop | Mid-task | The third level of delegation, the fifth live child or the overspend returns a tool error and raises a decision | 0 trees exceed depth 2 or any tree-budget counter (M3-05) |
+| QS-10 | QG-5 | An agent delegates in a loop | Mid-task | The third level of delegation or the fifth live child returns a structured tool error; the agent continues or reports `blocked` | 0 trees exceed depth 2 or the live-children cap (M3-05) |
 | QS-11 | QG-5 | The same consult is asked twice with unchanged inputs | Same project | The second answer comes from the cache | Second ask costs no agent run |
 | QS-12 | QG-6 | A new operator installs Grindstone | Fresh host | `docker compose up` plus documented secrets runs the walking skeleton | Install to first verified PR in ≤ 1 hour following the runbook (M3-07) |
-| QS-13 | QG-6 | The operator asks why a task is blocked | Any time | The UI shows the blocking decision, budget or check with its reason | Answer reachable in ≤ 2 clicks from the task |
+| QS-13 | QG-6 | The operator asks why a task is blocked | Any time | The UI shows the blocking decision, limit or check with its reason | Answer reachable in ≤ 2 clicks from the task |
 | QS-14 | QG-7 | A new factory with kinds, a capability and a template is installed | Kernel at M2 or later | It runs end to end without kernel edits | 0 kernel files changed (M2-05) |
+| QS-15 | QG-5 | An agent session stops making progress, or a consult runs far longer than expected | Agent session running | A run with no activity for the liveness timeout fails `stalled`; an open kernel tool call never counts as inactivity; a consult past its ceiling suspends the caller's turn and raises an escalation | Stall or ceiling acted on within one minute of the limit; 0 waiting callers failed as stalled (M3-05) |
 
 ## Constraints, assumptions and capacity
 
@@ -265,7 +262,7 @@ Generality ranks last on purpose: when making the kernel more general would make
 | One operator, self-hosted on one machine with Docker Compose | ADR-01, ADR-36 |
 | Python for the control plane, kernel and factories; TypeScript only for the agent host and the UI | ADR-01, ADR-06, ADR-15 |
 | PostgreSQL holds every record; one content-addressed volume holds files; DBOS Transact runs every workflow | ADR-02, ADR-03, ADR-04 |
-| Agents run behind an AHP host over ACP and reach Grindstone only through MCP; Claude Code first, then Codex | ADR-15, ADR-16, ADR-18 |
+| Agents run behind an AHP host over ACP and reach Grindstone only through MCP; Claude Code is the only real agent until the operator adds another | ADR-15, ADR-16, ADR-18, ADR-41 |
 | The UI is a static SvelteKit app; VS Code and the operator plugin use the same API | ADR-06 |
 | GitHub is the only git host and the SDLC factory's only delivery target | ADR-27 |
 | Every dependency is the latest stable release, pinned exactly; images by digest; upgrades are deliberate commits that pass CI; versions are resolved at M0 from primary sources | ADR-01 |
@@ -297,13 +294,13 @@ Generality ranks last on purpose: when making the kernel more general would make
 
 Grindstone runs on one host the operator controls. Everything it trusts is inside that host; everything it talks to outside is named here, with what crosses the boundary.
 
-&#91;embedded content: System context · one operator, three external services\]
+*Diagram (not reproduced): system context — one operator and three external services (GitHub, model providers, package registries) around the one host; the table below states everything it shows.*
 
 | External party | What crosses | Direction | Credential | Trust |
 | --- | --- | --- | --- | --- |
 | Operator | Commands, decision answers, edits to intent, steering prompts; views of every record and live session | Both | Operator login (password + session); per-client tokens for VS Code and the plugin | Trusted |
 | GitHub | Pushes, pull requests, verification status, comments — out. Repository state, PR state, review comments, issues, check results — in | Both | GitHub App installation token, held only by the control plane | Content coming in is untrusted |
-| Model providers | Prompts and tool results out; model output in | Both | Claude subscription token or API key; OpenAI API key — held by the agent station, readable by agents | Output is untrusted work content |
+| Model providers | Prompts and tool results out; model output in | Both | Claude subscription token or API key (keys for further providers when added) — held by the agent station, readable by agents | Output is untrusted work content |
 | Package registries | Dependency downloads for builds and tests | In | None | Untrusted; reached only from stations |
 
 Nothing else is contacted. Later factories add their own external parties (a tracker, a fab house) only through delivery adapters and station toolboxes, each declared in the factory manifest and granted per project.
@@ -312,7 +309,7 @@ Nothing else is contacted. Later factories add their own external parties (a tra
 
 The control plane is one Python process holding the kernel and every installed factory. Work runs on **stations**: in the MVP one agent station and one check station. Both are thin glue around off-the-shelf parts (ADR-01, ADR-17). Authority — the database, delivery credentials, signing keys — lives only in the control plane.
 
-&#91;embedded content: Containers · one control plane, two stations, one database\]
+*Diagram (not reproduced): containers — one control plane, two stations and one database, with the four volumes; the tables below state everything it shows.*
 
 | Container | Responsibility | Holds secrets | Can reach |
 | --- | --- | --- | --- |
@@ -336,14 +333,14 @@ The control plane is one Python process holding the kernel and every installed f
 
 Grindstone is a **modular monolith with a kernel and plug-in factories**, run as **durable workflows** over **one transactional store**, with untrusted work pushed out to **isolated stations** (ADR-01, ADR-03, ADR-07, ADR-21). The kernel is a grammar: seven concepts describe any agentic workflow Grindstone will run; a factory supplies the vocabulary of one domain.
 
-&#91;embedded content: Architectural style · factories on a kernel on a substrate\]
+*Diagram (not reproduced): architectural style — factories on top of the kernel's seven concepts, on top of the substrate (blobs, subjects, delivery port, interface items).*
 
 | Concept | Kind | One line |
 | --- | --- | --- |
 | **Item** | noun | A typed, hashed, versioned unit of intent or knowledge |
 | **Capability** | noun | A specialist: prompt, agent, skills, toolbox, what it produces and offers |
 | **Station** | noun | Where work or proof runs, with an isolation tier |
-| **Task** | verb | One unit of work with pinned inputs, an output contract, a check plan and a budget |
+| **Task** | verb | One unit of work with pinned inputs, an output contract, a check plan and limits |
 | **Check** | verb | Evidence produced by someone other than the maker, bound to exact inputs, subject and environment |
 | **ChangeSet** | verb | The only way intent changes: impact reviewed to a fixed point, then applied atomically |
 | **Decision** | verb | Authority: a person or the recorded policy answers a typed question |
@@ -378,16 +375,16 @@ Invariants are the rules every specification cites and every factory inherits. N
 | I-05 | Evidence is valid only for its input hashes, subject version and environment; freshness is computed, never stored | No freshness column; one freshness function | Property tests for freshness |
 | I-06 | Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it used | The run record is written before the session opens | Crash-and-resume tests |
 | I-07 | Scope expansion and content from outside the project need a person | `scope_expansion` and `untrusted` flags are class `never` | Decision service tests |
-| I-08 | Agents never deliver; delivery adapters deliver only verified subjects after a decision | Delivery credentials exist only in the control plane; the port checks evidence | Integration test with a fake remote |
+| I-08 | Agents never deliver; delivery adapters deliver only verified subjects after a decision; where the remote cannot enforce the gate, the adapter says so and reports every merge made outside it | Delivery credentials exist only in the control plane; the port checks evidence; the adapter observes the delivery mode (ADR-40) | Integration test with a fake remote in both modes |
 | I-09 | Credentials are split by container and purpose; the control plane never executes work content; nothing mounts the Docker socket | Compose file, images, secret scoping | Deployment lint in CI |
 | I-10 | Search results, mentions, consult answers and advisor output are suggestions only | They enter as context or `suggestion` decisions, never as revisions | Tool and decision tests |
 | I-11 | Every point that needs a person is a typed decision with a recommendation | The decision service is the only way to wait on a person | Contract tests |
 | I-12 | Policy answers only by written rules, records the rule it matched, and can be reverted | Policy engine; tripwire | Policy tests; revert test |
 | I-13 | Every intent change is a ChangeSet walked to a fixed point before apply | Apply requires an approved ChangeSet with a complete walk | Property tests for impact analysis |
-| I-14 | Agents never change the configuration that governs them: capabilities, templates, policy, manifests, budgets | Configuration lives outside every workspace and is not a proposable kind | Tool tests; workspace mount lint |
+| I-14 | Agents never change the configuration that governs them: capabilities, templates, policy, manifests, limits | Configuration lives outside every workspace and is not a proposable kind | Tool tests; workspace mount lint |
 | I-15 | Whoever makes a subject never produces the evidence that gates it | The check plan rejects a prover equal to the maker; self-checks are working notes | Conformance kit |
 | I-16 | Agents never talk to each other directly; cooperation goes through `ask` and `delegate` as kernel tasks | No agent-to-agent channel exists; MCP is per task | Architecture test (import and network rules) |
-| I-17 | Delegation is bounded: depth at most two, a fan-out cap, budget drawn from the parent; overflow raises a decision | Matching and dispatch check budgets before creating a child | Property tests on budget trees |
+| I-17 | Delegation is bounded: depth at most two and a live-children cap per task; overflow returns a structured tool error, never a silent child | Dispatch checks both caps before creating a child | Property tests on delegation trees |
 | I-18 | Factories add names only in their own namespace and never redefine kernel meaning; the kernel never imports a factory | Loader validation; import linter | Conformance kit; CI import check |
 | I-19 | Results cross task and factory boundaries only as pinned item revisions and blobs | Child output is a ChangeDraft and blobs; parents read by pin | Scenario K3 |
 | I-20 | Stations that touch untrusted targets or hardware hold no control-plane credentials; irreversible actions are asked unless an approved runbook covers them | Tier rules; `irreversible` flag | Station tests (R3, R4) |
@@ -414,14 +411,14 @@ Killed at any step, the workflow resumes from DBOS state with no second session,
 ### K2 — A consult in the middle of a task
 
 1. While running T, the agent calls `ask(need="notes.style", question, refs=[N-3], answer_schema)`.
-2. The kernel checks T's budget, matches `notes.stylist@1`, and looks up the consult cache by `(capability hash, question hash, input hashes)`. On a miss it creates child task C in `consult` mode on the read-only lane, with a budget drawn from T.
-3. C answers in a structured report. The kernel caches the answer and returns it as the tool result; the agent's tool call stays open while C runs. If the call cannot stay open (Q-9), T parks and resumes with the answer in context.
+2. The kernel matches `notes.stylist@1` and looks up the consult cache by `(capability hash, question hash, input hashes)`. On a miss it joins an identical consult already in flight, or creates child task C in `consult` mode on the read-only lane.
+3. C answers in a structured report. The kernel caches the answer and returns it as the tool result; the agent's tool call stays open while C runs, kept alive by progress notifications, however long C takes. If T's session drops, the re-asked question joins C or reads its cached answer; if C passes the consult ceiling, T's turn suspends with outcome waiting and an escalation is raised (ADR-38).
 4. The answer is a suggestion (I-10): it enters T's transcript as a `core.observation` and nothing else. An identical ask from any task in the project hits the cache until N-3 changes.
 
 ### K3 — Delegation across factories, and staleness
 
 1. Task R in factory `alpha` needs an artefact only factory `beta` makes. It calls `delegate(need="beta.build", goal, refs=[IF-1], output={kind: "beta.thing"}, checks=[…])`, where IF-1 is a `core.interface` item naming `alpha` as consumer and `beta` as provider.
-2. The kernel creates child D in `beta` with its own required checks, pins IF-1 at its current revision, and charges D to R's tree budget. R's turn ends with outcome waiting: its session closes and its writing lane is freed, so D can run on it.
+2. The kernel creates child D in `beta` with its own required checks, pins IF-1 at its current revision, and counts D against R's live-children cap. R's turn ends with outcome waiting: its session closes and its writing lane is freed, so D can run on it.
 3. D completes; its output is a blob and a ChangeDraft for a `beta.thing` item. Once approved, R continues in a new session on its own workspace with both pinned (I-19).
 4. Later the operator revises IF-1. The impact walk reaches the `beta.thing` item and R's output; the regression sweep marks both evidence records stale; re-check tasks run in each factory. Neither factory sent the other a message.
 
@@ -458,8 +455,9 @@ The adversary is the work itself: agent output, code agents write and run, and c
 | Prompt injection from outside | An issue or review comment tells the agent to delete tests | Intake by fixed code with no agent reading first; content marked `untrusted`; derived ChangeSets always need a person | I-07 | QS-07, M5-03 |
 | Self-modification | An agent edits capability files, templates or policy | Configuration lives outside every workspace; no tool proposes it | I-14 | Mount lint |
 | Privilege escalation through tools | An agent asks for network access or a protected path | Default deny; a `permission` decision for anything outside the capability's grants | I-11 | M1-05 |
-| Runaway spend | Delegation loop, oversized context, stuck session | Budgets on every tree; depth and fan-out caps; turn and time limits | I-17 | QS-10 |
+| Runaway spend | Delegation loop, oversized context, stuck session | Depth and live-children caps; liveness timeout; provider quota signals park runs; optional project cap; cost visible per tree | I-17 | QS-10, QS-15 |
 | Event spoofing | A process forges a host event to end a run | HMAC-signed events with IDs and turn numbers; unknown or duplicate IDs ignored | — | M1-04 |
+| Merge outside Grindstone | Someone merges a Grindstone pull request in GitHub, or pushes to the default branch, where the ruleset is not enforced | Enforced mode: the remote refuses it. Unenforced mode: Grindstone merges itself with the head SHA it verified; `observe` reports any other merge as an `untrusted` `delivery_bypass` finding (ADR-40) | I-08 | M1-02 |
 | Container escape to the host | A malicious build escapes the runner container | Accepted residual risk at T1 for trusted repositories; T2 microVMs for untrusted code (R3); nothing mounts the Docker socket | I-09, I-20 | Deployment lint |
 
 **Accepted residual risks for the MVP.** Agents can read the model credential of their own station and use it with network egress; mitigated by per-provider spend limits, a rotation runbook, and per-run isolation at T2. A kernel-level container escape on T1 is out of scope; repositories with untrusted code wait for T2.
@@ -475,10 +473,12 @@ Every external action is a DBOS workflow step with an idempotency key derived fr
 | Agent never reports | Turn timeout | One corrective prompt; then the run fails `missing_report` | Escalation decision |
 | Provider error or rate limit | Typed host event | Waits park the run; retry within the run with backoff; persistent errors fail `provider_error` | Run state `parked` with reason |
 | Context exhausted | Agent or host signal | Run fails `context_exhausted`; retry with a smaller context pack or another capability | Escalation decision |
-| Budget exhausted | Budget check before each turn and child | Run fails `budget_exhausted`; tool calls return structured errors | `budget_overflow` decision |
+| Run stalls | No agent activity for the liveness timeout; an open kernel tool call is not inactivity | Run fails `stalled` | Escalation decision |
+| Project cap reached (when enabled) | Cap check before each new run | No new run starts in the project; running turns finish | Escalation flagged `cap_reached` |
+| Consult passes its ceiling | Ceiling timer on the open `ask` | The caller's turn suspends with outcome waiting; the consult keeps running | Escalation: wait longer, retry, cancel |
 | Check station job crashes | Job timeout or missing result file | Check result `error`; the check is retried once, then escalated | Evidence with `error` |
 | Postgres unavailable | Connection failures | The control plane stops dispatching and serves read-only status; workflows resume when it returns | Health check red |
-| Blob store full | Write failure | Run fails `budget_exhausted` (storage); GC runs; operator warned | Operations view warning |
+| Blob store full | Write failure | Run fails `storage_limit`; GC runs; operator warned | Operations view warning |
 | GitHub unavailable or rejects a push | API error | Delivery step retries with backoff; after the limit, a `delivery` escalation | Delivery state `failed` with cause |
 | Two ChangeSets race on one item | Base-revision check at apply | The later one is re-walked against the new base | Approval asked again if the review set changed |
 | Decision answered against stale context | Context hash check | The answer is refused; the decision is superseded and raised again | Superseded decision in history |
@@ -492,7 +492,7 @@ Every external action is a DBOS workflow step with an idempotency key derived fr
 
 **Logs and traces.** Structured JSON logs carry the project, task, run, workflow and request IDs as correlation fields. OpenTelemetry traces span the control plane, the agent host and the runner for each task run; spans are exported to a local collector the operator may point anywhere. Transcripts, tool calls and timings of every run are stored and linked from the task.
 
-**Cost.** Every run records wall time always, and tokens and spend where the provider reports them; spend is computed from a price table the operator maintains (Q-10). Costs roll up the delegation tree and the template run, and the UI shows spend per command, factory, capability and need. Budgets bound every tree (ADR-20); consult caching, read-only lanes and the depth limit keep cooperation cheaper than one agent reading everything.
+**Cost.** Every run records wall time always, and tokens and spend where the provider reports them; spend is computed from a price table the operator maintains. Costs roll up the delegation tree and the template run, and the UI shows spend per command, factory, capability and need. Cost is recorded, never gating: limits stop runaway work structurally, and the optional project cap is the only spend ceiling (ADR-37); consult caching, read-only lanes and the depth limit keep cooperation cheaper than one agent reading everything.
 
 **Health and service levels.** For one operator on one host the targets are practical, not contractual:
 
@@ -504,7 +504,7 @@ Every external action is a DBOS workflow step with an idempotency key derived fr
 | Lost or duplicated external effects | 0 |
 | Evidence or revisions lost on crash | 0 |
 
-**Operations view.** One page shows lanes and queues, running and parked tasks, waiting decisions with their age, stale evidence, budgets spent, blob store use and the capacity envelope, with a warning for anything outside it.
+**Operations view.** One page shows lanes and queues, running and parked tasks, waiting decisions with their age, stale evidence, spend against the project cap, blob store use and the capacity envelope, with a warning for anything outside it.
 
 **Routine operations.** Each has a runbook and a test:
 
@@ -583,7 +583,7 @@ A capability is a specialist: everything the kernel needs to start an agent that
 | `id` | Namespaced name: `sdlc.implementer`, `sdlc.security_reviewer`, `re.analyst` |
 | `version` | Bumped on any change; the capability's hash is recorded on every task run (I-06) |
 | `prompt` | The specialist's instructions, as a file in the factory |
-| `agent` | Agent runtime and model: preset (`claude`, `codex`, `scripted`), model, effort |
+| `agent` | Agent runtime and model: preset (`claude`, `scripted`; others when added, ADR-41), model, effort |
 | `skills` | The **library** of skills this specialist may load, and the subset loaded at start. Loading anything outside the library is refused |
 | `toolbox` | The station image it needs, and allow-listed tool servers it may use — local stdio processes on its station, holding no secrets |
 | `workspace` | `write` (a writable workspace for making) or `read_only` (a checkout at a subject version, for reviewing and consulting) |
@@ -592,13 +592,13 @@ A capability is a specialist: everything the kernel needs to start an agent that
 | `offers` | Typed contracts others match against: a **need**, the input kinds it accepts, the output kind it yields, whether it serves `consult`, `delegate` or both, and tags |
 | `may_check` | The check methods it may perform as a prover, and on which kinds of subject |
 | `tier` | The minimum station tier it requires |
-| `budget` | Default budget per run (turns, wall time, spend where reported) and a smaller one for consults |
+| `limits` | Overrides of the instance's liveness timeout and consult ceiling, for specialists that think for long stretches |
 
-**Where capabilities come from.** Each factory ships its capabilities as versioned files. A project may override a bounded set per capability — model and effort, budget, extra skills from the same factory's library, extra prompt text — but never `offers`, `produces`, `may_check`, `tier` or the namespace. `grindstone check` validates every capability and override before use.
+**Where capabilities come from.** Each factory ships its capabilities as versioned files. A project may override a bounded set per capability — model and effort, limits, extra skills from the same factory's library, extra prompt text — but never `offers`, `produces`, `may_check`, `tier` or the namespace. `grindstone check` validates every capability and override before use.
 
-**One specialist, three uses.** The same capability can do a task, answer a consult or perform a check. What changes is the task's mode, workspace and budget, not the specialist's definition. Make and prove still applies per subject: a capability that made a subject cannot prove it, even in a different mode.
+**One specialist, three uses.** The same capability can do a task, answer a consult or perform a check. What changes is the task's mode, workspace and limits, not the specialist's definition. Make and prove still applies per subject: a capability that made a subject cannot prove it, even in a different mode.
 
-**Skills.** A skill is a Markdown instruction pack, optionally declaring extra tools, versioned with its factory. Loading one mid-session (`load_skill`) adds its instructions and tools to the session and is recorded on the run. It never changes the capability's permissions, workspace mode or tier.
+**Skills.** A skill is a Markdown instruction pack, optionally declaring extra tools, versioned with its factory. The skills a capability loads at start are materialized, read-only, into the session's private configuration directory outside the workspace, where agents that discover skills natively find them; they are part of the context pack. Loading one mid-session (`load_skill`) returns its instructions inline as the tool result, which works with every agent, adds its tools, and is recorded on the run (ADR-39). It never changes the capability's permissions, workspace mode or tier.
 
 ## Station
 
@@ -640,18 +640,31 @@ A task is the one unit of work in Grindstone. Implementing a ticket, drafting a 
 | `inputs` | Item revisions and blob hashes pinned at start, plus the subject version it starts from; the agent reads only these |
 | `output_contract` | The report schema it must submit, the item kinds it may propose, the files it must produce, the delivery target if any |
 | `checks` | The check plan: each check's method, the need or capability that performs it, required or advisory |
-| `budget` | Per-run limits (turns, wall time, tokens and spend where reported), a consult allowance, and the tree budget it is charged to; maximum depth and live children (ADR-20) |
+| `limits` | Its depth in the delegation tree and live-children cap, the liveness timeout and consult ceiling that apply to its runs, and the project cap it counts toward if one is enabled (ADR-37) |
 | `tier`, `lane` | Minimum station tier; writing or read-only lane |
 | `parent`, `children` | The delegation tree, depth at most two below a top-level task |
 | `deadline` | Optional; passing it raises an escalation, never a silent answer |
 
-&#91;embedded content: Task lifecycle · eight stored states, one writer\]
+**Lifecycle.** A task has eight stored states, written only by the task transition function in `work` (FF-08). The diagram that stated them was not reproduced; this table is reconstructed from the text of this set, and SPEC-06 owns the exact transition table and its guards.
 
-**Readiness** is computed, never stored: a queued task is ready when its inputs exist at approved revisions, its prerequisite tasks are done, no decision blocks its scope, its budget allows another run, and a station of its tier has a free lane.
+| State | Means | Leaves to |
+| --- | --- | --- |
+| `queued` | Created; waiting until it is ready (readiness is computed, below) | `running`, `cancelled` |
+| `running` | A run is in progress on a station | `waiting`, `verifying`, `blocked`, `cancelled` |
+| `waiting` | The last turn ended with outcome waiting: a delegated child, an operator answer, or a consult past its ceiling; no lane is held | `running`, `blocked`, `cancelled` |
+| `verifying` | The maker reported `done`; required checks are running on the collected subject | `delivering`, `done`, `blocked`, `running` (a rework round) |
+| `delivering` | Every required check is fresh and passing; a `delivery` decision and the adapter are in progress | `done`, `blocked` |
+| `blocked` | Stopped on a typed failure cause, a denied permission or a failed delivery; an escalation is open | `queued`, `cancelled` |
+| `done` | Every required check had fresh passing evidence and any delivery completed (I-04) | `queued` (only a failing re-check reopens it) |
+| `cancelled` | Stopped for good, by the operator or because a pinned item was removed | — |
 
-**Runs, sessions and turns.** Each attempt is a **task run** with a fresh workspace. A run is a series of agent sessions — a new session after a host restart, a parked wait or a provider limit continues from the workspace. Grindstone numbers its own turns. The operator may steer a running session from the UI or VS Code; steering turns are recorded but carry no Grindstone number, do not count against the budget and cannot end the run. Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it was given (I-06).
+A run parked on a provider limit stays `running`; parking is a run state, not a task state.
 
-**Reports.** One accepted report ends each turn, with outcome `done`, `blocked` or `failed`. The kernel validates it against the output contract and returns structured errors the agent fixes in the same turn; a turn without a report gets one corrective prompt, then the run fails `missing_report`. Proposed items become a ChangeDraft; declared output files are copied out of the workspace into the blob store; nothing an agent writes reaches intent or delivery any other way (I-03). Two tools end a turn by themselves: delegate, and ask addressed to the operator. Each records its request, counts as the turn's report with outcome waiting, closes the session and frees the lane; when the child finishes or the decision is answered, the run continues in a new session on the same workspace with the result in context. A consult that outlives its wait limit (Q-9) suspends the same way. No task ever holds a lane while it waits.
+**Readiness** is computed, never stored: a queued task is ready when its inputs exist at approved revisions, its prerequisite tasks are done, no decision blocks its scope, the project cap (if enabled) is not reached, and a station of its tier has a free lane.
+
+**Runs, sessions and turns.** Each attempt is a **task run** with a fresh workspace. A run is a series of agent sessions — a new session after a host restart, a parked wait or a provider limit continues from the workspace. Grindstone numbers its own turns. The operator may steer a running session from the UI or VS Code; steering turns are recorded but carry no Grindstone number and cannot end the run. Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it was given (I-06).
+
+**Reports.** One accepted report ends each turn, with outcome `done`, `blocked` or `failed`. The kernel validates it against the output contract and returns structured errors the agent fixes in the same turn; a turn without a report gets one corrective prompt, then the run fails `missing_report`. Proposed items become a ChangeDraft; declared output files are copied out of the workspace into the blob store; nothing an agent writes reaches intent or delivery any other way (I-03). Two tools end a turn by themselves: delegate, and ask addressed to the operator. Each records its request, counts as the turn's report with outcome waiting, closes the session and frees the lane; when the child finishes or the decision is answered, the run continues in a new session on the same workspace with the result in context. A consult that passes its ceiling (ADR-38) suspends the same way. No task ever holds a lane while it waits.
 
 **Failure causes.** A run fails with one typed cause, each with its rule:
 
@@ -659,12 +672,12 @@ A task is the one unit of work in Grindstone. Implementing a ticket, drafting a 
 | --- | --- |
 | `rate_limited`, `provider_error` | Park and retry within the run with backoff |
 | `host_lost` | Continue in a new session; retry the run once |
-| `timeout`, `missing_report`, `context_exhausted` | Block the task; escalation |
-| `budget_exhausted` | Block; `budget_overflow` decision |
+| `stalled`, `missing_report`, `context_exhausted` | Block the task; escalation |
+| `cap_reached`, `storage_limit` | Block; escalation (flagged `cap_reached` for the project cap) |
 | `checks_failed` | Block with the failing evidence attached; a template with rework rounds retries at once with that evidence in context, up to its round limit, then escalates |
 | `cancelled` | None |
 
-An escalation offers retry, reassign to another capability, raise the budget, or cancel.
+An escalation offers retry, reassign to another capability, raise the project cap where it applies, or cancel.
 
 **Context pack.** The kernel assembles what a run sees: the pinned items rendered as Markdown, the project's principles, relevant learnings, the interface items in scope and the capability's loaded skills. The pack is recorded by hash, so advice and drafts built on it go stale when it changes.
 
@@ -748,11 +761,11 @@ A decision is anything only a person, or a policy the person approved, may settl
 | `manual_check` | A check with method `manual` is due | pass, fail, notes, attachments |
 | `delivery` | Verified output is ready for its delivery adapter | deliver, hold, cancel |
 | `suggestion` | Advisory evidence failed, an advisor or consult proposed something, a learning or link was offered | accept (becomes a ChangeDraft), dismiss |
-| `escalation` | A run failed, a deadline passed, a budget ran out, matching was ambiguous | retry, reassign, raise budget, cancel |
+| `escalation` | A run failed or stalled, a deadline passed, a consult passed its ceiling, the project cap was reached, matching was ambiguous | retry, reassign, wait longer, raise cap, cancel |
 | `scope` | Work would add or remove approved scope, or a factory is enabled | approve, reject, split into a new goal |
 | `<ns>.*` | Factory kinds, each with an eligibility class and an answer schema | As declared |
 
-**Flags** modify how a decision may be answered and are set by the kernel, never by an agent: `scope_expansion`, `principle`, `untrusted`, `rounds_exhausted`, `revert_conflict`, `budget_overflow`, `irreversible` (the action cannot be undone by a ChangeSet — a published release, a flashed device, a sent message). A flagged decision always needs a person, at every autonomy level.
+**Flags** modify how a decision may be answered and are set by the kernel, never by an agent: `scope_expansion`, `principle`, `untrusted`, `rounds_exhausted`, `revert_conflict`, `cap_reached`, `irreversible` (the action cannot be undone by a ChangeSet — a published release, a flashed device, a sent message). A flagged decision always needs a person, at every autonomy level.
 
 **Lifecycle.** `open → answered | superseded | expired`. An answer is refused if the decision was superseded or its context hash changed; a decision superseded three times becomes an escalation. Related decisions are batched on one card. Only `permission` decisions expire, to deny. A waiting workflow holds no resources: the decision stores a typed continuation that the answer starts exactly once.
 
@@ -767,7 +780,7 @@ A decision is anything only a person, or a policy the person approved, may settl
 | L2 | Unflagged `l2` decisions whose recommendation matches a written policy rule | Steady work: retry once, accept a passing review |
 | L3 | Also `l3` kinds, such as `delivery` to a protected target | R2, behind the tripwire |
 
-**Tripwire.** Any of these drops the project to L1 until the operator restores it: a reverted policy answer, two consecutive failed deliveries, a high-severity security finding, a budget overflow, a principle-flagged decision. Every policy answer records the rule that matched and can be reverted like a ChangeSet (I-12). A pause switch stops dispatch and policy answers at once.
+**Tripwire.** Any of these drops the project to L1 until the operator restores it: a reverted policy answer, two consecutive failed deliveries, a high-severity security finding, the project cap reached, a principle-flagged decision. Every policy answer records the rule that matched and can be reverted like a ChangeSet (I-12). A pause switch stops dispatch and policy answers at once.
 
 **Channels.** Decisions are answered in the web UI, in VS Code and — from M5 — through the operator plugin in Claude Code, all through one service; the answer records who answered, where and when.
 
@@ -810,20 +823,20 @@ An agent that needs expertise it does not have has exactly three options, each a
 | Tool | `load_skill(skill)` | `ask(need, question, refs, answer_schema)` | `delegate(need, goal, refs, output, checks)` |
 | Who thinks | The same agent, with extra instructions and tools | A specialist in a read-only child task | A specialist in a child task with its own workspace |
 | Returns | Nothing; the agent continues with the skill loaded | A structured answer, as the tool result | Approved, pinned items and blobs after the child is verified |
-| Caller waits | No | Yes, up to the wait limit (Q-9); then the turn suspends | No: the turn ends, the session closes and the lane is freed; the run resumes when the child is done |
+| Caller waits | No | Yes, in the open call until the answer arrives, up to the consult ceiling (ADR-38); then the turn suspends | No: the turn ends, the session closes and the lane is freed; the run resumes when the child is done |
 | Evidence | None; cannot satisfy a check | None; the answer is a suggestion (I-10) | The child's own required checks |
-| Cost | Context tokens only | One short read-only run, cached | A full task tree, bounded by budget |
+| Cost | Context tokens only | One read-only run, cached and shared by identical asks | A full task tree, bounded by the depth and live-children caps |
 | Example | Implementer loads `sdlc.security-basics` before touching auth code | RE analyst asks `sdlc.code` whether a decompiled routine is a known CRC variant | RE analyst delegates a working decoder for a format it documented |
 
 **Switch mode** never changes permissions, workspace mode or tier, and never lets an agent act as its own reviewer: a security skill loaded by the implementer makes it write safer code, while the security *review* still runs as a check by another capability (I-15).
 
 **Consult** creates a child task in `consult` mode on the read-only lane. The specialist sees only the question, the referenced revisions and blobs, and its own skills, and answers in the caller's schema. Answers are cached per project by `(capability hash, question hash, input hashes)` until an input changes. A consult cannot propose items or start children; if real work is needed it says so, and the caller may delegate.
 
-**Delegate** creates a child task in `work` mode, in the matched capability's factory, with its own template step, workspace, checks and its capability's default run budget, charged to the tree budget. The child's proposals go through a ChangeSet like any other, so the parent receives approved, pinned results (I-19). A delegated child may consult, and may delegate once more (depth two, I-17).
+**Delegate** creates a child task in `work` mode, in the matched capability's factory, with its own template step, workspace and checks, counted against the parent's live-children cap. The child's proposals go through a ChangeSet like any other, so the parent receives approved, pinned results (I-19). A delegated child may consult, and may delegate once more (depth two, I-17).
 
 **Asking a person** uses the same tool: `ask(need="operator", …)` raises a `question` decision instead of a consult, with the agent's recommended answer; the turn suspends until the answer arrives.
 
-**Why agents never talk directly.** A chat between agents has no auditable record, no budget, no freshness and no clear end. Every cooperation is a task with pinned inputs, a typed result and a cost, so the ledger stays a tree of verifiable work and no factory tracks another's conversations (I-16).
+**Why agents never talk directly.** A chat between agents has no auditable record, no bounds, no freshness and no clear end. Every cooperation is a task with pinned inputs, a typed result and a cost, so the ledger stays a tree of verifiable work and no factory tracks another's conversations (I-16).
 
 ### Matching
 
@@ -838,21 +851,20 @@ Templates and agents ask for a **need** — a namespaced, capability-neutral lab
 
 No candidate, or more than one after step 6, raises an `escalation`; the operator's answer becomes the project's pin. Matching uses no embeddings, scores or models: the same request in the same project always matches the same capability.
 
-### Budgets
+### Limits
 
-Budgets have two levels (ADR-20). **Run limits** bound each run. A **tree budget**, set at the root — a command, a template run or a top-level task — bounds everything the root delegates, with one counter per unit: tasks, turns, wall time, tokens where reported, spend where reported. Consults draw from their caller's consult allowance; delegated children get their capability's own run limits and are charged to the tree budget, because delegated work is often larger than the task that asked for it. Units are never converted: a subscription run is charged in turns and time, an API run also in tokens and spend, and each counter has its own ceiling (Q-10).
+Tasks vary too much in size for a fixed allowance of turns, time or tokens to be right, so Grindstone sets no per-task or per-tree budget (ADR-37). It bounds **runaway shapes** instead — loops, stalls and fan-out — which look the same whatever the task's size, and it records every cost without letting cost gate work. Provider quota and rate-limit signals already park runs (`rate_limited`).
 
-| Limit | SDLC default | When exceeded |
+| Limit | Seed default | When reached |
 | --- | --- | --- |
-| Turns per run | 40 | Run fails `budget_exhausted` |
-| Wall time per run | 45 min | Run fails `timeout` |
-| Tokens and spend per run, where reported | Per capability (Q-10) | Run fails `budget_exhausted` |
-| Consult allowance | 25% of the caller's run turns and wall time; 8 consults per run | `ask` returns an error |
-| Tree budget | Set by the command or template: tasks, turns, wall time, tokens, spend, each its own counter | No new run or child starts in the tree; `budget_overflow` decision |
-| Depth | 2 below the root | `delegate` returns an error; the agent works without it |
-| Live children | 4 per task | `delegate` returns an error until a child finishes |
+| Depth | 2 below the root | `delegate` returns `depth_exceeded`; the agent works without it |
+| Live children | 4 per task | `delegate` returns `fanout_exceeded` until a child finishes |
+| Liveness timeout | 20 min with no agent activity (no output, tool call or event); an open kernel tool call pauses it | Run fails `stalled` |
+| Consult ceiling | 2 h per open `ask` | The caller's turn suspends with outcome waiting; escalation: wait longer, retry, cancel |
+| Project cap | Off. When the operator enables it: spend where reported, otherwise turns, per calendar month | No new run starts in the project; running turns finish; escalation flagged `cap_reached` |
+| Storage | Per blob and per project, from instance configuration | Run fails `storage_limit` |
 
-The agent always learns a limit from the tool's structured error, so it can carry on or report `blocked` instead of failing silently.
+The agent always learns a limit from the tool's structured error, so it can carry on or report `blocked` instead of failing silently. Seed values are owned by SPEC-17; capabilities may override the liveness timeout and consult ceiling within instance bounds.
 
 
 # Components
@@ -863,7 +875,7 @@ How the system is cut into modules and processes, what each owns and offers, and
 
 The control plane is one Python package, `grindstone`, built as a modular monolith of twelve modules in five layers. Factories are separate packages under `factories/<namespace>/` that use only `grindstone.sdk`. Each module owns its tables and its lifecycles, exposes a typed service interface and emits events; no module reads another's tables.
 
-&#91;embedded content: Module map · twelve kernel modules in five layers, factories on top\]
+*Diagram (not reproduced): module map — twelve kernel modules in five layers (foundation, platform, domain, orchestration, edge), factories on top; the table below states the dependency rules exactly.*
 
 **Dependency rules.** A module may call the public interface of modules in lower layers and of the modules listed for it below; nothing else. Where a lower module must trigger work in a higher one — a decision answer resuming a task, an applied ChangeSet re-queuing work — it does so through a registered continuation or an event the higher module subscribes to, never an import (dependency inversion).
 
@@ -899,7 +911,7 @@ Each module has one responsibility, owns specific state, offers a typed service 
 | `memory` | What the project learned | Principle and learning indexes, full-text index; later vector index | Retrieval for context packs, search (suggestions only) | `learning.accepted` |
 | `stations` | Where work runs | Station registry, tiers, lanes, workspace lifecycle, host and runner adapters | Dispatch session or job, cancel, workspace prepare/collect/discard hooks | `session.*`, `job.*` |
 | `change` | Changing intent safely | ChangeDrafts, ChangeSets, impact walks, verdicts, apply and revert | Draft, walk, validate rules, apply, revert | `changeset.applied`, `changeset.reverted` |
-| `work` | Running work | Tasks, runs, turns, reports, readiness, matching, budgets, cooperation, template runs, context packs | Create task, dispatch, report intake, `ask`, `delegate`, `load_skill`, start template | `task.*`, `run.*` |
+| `work` | Running work | Tasks, runs, turns, reports, readiness, matching, limits, cooperation, template runs, context packs | Create task, dispatch, report intake, `ask`, `delegate`, `load_skill`, start template | `task.*`, `run.*` |
 | `delivery` | Shipping verified output | Delivery records, idempotency ledger, adapter invocation, `observe` polling | Prepare, deliver, observe | `delivery.*` |
 | `surface` | Every way in | REST API, event stream, kernel MCP server, operator authentication, AHP attach proxy | HTTP endpoints, MCP tools, streamed events | — |
 
@@ -916,7 +928,7 @@ Each module has one responsibility, owns specific state, offers a typed service 
 | `memory` | Search result treated as fact | Tool tests that search never writes |
 | `stations` | Duplicate session; lost event; workspace leak between runs | Idempotent create; signed-event replay; isolation tests |
 | `change` | Walk misses a dependent; race between two applies | Impact property tests; concurrent-apply tests |
-| `work` | Duplicate run; runaway budget tree; ambiguous match accepted silently | Crash-and-resume; budget-tree property tests; matching determinism tests |
+| `work` | Duplicate run; runaway delegation tree; stall not detected or a waiting caller failed as stalled; ambiguous match accepted silently | Crash-and-resume; delegation-tree property tests; liveness tests; matching determinism tests |
 | `delivery` | Duplicate PR or push; delivery of unverified subject | Idempotency against a fake remote; evidence gate test |
 | `surface` | Unauthorized call; token reuse across tasks | Auth tests; per-task token scope tests; in-memory MCP tool tests |
 
@@ -966,7 +978,7 @@ One MCP server inside `grindstone` (FastMCP), mounted per task run and authentic
 | `load_skill(name)` | Loads a skill from the capability's library | All modes |
 | `request_permission(action, reason)` | Raises a `permission` decision | All modes |
 
-**Suspending tools.** `delegate` and `ask(need="operator")` end the turn: the tool result confirms the request, the kernel records it as the turn's report with outcome `waiting`, disposes the session and frees the lane. When the child finishes or the decision is answered, the run continues in a new session on the same workspace, with the result at the top of the next prompt. A specialist consult keeps the call open up to the wait limit (Q-9) and then suspends the same way. No task holds a lane while it waits, so a parent on the writing lane never blocks the child it is waiting for.
+**Suspending tools.** `delegate` and `ask(need="operator")` end the turn: the tool result confirms the request, the kernel records it as the turn's report with outcome `waiting`, disposes the session and frees the lane. When the child finishes or the decision is answered, the run continues in a new session on the same workspace, with the result at the top of the next prompt. A specialist consult keeps the call open until it answers, with progress notifications as keepalives, up to the consult ceiling, and then suspends the same way (ADR-38). A parent never waits on a lane its child needs: delegation frees the lane, and consults run on the read-only lane. A caller in an open consult does hold its own lane; the operations view shows it.
 
 There are no tools to apply, transition, deliver, change configuration or reach another task (I-03, I-14, I-16). Factory domain tools (Ghidra, rea, CAD kernels) are separate tool servers in a capability's toolbox, local to the station, holding no secrets.
 
@@ -1056,7 +1068,7 @@ One PostgreSQL database (ADR-02). Each module owns one Postgres schema named aft
 | Validation | `report_invalid`, `reference_unresolved`, `manifest_invalid` | The caller (agent, client, loader) | Fix and resubmit; never retried automatically |
 | Rule | `transition_illegal`, `coverage_missing`, `principle_conflict` | The ChangeSet or task that triggered it | Blocks approval; shown per item |
 | Authority | `permission_required`, `decision_superseded`, `context_changed` | Agent or operator | Raises or refreshes a decision |
-| Limit | `budget_exhausted`, `depth_exceeded`, `fanout_exceeded`, `storage_limit` | The agent, as a tool result | Agent continues or reports `blocked`; may raise `budget_overflow` |
+| Limit | `depth_exceeded`, `fanout_exceeded`, `storage_limit`, `cap_reached`, `consult_ceiling` | The agent, as a tool result | Agent continues or reports `blocked`; `cap_reached` and `consult_ceiling` also raise an escalation |
 | Transient | `provider_unavailable`, `station_unavailable`, `remote_rejected` | The workflow step | Retried with backoff by the step's policy |
 | Internal | `invariant_violated` | Logs and the operations view | The workflow stops; an escalation is raised; never swallowed |
 
@@ -1079,7 +1091,7 @@ Every acceptance criterion is tied to the test that proves it, and each kind of 
 | Test kind | Proves | Scope | Runs |
 | --- | --- | --- | --- |
 | Unit | Module logic in isolation | Every module | Every commit |
-| Property | Impact walk reaches exactly the dependents; freshness is stale exactly when an input, subject or relevant environment field changes; budget trees never exceed their root; matching is deterministic; GC never collects a reachable blob | `change`, `evidence`, `work`, `store` | Every commit |
+| Property | Impact walk reaches exactly the dependents; freshness is stale exactly when an input, subject or relevant environment field changes; delegation trees never exceed the depth or live-children caps; matching is deterministic; GC never collects a reachable blob | `change`, `evidence`, `work`, `store` | Every commit |
 | Golden round-trip | Markdown render and parse yield the same hashes; hash vectors agree across Python and TypeScript; published formats are byte-stable | `contracts`, `intent`, SDLC rendering | Every commit |
 | Crash-and-resume | Killing any process at any workflow step resumes with no duplicate and nothing lost | Every workflow with an external effect (FF-10) | Every commit (fast set), nightly (full matrix) |
 | In-memory tool | Every MCP tool's scoping, errors and refusals | `surface` | Every commit |
@@ -1110,7 +1122,7 @@ A factory is one installable package with a **manifest** of seven parts. Every p
 | --- | --- | --- | --- |
 | Item kinds | Kinds, fields (semantic or presentation), relations and their impact rule, lifecycle transition tables, artifacts that contain them | `sdlc.requirement`, `sdlc.criterion`, `sdlc.ticket`, `sdlc.spec` | `re.target`, `re.function`, `re.claim`, `re.report` |
 | Task templates | Bounded graphs of steps: which need, mode, inputs, outputs, checks and decisions each step has | `/discover`, `/plan`, `/implement`, `/patch` | `/triage`, `/analyse`, `/confirm` |
-| Capabilities | Specialists: prompt, agent, skills, toolbox, workspace mode, permissions, offers, budget, tier | Implementer, spec author, auditor, test, code and security reviewers | Static analyst, decompiler driver, finding writer |
+| Capabilities | Specialists: prompt, agent, skills, toolbox, workspace mode, permissions, offers, limits, tier | Implementer, spec author, auditor, test, code and security reviewers | Static analyst, decompiler driver, finding writer |
 | Check methods | Factory methods mapped onto a kernel execution shape | `sdlc.ci_suite` (shape `command`) | `re.cross_disasm` (shape `cross_tool`) |
 | Subjects and workspaces | Subject kinds and how they resolve to commits or blobs; workspace providers | `git_commit` worktrees and copy-back | `re.binary` (resolves to `blob`) |
 | Delivery adapters | Ports that ship verified subjects | `sdlc.github_pr` | `re.report_export` |
@@ -1149,7 +1161,7 @@ A task template is a factory's workflow written as data: a small directed graph 
 
 | Type | What it does | Creates |
 | --- | --- | --- |
-| `task` | Runs one task with a need, mode, inputs, output contract, checks and budget | A task and its check tasks |
+| `task` | Runs one task with a need, mode, inputs, output contract, checks and limits | A task and its check tasks |
 | `fan_out` | Runs one `task` step per item in a selection (each ready ticket, each function in a target), up to a concurrency limit | Many tasks, joined before the next step |
 | `check` | Runs checks on a subject without a making task (audit an imported spec, re-verify after a sweep) | Check tasks |
 | `change` | Turns the outputs of earlier steps into one ChangeSet and runs the impact walk | A ChangeSet and its `approval` decision |
@@ -1160,7 +1172,7 @@ A task template is a factory's workflow written as data: a small directed graph 
 
 **Bindings.** Steps refer to earlier outputs by name (`steps.author.items`, `steps.analyse.blobs`), to the command's arguments, and to selections over the item graph (`items(kind="sdlc.ticket", state="ready", scope=$goal)`). Bindings resolve to pinned revisions when the step starts, so a template run is reproducible from its records.
 
-**Commands.** Each template is exposed as an operator command in the UI, VS Code and the operator plugin. A command shows its plan — steps, needs, matched capabilities, budget — before it starts; the operator runs it at once or at the next free lane.
+**Commands.** Each template is exposed as an operator command in the UI, VS Code and the operator plugin. A command shows its plan — steps, needs, matched capabilities, limits — before it starts; the operator runs it at once or at the next free lane.
 
 **What templates do not do.** They do not decide who is competent (matching), what counts as proof (check plans and criteria) or what needs a person (decision kinds and policy). Keeping those out keeps templates short: the SDLC `/implement` template fits on one screen.
 
@@ -1176,7 +1188,7 @@ The one rule every factory shares is that nothing grades itself (I-15, ADR-12). 
 | Prover — judgement | A different capability, `review` method, read-only | Read-only copy and pinned items | Structured verdicts as evidence | Yes |
 | Prover — person | Operator, through `manual_check` | — | Verdict and attachments | Yes |
 
-**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer on a different model family from the author and implementer by default.
+**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer on a different model from the author and implementer, in a fresh read-only session, and on a different model family once a second agent is configured (ADR-41).
 
 **Tests written by the maker.** In SDLC the implementer writes tests, and tests are the main evidence. The rule handles this in two steps: the **test reviewer** (a prover) checks that each added or changed test verifies its criterion and was not weakened — a weakened or deleted test fails that check — and the tests then run on the check station against the copied-back commit. Implementation and its proof stay separate even though one agent typed both.
 
@@ -1211,7 +1223,7 @@ Several factories can work in one project. They share one ledger — one item gr
 
 The SDLC factory (`sdlc`) is the first factory and the reason Grindstone exists. It runs the agent-driven software development loop: goal, discovery, specification with independent audit, breakdown into tickets, implementation in isolated worktrees, proof against exact requirement revisions, delivery as a pull request, and findings feeding back into the specification.
 
-&#91;embedded content: The ASDLC loop · eight stages, five decision points\]
+*Diagram (not reproduced): the ASDLC loop — eight stages (the rows of the table below) and five decision points: scope, specification, breakdown, findings that change intent, and delivery.*
 
 **One ledger, two moving parts.** The factory keeps specification and code moving together. Every ticket implements requirements by typed reference; every acceptance criterion names the requirement it verifies and its method; every commit is proven against the exact revisions it was built from. When implementation finds something the specification did not foresee, the implementer proposes a finding and the change flows back through a ChangeSet — the loop closes in the specification, not in a chat.
 
@@ -1261,16 +1273,16 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 | `sdlc.implementer` | `sdlc.implement` · delegate | write, git worktree | No | Claude Code | M1 |
 | `sdlc.test_reviewer` | `sdlc.review.tests` · check | read-only | Yes | Claude Code | M1 |
 | `sdlc.spec_author` | `sdlc.specify` · delegate | write, items only | No | Claude Code | M2 |
-| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code; Codex from M3 | M2 |
+| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code, on a different model from the spec author | M2 |
 | `sdlc.impact_reviewer` | `core.review.impact` · check | read-only | Yes | Claude Code | M3 |
-| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Codex | M3 |
+| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Claude Code, on a different model from the implementer | M3 |
 | `sdlc.security_reviewer` | `sdlc.review.security` · check, consult | read-only | Yes | Claude Code | M3 |
 | `sdlc.discoverer` | `sdlc.discover` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.planner` | `sdlc.breakdown` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.advisor` | `core.advise` · consult | read-only | No | Claude Code | M4 |
 | `sdlc.repairer` | `sdlc.repair` · delegate | write, git worktree | No | Claude Code | M5 |
 
-**Independence.** The auditor and the code reviewer default to a different model family from the author and the implementer. This is SDLC policy above make/prove; a project may relax it only by a `principle`-flagged decision.
+**Independence.** The auditor and the code reviewer run on a different model from the author and the implementer, in a fresh read-only session that shares none of their context; once a second agent is configured they default to a different model family (ADR-41). This is SDLC policy above make/prove; a project may relax it only by a `principle`-flagged decision.
 
 **Skills.** `sdlc.repo-conventions` (generated by `/init`), `sdlc.security-basics`, `sdlc.testing-patterns`, `sdlc.migration-safety`, `sdlc.api-design`.
 
@@ -1309,7 +1321,9 @@ The result is a `git_commit` subject on the mirror; the worktree is discarded. C
 
 **Environment fingerprint.** The runner image digest plus the toolchain versions the project declares (runtime, package manager, lockfile hash). Changing the lockfile therefore stales test evidence.
 
-**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status that the repository ruleset requires for merge. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane.
+**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane.
+
+**Delivery modes** (ADR-40). The adapter observes, at project setup and before every delivery, whether the target branch's rules actually require the verification status from the Grindstone App. **Enforced:** GitHub itself refuses an unverified merge. **Unenforced** (for example, rulesets on a private repository on GitHub's free plans): Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified so a concurrent push fails the merge, and `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not come through a delivery, as a high-severity `untrusted` `delivery_bypass` finding. The mode is shown on the project and on every delivery card; a switch from enforced to unenforced raises an escalation before the next delivery.
 
 **Decisions and autonomy.** SDLC maps its decisions to eligibility classes and ships default L2 policy rules a project starts from:
 
@@ -1318,7 +1332,7 @@ The result is a `git_commit` subject on the mirror; the worktree is discarded. C
 | `approval` of a specification or ticket ChangeSet | `l2` | Auditor's final verdict | Approve if the auditor passed, rules pass and no flag is set |
 | `approval` of a findings or learnings ChangeSet | `l2` | Impact reviewer | Approve learnings only; findings that amend requirements wait |
 | `delivery` of a pull request | `l3` | Fixed: deliver when all required evidence is fresh and passing | None before L3 |
-| `escalation` after a failed run | `l2` | Fixed: retry once with the same capability | Retry once for `timeout`, `rate_limited`, `provider_error`, `host_lost` |
+| `escalation` after a failed run | `l2` | Fixed: retry once with the same capability | Retry once for `stalled`, `rate_limited`, `provider_error`, `host_lost` |
 | `suggestion` from an advisory reviewer | `l2` | The reviewer | Dismiss style-only suggestions; queue others |
 | `permission` for a protected path | `never` | The implementer's stated reason | — |
 | `sdlc.merge_conflict` | `l2` | Fixed: rebase and re-run checks | Rebase if conflicts are only in lockfiles or generated files |
@@ -1382,9 +1396,9 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Thirty-six records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026.
+Forty-one records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now.
 
-**Append-only.** From the start of M0 records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
+**Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
 **When to write a record.** A specification author who needs a choice that crosses a module or factory boundary, changes a contract others rely on, adds a component or dependency, adds a kernel kind, check shape, step type, decision class or station tier, or contradicts a record here proposes a new record instead of deciding inside the specification. Choices inside one module or one factory belong to its specification.
 
@@ -1411,9 +1425,9 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 | 15 | Grindstone runs its own thin AHP host; agents connect over ACP | Execution |
 | 16 | Agents act only through a per-task kernel MCP surface | Execution |
 | 17 | Stations have tiers T0 to T3 | Execution |
-| 18 | Agents in order: Claude Code, then Codex | Execution |
+| 18 | Agents in order: Claude Code, then Codex (amended by 41) | Execution |
 | 19 | A scripted agent proves mechanisms in CI | Execution |
-| 20 | Every task tree has a budget | Execution |
+| 20 | Every task tree has a budget (superseded by 37) | Execution |
 | 21 | Factories are the unit of extension | Factories |
 | 22 | Templates are bounded graphs of six step types | Factories |
 | 23 | Capabilities define specialists as data; skills load on demand | Factories |
@@ -1430,6 +1444,11 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 | 34 | Walking skeleton first; Grindstone builds itself | Scope |
 | 35 | The foundation holds commitments; specifications hold designs | Scope |
 | 36 | The MVP is SDLC on the kernel, with cooperation | Scope |
+| 37 | Limits bound runaway work; cost is recorded, never gating | Execution |
+| 38 | A consult holds the call open until it answers, under a ceiling | Execution |
+| 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
+| 40 | Delivery states whether the remote enforces the gate | Factories |
+| 41 | Claude Code is the only agent until the operator adds another | Execution |
 
 ## Platform and runtime
 
@@ -1541,6 +1560,8 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-18 — Agents in order: Claude Code, then Codex
 
+**Status.** Amended by ADR-41 (Codex deferred).
+
 **Decision.** Agents are added in a fixed order, all through ACP behind the same host: Claude Code (M1), Codex (M3); pi and other model APIs after the MVP (R2). Claude runs on the operator's own subscription for the operator's own work only, guarded at start-up against every credential source that would outrank it and checked by a self-test; an API key is a configuration-only fallback. Repository files that could configure a session (hooks, settings, MCP servers) are kept out of it. Grindstone never offers Claude login to anyone else. A capability's agent is configuration: switching provider changes no code.
 
 **Why.** The operator's primary tool first; the second agent proves the abstraction and gives independent reviewers a different model family. **Rejected:** building on one vendor's SDK directly (locks out others); several agents at once (multiplies early integration risk).
@@ -1552,6 +1573,8 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 **Why.** Deterministic, cheap tests of durability, reporting, cooperation and change handling without model variance. **Rejected:** live models in CI (cost, flakiness); mocking the host (misses the real protocol path).
 
 #### ADR-20 — Every task tree has a budget
+
+**Status.** Superseded by ADR-37.
 
 **Decision.** Each run has its own limits. Each tree — a command, template run or top-level task with everything it delegates — has a tree budget set at its root, with one counter per unit (tasks, turns, wall time, tokens and spend where reported), never converted between units. Consults draw a capped allowance from their caller; delegated children run on their capability's own limits and are charged to the tree budget. Depth is at most two below the root and live children are capped. Any overflow returns a structured tool error and raises a `budget_overflow` decision. Costs roll up the tree and are shown per command, factory, capability and need.
 
@@ -1596,6 +1619,8 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 **Why.** Every domain ships somewhere different; the rules for shipping safely are the same. **Rejected:** delivery as factory code calling remotes from a template step (bypasses idempotency and decisions).
 
 #### ADR-27 — The SDLC factory owns git workspaces, copy-back and GitHub delivery
+
+**Status.** Amended by ADR-40 (delivery modes).
 
 **Decision.** Bare mirrors, worktrees, branches, copy-back path tiers, the CI-suite check method and the GitHub pull-request adapter are SDLC factory code behind kernel ports. The control plane commits with hooks disabled from private clones and is the only place that pushes, using a GitHub App installation token. Each delivery posts one verification status that the repository ruleset requires for merge. The workspace provider returns, with the subject, the extra checks its path policy requires and a permission request for each protected path, so path rules stay in the factory while the kernel enforces them. The kernel knows `git_commit` only as a subject kind.
 
@@ -1655,7 +1680,39 @@ Thirty-six records cover every choice that is expensive to reverse. Each states 
 
 **Decision.** The MVP delivers the kernel, the full SDLC factory, cooperation (`load_skill`, `ask`, `delegate`) used by SDLC reviewers, autonomy up to L2, and the `notes` fixture proving neutrality. Deferred: repository snapshot and restore, vector search, autonomy L3 and auto-merge, the pi agent, baseline generation from an existing codebase (R2); separately installable factories and the RE factory (R1); T2 stations (R3); T3 stations (R4).
 
-**Why.** Makes the kernel general while keeping the MVP to one domain, built and used every day; nothing deferred requires a kernel change. **Rejected:** shipping RE in the MVP (doubles the surface before the kernel is proven); an SDLC-shaped core now with generalisation later (rework of every module). Open item: Q-11.
+**Why.** Makes the kernel general while keeping the MVP to one domain, built and used every day; nothing deferred requires a kernel change. **Rejected:** shipping RE in the MVP (doubles the surface before the kernel is proven); an SDLC-shaped core now with generalisation later (rework of every module). Q-11 confirmed this scope at the M0 kickoff.
+
+## Kickoff amendments
+
+#### ADR-37 — Limits bound runaway work; cost is recorded, never gating
+
+**Decision.** Supersedes ADR-20. No task, run or tree has a numeric budget of turns, wall time, tokens or spend. Runaway work is bounded by shape: delegation depth at most two below the root and a live-children cap per task (I-17); a liveness timeout that fails a run `stalled` after a period with no agent activity, paused while a kernel tool call is open; the consult ceiling (ADR-38); storage limits; and provider quota and rate-limit signals, which park the run. One optional project cap — spend where the provider reports it, otherwise turns, per calendar month — is off by default; when enabled and reached, no new run starts in the project, running turns finish, and an escalation flagged `cap_reached` is raised, which also trips the autonomy tripwire. Cost is recorded on every run, rolls up the delegation tree and is shown per command, factory, capability and need. This amends the budget clauses of ADR-14, ADR-23, ADR-24 and ADR-30: where they say budget, read limits.
+
+**Why.** Task size and scope vary too much for any per-task allowance to be right: a fixed ceiling either stops good work midway or is set so high it bounds nothing. The real cost risks of multi-agent work are runaway shapes — loops, stalls and unbounded fan-out — and those are size-independent. Subscription providers report quota exhaustion themselves; pay-per-token providers are covered by the optional project cap. **Consequences.** The budget-tree machinery, the consult allowance and the `budget_exhausted` cause and `budget_overflow` flag are removed; QG-5, QS-10, I-17, M3-05 and SPEC-17 are restated in terms of limits; a stuck session is caught by liveness instead of total wall time, so long productive runs are never cut short. **Rejected:** per-unit tree budgets set at the root (ADR-20; sizes vary too much, and every ceiling is a guess the operator must keep tuning); no guards at all (a delegation loop or a stuck session would run until a quota ends it); a total wall-time limit per run (stops long, productive runs).
+
+#### ADR-38 — A consult holds the call open until it answers, under a ceiling
+
+**Decision.** `ask` to a specialist blocks in the open MCP call until the consult child reports, however long that takes, up to a consult ceiling (seed 2 h, owned by SPEC-17, overridable per capability within instance bounds). While the call is open the kernel sends MCP progress notifications as keepalives, each agent's client-side tool timeout is set above the ceiling by its capability's configuration, and the caller's liveness timer is paused. The consult child is a durable task; its answer is cached by `(capability hash, question hash, input hashes)`, and an identical ask joins a consult already in flight, so a session that drops mid-wait re-asks and receives the in-flight or cached answer with no second run. At the ceiling the call returns `consult_ceiling`, the caller's turn suspends with outcome waiting, the consult keeps running, and an escalation offers wait longer, retry or cancel; the answer resumes the caller in a new session. Park-and-resume otherwise remains only as fault recovery, and as the fallback for an agent whose client cannot hold a call open (SPK-5).
+
+**Why.** Specialist work can legitimately take longer than five minutes, and an answer delivered in the same session keeps the caller's working context; durability comes from the cache and single-flight join, not from parking. **Consequences.** A caller in an open consult holds its own lane while it waits — with one writing lane by default, a long consult delays other writing work, which the operations view shows; consults themselves run on the read-only lane, so no deadlock arises. **Rejected:** a fixed five-minute wait, then park (Q-9 default; reloads context for long consults); always park and resume (every consult pays a new session); an async handle polled by the agent (relies on the model to keep polling and costs extra tool calls).
+
+#### ADR-39 — Skills are materialized per session outside the workspace and returned inline
+
+**Decision.** At session start the agent host materializes the skills a capability loads at start, read-only, into that session's private configuration directory outside the workspace — in the location the agent discovers skills from natively — and records them in the context pack. `load_skill` for any other skill in the capability's library returns the skill's instructions inline as the tool result and adds its declared tools, which works with every agent whether or not it discovers skills natively, and is recorded on the run. Skills, settings and hooks shipped inside a repository or workspace are still never loaded (ADR-18), and nothing materialized is reachable from the workspace or the copy-back (I-14).
+
+**Why.** Native discovery uses each agent's own skill mechanism for the skills it always needs; inline return keeps mid-session loading uniform and fully recorded across Claude Code, Codex and later agents. **Rejected:** skills only inline (loses native behaviour for start skills); materializing into the workspace (configuration next to agent-writable files and repository content, against I-14); materializing the whole library natively (agents could use skills the run never records).
+
+#### ADR-40 — Delivery states whether the remote enforces the gate
+
+**Decision.** Amends ADR-27 and I-08. A delivery target is in one of two modes, observed by the adapter and never assumed. **Enforced:** the target branch's rules require the verification status with its source restricted to the Grindstone App, so the remote itself refuses an unverified merge. **Unenforced:** the remote cannot or does not require it — for example, rulesets on a private repository on GitHub's free plans. The adapter observes the mode at project setup and before every delivery, from the API that lists the rules in force on the target branch, and records each observation with its time; the mode is an observed fact, never configuration, and it is shown on the project and on every delivery card. In both modes the adapter opens the pull request and posts the verification status. In unenforced mode Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified, so a concurrent push fails the merge. `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not arrive through a delivery, as a high-severity `untrusted` `delivery_bypass` finding, counted against evidence integrity. Plain pull requests that touch no published file stay allowed (ADR-33) and count only against the governed share. A change from enforced to unenforced raises an escalation before the next delivery.
+
+**Why.** One operator on a free plan with private repositories is a core user, and Grindstone's own repository is one. Refusing to deliver there fails the product goal; silently promising a guarantee the remote does not give fails it worse. Grindstone-performed merges plus bypass detection keep evidence integrity measurable and every bypass visible. **Consequences.** In unenforced mode Grindstone detects bypass but cannot prevent it, and says so. The App needs no permission beyond contents write, already granted. SPK-4 settles how the mode is detected. **Rejected:** refusing unenforced targets (excludes the operator's own repository); treating every target as enforced (a false guarantee); requiring a paid plan (a cost the product should not impose on its first user).
+
+#### ADR-41 — Claude Code is the only agent until the operator adds another
+
+**Decision.** Amends ADR-18. Claude Code on the operator's subscription is the only real agent in the MVP. Codex moves from M3 to whenever the operator adds a second provider, joining pi and other model APIs (R2). The abstraction stays whole: every agent runs through ACP behind the same host, a capability's agent is configuration, and the scripted agent (ADR-19) is a second ACP implementation exercised on every commit, so no Claude-specific path may enter the host or the kernel. Reviewer independence in the SDLC factory becomes a different model from the author or implementer, in a fresh read-only session that shares none of their context; it returns to a different model family, by configuration only, once a second agent exists. Make and prove (I-15) is unchanged: provers are still different capabilities, and mechanical proof still runs on the check station.
+
+**Why.** The operator has a Claude subscription and no other provider; paying for a second only to meet a default is cost without a user. Make and prove does not depend on model family; family diversity reduces correlated blind spots, which a different model and a fresh, context-free review partly recover. **Consequences.** SPK-3 is deferred, with Q-3 and Q-4; M0-03 no longer waits on it; M3-06 is restated; SPEC-18 drops its Codex variants. Author and reviewer errors are more likely to be correlated; the mechanical provers (CI suite, tests on the check station) and the test reviewer's criterion-by-criterion verdicts carry more of the weight, and the risk is revisited when a provider is added. All agent work now depends on one vendor's terms; switching to an API key stays configuration only (ADR-18). **Rejected:** keeping Codex at M3 (a cost the operator declined); building on the Claude Agent SDK directly instead of ACP (locks the host to one vendor, as ADR-15 and ADR-18 already rejected); dropping the reviewer-independence policy (loses the protection a different model and fresh context still give).
 
 
 # Roadmap
@@ -1666,7 +1723,7 @@ The order of work, what closes each milestone, and what is still unknown.
 
 Six milestones take Grindstone from an empty repository to the MVP; four releases after it add factories and station tiers. The order puts the riskiest integrations first, real use as early as possible, and proof of domain neutrality before the SDLC factory grows large (ADR-34, ADR-36).
 
-&#91;embedded content: Roadmap · six milestones, three gates, four releases\]
+*Diagram (not reproduced): roadmap — milestones M0 to M5, three gates (self-hosting at M1, kernel neutrality at M2, MVP at M5), and releases R1 to R4.*
 
 - **Walking skeleton first, through a factory.** M1 runs one hand-written ticket through every container — agent station, kernel MCP, copy-back, check station, delivery adapter, one decision — in the thinnest form that keeps every invariant it touches, and does so through a skeleton SDLC factory so the kernel/factory seam exists from the first line of code.
 - **Prove neutrality early.** M2 closes only when the code-free `notes` factory runs a task, a check, a ChangeSet and a decision end to end with no kernel change (M2-05). After that gate, a kernel specification that needs an SDLC name is a defect (FF-12).
@@ -1686,7 +1743,7 @@ Repository, CI and four empty services running; the unknowns that could change t
 
 - [ ] M0-01: `docker compose up` brings `grindstone`, `agent-host`, `runner` and `postgres` to healthy with the `blobs`, `repos`, `workspaces` and `runs` volumes mounted only where ADR-01 allows, every image pinned by digest.
 - [ ] M0-02: CI runs lint, type checks, tests and the M0 fitness functions — import boundaries (FF-01), generated-contract drift (FF-02), pins (FF-04) and traceability over `docs/` including this foundation (FF-13); fixtures prove that a floating tag, a kernel-to-factory import and a dangling ID each fail the build.
-- [ ] M0-03: SPK-1 to SPK-5 reports are filed; Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
+- [ ] M0-03: SPK-1, SPK-2, SPK-4 and SPK-5 reports are filed (SPK-3 is deferred by ADR-41); Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
 - [ ] M0-04: The GitHub test repository with its ruleset and a GitHub App installation, the runner toolchain image, a fixture project with tagged tests and the benchmark project exist and are wired into CI.
 
 ### M1 — Walking skeleton
@@ -1694,7 +1751,7 @@ Repository, CI and four empty services running; the unknowns that could change t
 A hand-written ticket becomes a verified pull request through every container and the skeleton SDLC factory, and Grindstone starts building itself.
 
 - [ ] M1-01: Live run: a ticket with acceptance criteria, imported from a file as a ChangeSet approved on a decision card, is matched by need to `sdlc.implementer` and executed by Claude Code on the operator's subscription in its own worktree; the SDLC workspace provider copies the work back into the mirror and commits with hooks disabled; after a `delivery` decision the `sdlc.github_pr` adapter pushes and opens the pull request.
-- [ ] M1-02: The pull request's verification status succeeds only when every criterion's tagged test passes on the check station at the subject commit against the ticket's current item hashes; a new head commit or a changed criterion sets it back to pending; the ruleset blocks merge until it succeeds.
+- [ ] M1-02: The pull request's verification status succeeds only when every criterion's tagged test passes on the check station at the subject commit against the ticket's current item hashes; a new head commit or a changed criterion sets it back to pending; on the test repository, whose ruleset is enforced, the ruleset blocks merge until it succeeds; on a repository whose ruleset is not enforced, the adapter detects the unenforced mode, merges only itself with the verified head SHA, and reports a merge made outside it as a `delivery_bypass` finding (ADR-40).
 - [ ] M1-03: With the scripted agent: an invalid report is refused with structured errors and fixed in the same turn; a turn without a report gets one corrective prompt and then fails `missing_report`; an `ask` to the operator parks the task, and its answer resumes it in a new session on the same workspace.
 - [ ] M1-04: Killing `grindstone` between each external action and its record — session, prompt, copy-out, push, pull request, status — and replaying duplicate host events resumes with no duplicate session, turn, blob, push, pull request or status.
 - [ ] M1-05: From `agent-host` and `runner` no GitHub, database or MCP signing credential is readable and a push to GitHub fails; nothing mounts the Docker socket; repository settings never reach a session; a hook written in a workspace never runs in `grindstone`; copy-back refuses protected paths and holds reviewed-tier paths for their reviewer; deployment and workspace mount lints (FF-05, FF-06) pass.
@@ -1721,8 +1778,8 @@ Discoveries and decisions flow back into intent through reviewed ChangeSets, and
 - [ ] M3-02: A decision answered mid-run produces one ChangeSet; a running task pinned to a touched item receives it at its next turn, or is cancelled if a pinned item was removed; a pending decision whose context changed is superseded and raised again.
 - [ ] M3-03: Two ChangeSets on the same item apply one after the other with nothing lost; a re-walk whose review set differs from the approved one asks again; a revert applies the inverse, and a revert over a later change raises a `revert_conflict` decision (S4).
 - [ ] M3-04: Batched decisions show on one card; an answer to a superseded decision is refused; only permission requests expire, and they deny; a `scope_expansion` or `untrusted` ChangeSet waits for a person at every level.
-- [ ] M3-05: `ask` returns a structured consult answer, and an identical ask hits the cache until an input changes; `delegate` creates a child with its own checks whose approved, pinned output resumes the parent; `load_skill` is recorded on the run; depth, live-children and budget overflow return structured errors and raise decisions (property tests on budget trees). A delegating parent frees its writing lane while its child runs on it, and a child larger than its parent completes within the tree budget. Live run: S5.
-- [ ] M3-06: Live run: the auditor and code reviewer run on Codex by configuration only; the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
+- [ ] M3-05: `ask` returns a structured consult answer, and an identical ask hits the cache until an input changes; `delegate` creates a child with its own checks whose approved, pinned output resumes the parent; `load_skill` is recorded on the run; depth and live-children overflow return structured errors (property tests on delegation trees). A delegating parent frees its writing lane while its child runs on it. A consult longer than the agent's default tool timeout answers in the open call; a session dropped mid-consult re-asks and receives the same answer with no second run; a consult past its ceiling suspends the caller and raises an escalation. A run with no activity for the liveness timeout fails `stalled`, while a run waiting in an open `ask` does not. With the project cap enabled, reaching it stops new runs and raises an escalation flagged `cap_reached`. Live run: S5.
+- [ ] M3-06: Live run: the auditor and code reviewer run on a different Claude model from the author and implementer, chosen by configuration only (ADR-41); the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
 - [ ] M3-07: A fresh install from `compose.yaml` and the documented secrets runs M1-01 and M3-01 within the install target (QS-12); the success measures have a recorded baseline (Q-8).
 
 ### M4 — Discovery and planning
@@ -1757,25 +1814,25 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | --- | --- | --- |
 | SPK-1 Host, Claude and VS Code | 2 days | A host on `@ahpd/sdk` with the vendored ACP plugin runs a Claude Code session in a given workspace, as a different user from the host, on the subscription token; the session calls a stub kernel MCP server (FastMCP in FastAPI) with its own per-task token; a permission request is answered through the control API and refused from a browser client; VS Code attaches; the credential self-test, disabling repository settings, and behaviour on a host restart mid-turn are recorded (Q-1, Q-2, Q-6). Fallback: M1 drives the Claude ACP adapter through a minimal host behind the same control API and events; live sessions in the browser move to M4 |
 | SPK-2 DBOS in FastAPI | 2 days | DBOS in the FastAPI lifespan survives a kill during a step, a message wait, a child workflow and a scheduled run with no duplicate effects; idempotent messages; a concurrency-1 queue serializes work across projects; a parked workflow resumes exactly once after an application-version bump; a parent on the writing lane waiting on a child on the read-only lane does not deadlock |
-| SPK-3 Codex and pi | 1 day | Codex through its ACP adapter with an API key reaches an HTTP MCP server and runs read-only and workspace-write sandboxes; pi through its ACP adapter reaches the kernel MCP with a per-task token and reports on every turn; whether each loads skills from the workspace (Q-3, Q-4, Q-5) |
-| SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7) |
-| SPK-5 Cooperation mechanics | 2 days | With Claude Code and Codex: an MCP tool call held open while a child task runs for 2, 10 and 30 minutes — does the agent wait, time out or retry, and what are the client and server timeouts (Q-9); the park-and-resume fallback; `load_skill` adding instructions and tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: consults always park and resume |
+| SPK-3 Codex and pi | 1 day | **Deferred until a second provider is added (ADR-41).** Codex through its ACP adapter with an API key reaches an HTTP MCP server and runs read-only and workspace-write sandboxes; pi through its ACP adapter reaches the kernel MCP with a per-task token and reports on every turn; whether Codex's subscription login works headless in a container; how each discovers skills natively from a session configuration directory (Q-3, Q-4, Q-5) |
+| SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7); the delivery mode is detectable through the API on the public testbed (enforced) and on a private repository (unenforced); a merge with an expected head SHA fails after a concurrent push |
+| SPK-5 Cooperation mechanics | 2 days | With Claude Code (and each further agent when added): an MCP tool call held open with progress keepalives while a child task runs for 2, 10, 30 and 120 minutes — the client, server and model timeouts and how each is raised by configuration (Q-9); a session dropped mid-wait re-asking and joining the in-flight consult; the ceiling suspend; `load_skill` returning instructions inline and adding tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: for an agent whose call cannot be held open, consults park and resume |
 
-**Open questions.** Each has a default that holds until it is resolved, so no specification waits on it.
+**Open questions.** The operator answered every open question at the M0 kickoff (17 October 2026). Answers marked *confirm* stand unless the named spike contradicts them; a contradiction is answered by a superseding record, defaulting to the recorded fallback.
 
-| ID | Question | Default until resolved | Resolved by |
+| ID | Question | Answer | Status |
 | --- | --- | --- | --- |
-| Q-1 | Can the stock ACP agent plugin, or a community fork, pass a per-session MCP server with its own token? | Keep the vendored patch | SPK-1 |
-| Q-2 | Which AHP protocol line does `@ahpd/sdk` implement, and how does current VS Code attach to it? | AHP 1.0, accepting 0.9 clients; attach as a remote agent host with the token | SPK-1 |
-| Q-3 | Does Codex's subscription login work headless in a container? | API key | SPK-3 |
-| Q-4 | How does the Codex ACP adapter receive Codex's sandbox mode? | Codex's own configuration file, passed by the capability | SPK-3 |
-| Q-5 | Does pi's ACP adapter pass per-session environment, and do pi and Codex load skills from the workspace? | Yes for environment; otherwise `load_skill` returns skill bodies inline | SPK-3 |
-| Q-6 | Does FastMCP run on the current official MCP SDK, mount in FastAPI and verify a bearer token per request? | Yes; otherwise use the official SDK's server directly | SPK-1 |
-| Q-7 | How do auto-merge, a strict required status and branch updates interact for an App-set status? | Auto-merge waits for the update and the status at the new head | SPK-4 |
-| Q-8 | Are the success-measure targets right? | The initial targets stand | M3 review, from measured baselines |
-| Q-9 | How long can an agent's MCP tool call stay open before the client or the model gives up? | Consults wait in the open call up to 5 minutes, then the task parks and resumes with the answer | SPK-5 |
-| Q-10 | What is the budget unit when providers do not report usage (subscriptions)? | Turns and wall time always; tokens where reported; spend from an operator-maintained price table; subscription runs bounded by turns and time only | M1 review |
-| Q-11 | Is the MVP scope in ADR-36 right — deferring snapshot and restore, vector search and L3, and RE to R1? | Yes, as recorded | Operator, before the M1 specifications |
+| Q-1 | Can the stock ACP agent plugin, or a community fork, pass a per-session MCP server with its own token? | Keep the vendored, patched plugin | Decided; SPK-1 confirms the patch |
+| Q-2 | Which AHP protocol line does `@ahpd/sdk` implement, and how does current VS Code attach to it? | AHP 1.0, accepting 0.9 clients; VS Code attaches as a remote agent host with the token | Decided; SPK-1 confirms |
+| Q-3 | Does Codex's subscription login work headless in a container? | Use subscription login if SPK-3 shows it works headless; an API key is the configuration-only fallback, as for Claude | Deferred with SPK-3 (ADR-41) |
+| Q-4 | How does the Codex ACP adapter receive Codex's sandbox mode? | Codex's own configuration file, supplied by the capability | Deferred with SPK-3 (ADR-41) |
+| Q-5 | Does pi's ACP adapter pass per-session environment, and how do agents load skills? | Start skills materialized per session outside the workspace; `load_skill` returns bodies inline (ADR-39). pi's environment handling waits for R2 | Decided (ADR-39); SPK-1 and SPK-3 confirm native discovery |
+| Q-6 | Does FastMCP run on the current official MCP SDK, mount in FastAPI and verify a bearer token per request? | FastMCP mounted in FastAPI; otherwise the official SDK's server directly | Decided; SPK-1 confirms |
+| Q-7 | How do auto-merge, a strict required status and branch updates interact for an App-set status? | Auto-merge waits for the update and a fresh status at the new head | Decided; SPK-4 confirms |
+| Q-8 | Are the success-measure targets right? | The initial targets stand | Confirmed; reset at the M3 review from measured baselines |
+| Q-9 | How long can an agent's MCP tool call stay open? | Redesigned: the call stays open until the consult answers, under a ceiling (ADR-38) | Decided (ADR-38); SPK-5 measures the timeouts to configure |
+| Q-10 | What is the budget unit when providers do not report usage? | Redesigned: no budgets; limits bound runaway work and cost is recorded (ADR-37) | Decided (ADR-37) |
+| Q-11 | Is the MVP scope in ADR-36 right? | Yes, as recorded | Confirmed by the operator |
 
 ## Spec map
 
@@ -1789,7 +1846,7 @@ Twenty-seven specifications deliver the MVP. Each is either a **kernel** specifi
 | SPEC-03 | Platform: registries, loader and configuration | Kernel | `platform` | M1-07 | ADR-21, ADR-23; I-14, I-15, I-18 |
 | SPEC-04 | Items, thin ChangeSet apply and decision records | Kernel | `intent`, `change`, `decisions` | M1-01 | ADR-08, ADR-10, ADR-28; I-03, I-11, I-13 |
 | SPEC-05 | Deployment, users and secrets | Kernel | Compose deployment | M1-05 | ADR-01, ADR-17; I-09 |
-| SPEC-06 | Agent station and task runs | Kernel | `work`, `stations` | M1-01, M1-03, M1-06 | ADR-14, ADR-15, ADR-17; I-03, I-06 |
+| SPEC-06 | Agent station and task runs | Kernel | `work`, `stations` | M1-01, M1-03, M1-06 | ADR-14, ADR-15, ADR-17, ADR-37 (liveness); I-03, I-06 |
 | SPEC-07 | Kernel MCP surface, first cut | Kernel | `surface` (MCP) | M1-03 | ADR-16; I-03, I-10 |
 | SPEC-08 | Check station, evidence and the delivery port | Kernel | `evidence`, `delivery` | M1-02, M1-07 | ADR-12, ADR-26; I-04, I-05, I-08, I-15 |
 | SPEC-09 | SDLC skeleton factory | Factory | `factories/sdlc`: implementer, test reviewer, workspace provider, CI suite, `sdlc.github_pr` | M1-01, M1-02, M1-05, M1-07, M1-08 | ADR-27; I-08, I-15 |
@@ -1802,8 +1859,8 @@ Twenty-seven specifications deliver the MVP. Each is either a **kernel** specifi
 | **M3** |  |  |  |  |  |
 | SPEC-15 | Decision service | Kernel | `decisions` | M3-02, M3-04 | ADR-28, ADR-30; I-07, I-11 |
 | SPEC-16 | Change pipeline | Kernel | `change` | M3-01, M3-02, M3-03 | ADR-10; I-13 |
-| SPEC-17 | Cooperation, matching and budgets | Kernel | `work` | M3-05 | ADR-20, ADR-24; I-10, I-16, I-17, I-19 |
-| SPEC-18 | SDLC reviewers and Codex | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, Codex variants | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23; I-15 |
+| SPEC-17 | Cooperation, matching and limits | Kernel | `work` | M3-05 | ADR-24, ADR-37, ADR-38, ADR-39; I-10, I-16, I-17, I-19 |
+| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41; I-15 |
 | **M4** |  |  |  |  |  |
 | SPEC-19 | Template and capability engine | Kernel | `work` | M4-04 | ADR-22, ADR-23, ADR-24; I-14 |
 | SPEC-20 | SDLC discovery, planning and patch | Factory | `factories/sdlc`: `/init`, `/discover`, `/plan` break-down, `/patch` | M4-01, M4-02, M4-06, M4-07 | ADR-33; I-07 |
@@ -1837,7 +1894,7 @@ Vertical slices mean several things appear in thin form before their full form. 
 | Autonomy state, policy and tripwire | `decisions` | SPEC-15 | SPEC-25 |
 | Task lifecycle, runs, turns and reports | `work` | SPEC-06 | SPEC-17, SPEC-19 |
 | Context pack | `work` | SPEC-06 | SPEC-17, SPEC-23 |
-| Matching and budgets | `work` | SPEC-17 | SPEC-19 |
+| Matching and limits | `work` | SPEC-17 | SPEC-19 |
 | Kernel MCP tool set | `surface` | SPEC-07 | SPEC-11, SPEC-17, SPEC-23 |
 | REST API and event stream | `surface` | SPEC-10 | SPEC-22, SPEC-26 |
 | Checks, evidence and freshness | `evidence` | SPEC-08 | SPEC-12 |
@@ -1871,7 +1928,7 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | --- | --- | --- |
 | The kernel abstraction is wrong or premature: software needs fight the grammar, or generality slows the MVP | The SDLC factory is built alongside the kernel from M1, so every seam has a real user; the `notes` factory proves neutrality at M2; generality beyond that is not built; the M5 review tests the boundary against the factory sketches | M1-01, M2-05, M5 review |
 | Indirection makes the system hard to follow: needs, matching, templates, manifests | Matching is deterministic and shown before a command runs; templates have six step types and no scripting; every run records the capability and template it used; the UI shows delegation trees | M4-04, M4-05 |
-| Cooperation costs more than it saves, or loops | Depth ≤ 2, live-children cap, per-unit tree budget set at the root, capped consult allowance, consult cache, read-only lane, spend per capability visible; overflow is a decision, never silent | M3-05 |
+| Cooperation costs more than it saves, or loops | Depth ≤ 2, live-children cap, consult cache with single-flight join, consult ceiling, read-only lane, optional project cap, spend per capability visible; overflow is a structured error, never silent | M3-05 |
 | Long-open MCP tool calls are unreliable in some agents | SPK-5; park-and-resume fallback with the same semantics | SPK-5, M3-05 |
 | Factories weaken invariants through prompts or adapters | Conformance kit in each factory's CI; make/prove and namespace rules enforced by the loader; factories are operator-installed and pinned | M1-07, M2-05 |
 | Cross-factory work produces stale results nobody notices | Results cross only as pinned items and blobs; interface items carry review edges; the regression sweep re-checks both sides | K3; S6 in R1 |
@@ -1879,13 +1936,17 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | Claude subscription terms or credential selection change | Switching to an API key is configuration only; start-up guard and self-test against outranking credentials; credential list re-read on every adapter upgrade; token-expiry warning | SPK-1, M1-01 |
 | Agent-run code reads model credentials, which have network egress | Accepted at T1; per-provider spend limits; rotation runbook; per-run isolation at T2 (R3) | M1-05, M5-06 |
 | Agent-written code reaches Grindstone's credentials or forges evidence | Evidence only from the check station or another capability; host tokens unreadable by agents; signed host events; private clones with hooks disabled; CI cannot set the status | M1-02, M1-05, M1-07 |
-| Agents stall, skip reports or exhaust context | One corrective prompt, then a typed failure; turn and time budgets; failure causes with retry rules; escalation instead of loops | M1-03, M3-06 |
+| Agents stall, skip reports or exhaust context | One corrective prompt, then a typed failure; liveness timeout; failure causes with retry rules; escalation instead of loops | M1-03, M3-05, M3-06 |
+| Removing budgets lets an API-key project overspend before anyone notices | Optional project cap; spend visible per tree and capability; provider-side spend limits recommended in the install runbook | M3-05, M3-07 |
+| A long open consult holds the caller's writing lane | Consults run on the read-only lane; the operations view shows held lanes; the consult ceiling escalates | M3-05 |
 | The skeleton takes longer than planned because integrations fight back | Spikes first; every part at its thinnest; scope is cut by deferring parts to M2, never by weakening an invariant or merging kernel and factory code | M0-03, M1 review |
 | Workflows duplicate or lose side effects across crashes and upgrades | DBOS with idempotency keys; parked waits; explicit application versions; crash-and-resume tests per workflow (FF-10) | SPK-2, M1-04, M5-06 |
 | Impact review is slow or noisy on large changes | One hop per round; embeds and mentions need no verdict; group verdicts; a round cap that raises a decision; performance budget (FF-14) | M2-03, M3-01 |
 | A reviewer marks items unaffected too readily | Every verdict needs a reason; affected evidence still goes stale mechanically; auditors see what a verdict stopped | M3-01 |
 | Prompt injection through external signals or analysed content | Fixed-code mapping with no agent reading first; untrusted content reaches only drafting capabilities; everything derived stays `untrusted` and needs a person | M5-03 |
 | The policy answers wrongly at higher autonomy | L1 by default; eligibility classes; always-asked flags; every answer revertible; the tripwire; L3 deferred | M5-04 |
+| On free plans the remote does not enforce the merge gate on private repositories | Delivery modes: Grindstone merges itself and reports every bypass as a finding; the mode is visible on every delivery (ADR-40) | M1-02 |
+| With one agent family, author and reviewer share blind spots | Reviewers on a different model in a fresh read-only session; mechanical provers and the test reviewer carry the gate; revisit when a second provider is added (ADR-41) | M3-06 |
 | Dogfooding couples Grindstone's development to its own bugs | A manual path stays open (plain pull requests that touch no published file); the scripted agent and test repository are independent of Grindstone's own repository; a stable instance orchestrates | M1-08 |
 | The implementer weakens the tests it writes | Test reviewer as a required prover; protected and reviewed copy-back tiers; operator reviews pull requests below L3 | M1-05, M1-07 |
 | Ceremony drives the operator around the system, and intent rots | `/patch` for small changes; scope decisions instead of refused copy-backs; mentions notify; group verdicts; governed share is a success measure | M4-06, M3-01 |
@@ -1960,7 +2021,7 @@ Fitness functions: added or extended.
 
 ## 5F. Factory manifest (factory specifications only)
 Item kinds (fields, semantic flags, relations and impact rules, lifecycles).
-Capabilities (offers, workspace, permissions, may prove, tier, budget).
+Capabilities (offers, workspace, permissions, may prove, tier, limits).
 Templates (steps, edges, max_rounds, decisions).
 Check methods and their kernel shape. Subjects and workspace providers.
 Delivery adapters. Interface shapes provided or consumed.
@@ -2015,7 +2076,7 @@ A specification is accepted only when every item holds. The reviewer records the
 19. **Kernel specifications** name no factory kind, capability, template, method or adapter, and pass with the `notes` factory alone.
 20. **Factory specifications** register every name in their own namespace, use only `grindstone.sdk`, and include a complete section 5F that passes the conformance kit.
 21. Every produced subject has a named maker and a different named prover; no required check can be satisfied by its maker.
-22. Every cooperation designed (`ask`, `delegate`, `load_skill`) states its need, mode, budget source and what crosses the boundary as pinned items or blobs.
+22. Every cooperation designed (`ask`, `delegate`, `load_skill`) states its need, mode, the limits that bound it and what crosses the boundary as pinned items or blobs.
 23. Every action that cannot be undone by a ChangeSet is marked `irreversible` and reaches a person.
 24. The fitness functions that guard what the specification adds exist or are extended, and pass.
 
@@ -2038,6 +2099,9 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
+| 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
+| 4.2 | 17 October 2026 | M0 kickoff: open questions Q-1 to Q-11 answered by the operator; ADR-37 replaces budgets with limits (supersedes ADR-20), ADR-38 holds consults open until they answer under a ceiling, ADR-39 materializes start skills per session and returns `load_skill` bodies inline; QS-15 added; the task lifecycle table restated in text, since the diagram that held it was not reproduced; diagram placeholders replaced by captions; the export's duplicate title removed. This repository copy is the maintained source from this version on. |
 | 4.1 | 17 October 2026 | From an external review: delegating and asking the operator end the turn and free the lane (no writing-lane deadlock); the workspace provider returns a collect outcome with extra checks and permission requests, so path policy stays in the factory; budgets split into run limits and a per-unit tree budget, replacing a fixed fraction of the parent; blobs are rooted from the moment they are written; any kind may have a lifecycle and lifecycle state is never hashed; compact walking-skeleton specifications for M1. |
 | 4.0 | 17 October 2026 | First self-contained foundation: product, architecture with quality scenarios, threat and failure models and fitness functions, kernel concepts, component specifications, factories with the complete SDLC factory, 36 decision records, roadmap M0–M5 with 39 exit criteria and 27 specifications, and this playbook. |
 

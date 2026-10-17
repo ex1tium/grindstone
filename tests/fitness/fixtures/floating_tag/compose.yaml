@@ -1,0 +1,4 @@
+# FF-04 fixture: a floating tag must fail the build.
+services:
+  postgres:
+    image: postgres:18
