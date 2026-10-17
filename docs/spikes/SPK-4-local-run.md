@@ -26,6 +26,8 @@ cd grindstone-testbed
 git checkout claude/youthful-franklin-oq4j5j
 ```
 
+Commands below are for a POSIX shell; Windows PowerShell equivalents follow each block. Windows PowerShell 5.1 has no `&&`: run commands one per line or separate them with `;`.
+
 ## 4. Point it at the App
 
 In the shell you run it from. A key file is simpler than the base64 form; nothing is printed or written to the results.
@@ -35,6 +37,14 @@ export GRINDSTONE_GITHUB_APP_ID=<app id>
 export GRINDSTONE_GITHUB_APP_INSTALLATION_ID=<installation id>
 export GRINDSTONE_GITHUB_APP_PRIVATE_KEY_FILE=~/path/to/github_app_private_key.pem
 ```
+
+```powershell
+$env:GRINDSTONE_GITHUB_APP_ID = "<app id>"
+$env:GRINDSTONE_GITHUB_APP_INSTALLATION_ID = "<installation id>"
+$env:GRINDSTONE_GITHUB_APP_PRIVATE_KEY_FILE = "C:\path\to\github_app_private_key.pem"
+```
+
+These last only for that PowerShell window. Install `uv` on Windows with `winget install --id=astral-sh.uv -e` and open a new window.
 
 Check that the App can authenticate (opens nothing, changes nothing):
 
@@ -77,6 +87,8 @@ git add spk4/results
 git commit -m "test: SPK-4 results"
 git push origin claude/youthful-franklin-oq4j5j
 ```
+
+The same three lines work in PowerShell.
 
 Then tell the session; it reads them, completes the report in `SPK-4-github-mechanics.md` and updates `docs/m0/status.md`.
 
