@@ -18,7 +18,11 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     bundle = bundle_schema(EXPORTED, title="GrindstoneContracts")
     text = json.dumps(bundle, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
-    (OUT / "contracts.schema.json").write_text(text)
+    target = OUT / "contracts.schema.json"
+    target.write_text(text)
+    for stale in OUT.glob("*.json"):
+        if stale != target:
+            stale.unlink()
 
 
 if __name__ == "__main__":
