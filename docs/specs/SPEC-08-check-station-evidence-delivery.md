@@ -42,7 +42,7 @@ Implements:
 - **ADR-12.** Checks prove a target item for a typed subject by a kernel method or a factory method mapped to one. Gating evidence comes only from a credential-less check station or a different capability in read-only mode. A maker's own runs are working notes.
 - **ADR-11.** Each evidence record stores its input hashes, subject version and environment fingerprint. Freshness compares them on read and names any mismatch; it is never stored. Environment changes stale only methods that declare the environment relevant.
 - **ADR-26.** The kernel owns the port (`prepare`, `deliver`, `observe`), the `delivery` decision and the idempotency ledger. Adapters are factory code. Only verified subjects are delivered.
-- **ADR-40, port side.** The mode is observed, recorded with its time, and shown on every delivery decision. In unenforced mode the kernel re-checks freshness and has the adapter merge with the verified head. A merge or published change outside a delivery becomes a high-severity `untrusted` `delivery_bypass` finding. A switch from enforced to unenforced raises an escalation before the next delivery.
+- **ADR-40, port side.** The mode is observed, recorded with its time, and shown on every delivery decision. In unenforced mode the kernel re-checks freshness and has the adapter merge with the verified head, and a merge or published change outside a delivery becomes a high-severity `untrusted` `delivery_bypass` finding. A switch from enforced to unenforced raises an escalation before the next delivery.
 - **I-04.** A task leaves `verifying` for `done` or `delivering` only through the gate.
 - **I-05.** No freshness column exists anywhere; one function computes it.
 - **I-08.** Agents never deliver. Adapters deliver only after a decision and only subjects the gate passes; the port re-checks immediately before delivering and before merging.
@@ -89,7 +89,7 @@ REQ-0812: Before each delivery decision the port observes the target's mode and 
 REQ-0813: The `deliver` continuation re-checks the gate, then calls the adapter's `deliver` and `publish_status` as external steps keyed by delivery, and in unenforced mode re-checks the gate again and calls `merge` with the verified subject; a gate that no longer passes stops the delivery and returns the task to `blocked` with the reason.
 REQ-0814: The verification state of a delivery is `success` exactly when the gate passes for the delivery's subject and the target's head equals that subject, `failure` when the gate fails, and `pending` otherwise; the port posts it whenever it differs from the last state posted for that head.
 REQ-0815: The port re-evaluates every open delivery's verification state when a ChangeSet changes any of its evidence inputs, when evidence is recorded for it, and on every observation of a new head.
-REQ-0816: Observing a merge of a delivery's change not performed by the port, or a change to a published path not made by a delivery, drafts one `untrusted` ChangeSet with a high-severity `core.finding` of type `delivery_bypass` about the delivery's task, whose approval is flagged `untrusted`.
+REQ-0816: For a delivery in unenforced mode, observing a merge of its change not performed by the port, or a change to a published path not made by a delivery, drafts one `untrusted` ChangeSet with a high-severity `core.finding` of type `delivery_bypass` about the delivery's task, whose approval is flagged `untrusted`.
 REQ-0817: Observe polls every delivered, unmerged delivery on a schedule without backfill, and each adapter call is an external step whose repeated observation records nothing new.
 
 ## 5. Design
@@ -97,7 +97,7 @@ REQ-0817: Observe polls every delivered, unmerged delivery on a schedule without
 **Contracts.**
 
 `grindstone.contracts.evidence`, schema version 1 each:
-- `CheckSpec`: `method`, `by` (`station`, or a need), `required`, `targets` (a selection: kinds among the task's inputs, or explicit IDs), `params` (JSON for the performer), `acknowledge` (keys the prover must pass explicitly).
+- `CheckSpec`: `method`, `by` (`station`, or a need), `required`, `targets` (a selection: kinds among the task's inputs, optionally with field equalities such as `method: test`, or explicit IDs), `params` (JSON for the performer), `acknowledge` (keys the prover must pass explicitly).
 - `Check`: `id`, `task`, `spec`, `shape`, `performer` (capability or station), `definition_hash`.
 - `EvidenceRecord`: the fields of REQ-0805, one per target.
 - `TestOutcome`: `name`, `classname`, `file`, `status` (`passed`, `failed`, `error`, `skipped`), `duration_ms`.
@@ -205,7 +205,8 @@ The heartbeat from M0 continues. A job left `STARTED` without `DONE` after a run
 **Observe (REQ-0816, REQ-0817).** A DBOS schedule, every 60 s with no backfill (SPEC-02), starts `observe-<delivery>-<tick>` for each delivered, unmerged delivery. It calls `adapter.observe(…)` with the ETags it kept; SPK-4 measured an unchanged pull request as free. Then, by observation:
 - **New head:** re-evaluate, which posts `pending` at that head.
 - **Merged by the port:** state `merged`.
-- **Merged by anyone else**, or a **bypass** (a published path changed outside a delivery): `change.draft` with source `intake`, trust `untrusted`, one `core.finding` (type `delivery_bypass`, severity `high`, `about` the task), then submit. Its approval is flagged `untrusted` (SPEC-04, I-07).
+- **Merged by anyone else:** in enforced mode, `merged`, because the remote enforced the gate and a person merging is the normal path at L0–L2. In unenforced mode it is a bypass, as below.
+- **Bypass**, in unenforced mode (a merge not by the port, or a published path changed outside a delivery): `change.draft` with source `intake`, trust `untrusted`, one `core.finding` (type `delivery_bypass`, severity `high`, `about` the task), then submit. Its approval is flagged `untrusted` (SPEC-04, I-07).
 - **Closed:** `closed`.
 
 Observations are recorded with the adapter's external ID, unique per delivery and kind. A repeated observation is a no-op.
@@ -277,7 +278,7 @@ AC-0813-1: With a fake adapter, `deliver` then `publish_status` run once each ac
 AC-0814-1: The verification state is `success` only with the gate passing and the head equal to the subject; after a new head is observed it is posted `pending` at that head · verifies REQ-0814 · integration · `test_verification_state_follows_head`.
 AC-0814-2: Posting the same state for the same head twice sends one post · verifies REQ-0814 · unit · `test_status_posts_only_on_change`.
 AC-0815-1: Approving a ChangeSet that changes a delivered task's criterion re-posts `pending` within one consumer run, with a description naming the stale criterion · verifies REQ-0815 · integration · `test_changed_criterion_sets_pending`.
-AC-0816-1: A fake adapter observing a merge not performed by the port drafts one `untrusted` ChangeSet with a high-severity `delivery_bypass` finding about the task, whose approval is flagged `untrusted`; the same observation repeated drafts nothing more · verifies REQ-0816 · integration · `test_bypass_becomes_untrusted_finding`.
+AC-0816-1: In unenforced mode, a fake adapter observing a merge not performed by the port drafts one `untrusted` ChangeSet with a high-severity `delivery_bypass` finding about the task, whose approval is flagged `untrusted`; the same observation repeated drafts nothing more; in enforced mode the same merge only moves the delivery to `merged` · verifies REQ-0816 · integration · `test_bypass_becomes_untrusted_finding`.
 AC-0817-1: The observe schedule polls only delivered, unmerged deliveries; a missed period is skipped; an unchanged observation records nothing · verifies REQ-0817 · integration · `test_observe_schedule`.
 
 ## 8. Test plan
