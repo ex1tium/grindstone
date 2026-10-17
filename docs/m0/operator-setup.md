@@ -8,7 +8,7 @@ Settings → Rules → Rulesets → New ruleset → **Import a ruleset**, and ch
 
 Also under Settings → General → Pull Requests: allow squash merging only, and turn on automatically deleting head branches.
 
-**Plan check:** on GitHub's free plans, rulesets on private repositories are saved but not enforced. This repository stays private, so its deliveries run in unenforced mode (ADR-40): CI still runs on every pull request, and Grindstone merges its own deliveries and reports any merge made outside it. Import the ruleset anyway; it takes effect if the plan or visibility ever changes.
+**Plan check:** GitHub's free plans enforce rulesets on public repositories only. This repository is public (since 17 October 2026), so the imported ruleset is enforced and Actions minutes are free.
 
 Settings → Code security: turn on Dependabot alerts and security updates, secret scanning and push protection.
 
