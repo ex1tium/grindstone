@@ -73,3 +73,15 @@ down: ## Stop the stack (volumes are kept)
 smoke: up ## M0-01: start the stack, verify health and mounts, stop it
 	uv run --locked python scripts/compose_smoke.py
 	docker compose down
+
+FIXTURE ?= ../grindstone-testbed
+
+.PHONY: fixture
+fixture: ## M0-04: the fixture project's tagged tests pass in the runner image (FIXTURE=checkout)
+	$(UV) python scripts/fixture_check.py $(FIXTURE)
+
+.PHONY: benchmark
+benchmark: ## M0-04: generate the 20,000-item benchmark project into build/benchmark
+	rm -rf build/benchmark
+	$(UV) python -m scripts.benchmark build/benchmark > /dev/null
+	@cat build/benchmark/manifest.json
