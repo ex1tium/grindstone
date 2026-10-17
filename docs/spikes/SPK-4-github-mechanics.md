@@ -1,6 +1,6 @@
 # SPK-4 — GitHub mechanics
 
-Status: in progress (blocked: App calls cannot run in a cloud session) · Box: 1 day · Settles: Q-7; how the verification status gates merge (M1-02, ADR-27); how the delivery mode is detected and how Grindstone merges safely in unenforced mode (ADR-40)
+Status: done, except experiment 2's Actions variant · Box: 1 day · Settles: Q-7; how the verification status gates merge (M1-02, ADR-27); how the delivery mode is detected and how Grindstone merges safely in unenforced mode (ADR-40)
 
 ## Why
 
@@ -33,41 +33,44 @@ API endpoints and headers used; ruleset JSON exported; rate-limit numbers; the e
 
 If experiment 2 fails, a forged status could merge a pull request in enforced mode: stop and raise a decision record before the M1 specifications. If experiment 9 cannot distinguish the modes, treat every target as unenforced: Grindstone always merges itself and always watches for bypasses. If the commit-status API cannot be source-restricted, use a check run created by the App, which is attributed to the App by GitHub.
 
-## Report (partial, 17 October 2026)
+## Report (17 October 2026)
 
-Run from a Claude Code cloud session. Spike code: `spk4/run.py` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (never merged); spike pull request ex1tium/grindstone-testbed#1, closed.
+**Every experiment passed. Q-7 is confirmed and no fallback is needed.** One part is still open: experiment 2's GitHub Actions variant (below).
 
-### Blocker: the cloud session cannot act as the App
+How it ran: `spk4/run.py` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (spike code, never merged), run by the operator on their own machine as the App `grindstone-dev-rootnode` (run `20261017T151254Z`, pull requests ex1tium/grindstone-testbed#2 to ex1tium/grindstone-testbed#9). Raw results: `spk4/results/` on that branch, once pushed. How to run it: `SPK-4-local-run.md`.
 
-The session's outbound proxy mediates `api.github.com`:
+### A cloud session cannot act as the App
 
-- It **replaces the `Authorization` header** with its own credentials: `GET /user` answers `ex1tium` whatever token is sent, including a bogus one or none. Any call from a session therefore acts as the operator's account, not as the App.
-- It **refuses** `/app/*` (so no installation token can be minted), `/installation/*`, `/apps/*`, writes to `/repos/{repo}/statuses/{sha}`, and the Actions API (workflow dispatch, `actions/permissions`): `403 "... not permitted through this proxy"`.
+A Claude Code cloud session reaches `api.github.com` only through its proxy. The proxy substitutes its own credentials for any `Authorization` header (`GET /user` answers `ex1tium` with a bogus token or none), and it refuses `/app/*`, `/installation/*`, commit-status writes and the Actions API. So every App experiment ran on the operator's machine. The same holds for M1: delivery runs where the App key lives, never in a cloud session (I-08).
 
-So no status can be set from a session under any identity, and experiments 1 to 5, 10 and 11 cannot run here. Routing around the proxy is not an option. They need a host that reaches `api.github.com` directly: the operator's machine or the stable self-hosting instance. `gh.py` already mints the JWT and the installation token for that run. This also means a cloud session can never hold the App identity in M1: delivery must run where the App key lives (I-08).
+### Results
 
-### Environment check (Next step 1)
+| # | Result | Evidence |
+| --- | --- | --- |
+| Setup | ok | The installation token was minted from the App key; the installation sees only the testbed. The ruleset's `required_status_checks` entry carries `integration_id` = the App ID, so the source was restricted without a first status. |
+| 1 | pass | No status: `blocked`. Pending: `blocked`. App success (creator `grindstone-dev-rootnode[bot]`, type `Bot`): merge with the head SHA accepted (`200`). The run's verdict line says FAIL because the state read `unstable`. That came from the run's own throwaway statuses: optional statuses left pending make `mergeable_state` read `unstable` rather than `clean`. The script now settles them. |
+| 2 | pass (operator account); Actions variant pending | A `success` on `grindstone/verification` set by the operator's own account (an admin, type `User`) leaves the pull request `blocked`, and the App's merge is refused: `405 Repository rule violations found. Required status check "grindstone/verification" was not set by the expected GitHub app.` The Actions variant could not run: GitHub has not registered `forge-status.yml` (`gh workflow run` answers 404 "not found on the default branch"). |
+| 3 | pass | After success, a new commit makes the pull request `blocked`. Merge with the old SHA: `409 Head branch was modified`. Merge with the new SHA and no status: `405 ... Required status check "grindstone/verification" is expected`. A status on the new head makes it `clean`. |
+| 4 | pass | After the base advances, the state is `behind` even with a success on the head, and merging is refused (`405`). `PUT /pulls/{n}/update-branch` (as the App) makes a new head, which is `blocked` until it gets its own status; then `clean`, and the merge succeeds. |
+| 5 | pass | GraphQL `enablePullRequestAutoMerge` (squash) arms auto-merge as the App, and `disablePullRequestAutoMerge` clears it (`autoMergeRequest: null`). Re-armed: with a success on the behind head it does not merge (`behind`), and it does not update the branch itself. After update-branch, with no status at the new head, it still waits. Once the new head has a status, it merges, merged by `grindstone-dev-rootnode[bot]`. |
+| 6 | pass | `GET /repos/{repo}/pulls?head={owner}:{branch}&state=all` finds merged pull requests (#2, #7), closed unmerged ones (#4) and open ones; a branch that never existed returns `[]`. `GET /commits/{sha}/pulls` maps a commit to its pull requests. |
+| 7 | recorded | The installation's core limit is 5,000 an hour (the base allowance for an installation on a personal account). One poll of a pull request is 6 calls: `pulls/{n}`, `pulls/{n}/comments`, `pulls/{n}/reviews`, `issues/{n}/comments`, `commits/{sha}/status` and `commits/{sha}/check-runs`. Every one returns an `ETag`, and `If-None-Match` → `304` leaves `x-ratelimit-used` unchanged. So polling an unchanged pull request is free; a changed one costs 6. |
+| 8 | pass | Failing hooks planted in the private clone (`pre-commit`, `commit-msg`, `post-commit`, `pre-push`, `reference-transaction`) and in the bare mirror (`pre-receive`, `update`, `post-receive`, `reference-transaction`, `pre-push`). Commit, clone → mirror, mirror → GitHub with the installation token: the push landed with the same SHA, and no hook ran. Hooks are off through `core.hooksPath` pointing at an empty directory, set in the environment (`GIT_CONFIG_COUNT`), which reaches `receive-pack` too. The token reaches git only as an `http.extraHeader` in the environment, never in a URL or argv. |
+| 9 | pass | The probe: `GET /repos/{repo}/rules/branches/{branch}` must return `200` with a `required_status_checks` rule, `strict_required_status_checks_policy: true`, and `{"context": "grindstone/verification", "integration_id": <App ID>}`. Public: `200`, enforced. Private (free plan): `/rules/branches/main` and `/rulesets` both answer `403 "Upgrade to GitHub Pro or make this repository public to enable this feature."`, so the probe says unenforced. No false "enforced": any other answer is unenforced. Back to public: enforced again. Raw responses: `e9-*.json`. |
+| 10 | pass | Private: verified head H1, then a new push H2. `PUT /pulls/{n}/merge` with `sha` = H1: `409 Head branch was modified`, and `main` did not move. Control: merging H2 with no status at all succeeded (`200`), which confirms nothing else guards an unenforced target. Passing the verified SHA is the only guard. |
+| 11 | pass | A merge in the UI: `merged_by` = `ex1tium`, with a two-parent merge commit (merge method). A direct push to `main`: a commit for which `GET /commits/{sha}/pulls` returns no pull request. `GET /repos/{repo}/activity?ref=refs/heads/main` lists each change with its type and actor (`push` by `ex1tium`; `pr_merge` by `ex1tium`; `pr_merge` by `grindstone-dev-rootnode[bot]`), so a delivery's own merges and bypasses are told apart by actor and type. |
 
-- The four `GRINDSTONE_*` variables are set; the key decodes to a 2048-bit RSA key and signs a JWT. The token exchange could not be tried (blocked above).
-- `GET /repos/ex1tium/grindstone-testbed/rules/branches/main` (the rules in force on `main`): deletion, non-fast-forward, pull request (0 approvals, all three merge methods) and `required_status_checks` with `strict_required_status_checks_policy: true` and `{"context": "grindstone/verification", "integration_id": 5358336}`. The `integration_id` equals `GRINDSTONE_GITHUB_APP_ID` (compared, not printed), so **the check's source is already restricted to the App**; no first status was needed.
-- Drift from `.github/rulesets/testbed-main.json`: the live ruleset adds `require_extra_approval_for_unattributed_changes: true` (a field GitHub fills in on import) and the `integration_id` the operator set afterwards. `bypass_actors` is empty; `current_user_can_bypass: never`.
+### What this settles
 
-### Experiment 2 (forged status): not run
+- **The verification status gates merge, and only from the App.** On an enforced target, a status from anyone else, even an admin, does not count, and GitHub names the reason. The required check is pinned by `integration_id` in the ruleset.
+- **Q-7, as decided.** With strict checks, a behind branch must be updated and verified again at the new head. Auto-merge waits for both, and it never updates the branch itself. So whoever delivers must call update-branch and then set a fresh status. Disarming works.
+- **ADR-40 is buildable as specified.** Mode detection is one call (`rules/branches/{branch}`); a `403`, or a missing App `integration_id`, means unenforced. In unenforced mode, a merge passing the verified SHA is refused after a concurrent push. Bypasses are visible through `merged_by`, commits with no pull request, and the activity API.
+- **Delivery's find-or-create** can look pull requests up by head branch across all states.
+- **The polling budget**: 6 calls per changed pull request per poll, unchanged ones free with ETags; 5,000 calls an hour per installation.
+- **Limits**: a status description is at most 140 characters, and a context at most 255 (one more character is `422`).
+- **Pushing without hooks** works from a bare mirror and a private clone with the installation token (QS-06).
 
-Actions are not registered on the testbed (`GET /actions/workflows` lists none although `.github/workflows/forge-status.yml` is on `main`, and `/actions/runs` is empty): **check Settings → Actions is enabled**. Dispatch is refused through the proxy, and so is a status posted by the operator's account. Baseline only: with no status, the open pull request reads `mergeable: true`, `mergeable_state: "blocked"`.
+### Still open
 
-### Experiment 6 (lookup by branch): pass
-
-`GET /repos/{repo}/pulls?head={owner}:{branch}&state=all` finds the pull request by head branch whether open or closed (`state=open` returns it before closing, `state=closed` after; a missing branch returns `[]`). `GET /repos/{repo}/commits/{sha}/pulls` maps a commit to its pull requests. A merged pull request has not been looked up yet (no merge is possible without the App status); `merged_at` distinguishes it from a closed one.
-
-### Experiment 7 (polling budget): partly measured
-
-One poll of one pull request is 6 REST calls: `pulls/{n}` (state, head SHA, `mergeable_state`), `pulls/{n}/comments`, `pulls/{n}/reviews`, `issues/{n}/comments`, `commits/{sha}/status`, `commits/{sha}/check-runs`. Every one returns an `ETag`, and repeating it with `If-None-Match` returns `304` with no change in `core.used`: an unchanged pull request costs nothing against the limit. Not yet measured: the installation's own limit (the proxy reports its identity's, 15 000 an hour; the proxy also hides the `X-RateLimit-*` headers), and whether the proxy caches.
-
-### Experiment 9 (delivery mode), public half
-
-On the public testbed, `GET /repos/{repo}/rules/branches/main` returns the `required_status_checks` rule with the App's `integration_id`, and `GET /repos/{repo}/rulesets` returns the ruleset with `enforcement: "active"`. Detection rule to test on the private half: enforced only if the rules-in-force call lists `grindstone/verification` with Grindstone's `integration_id` and `strict` true. Switching the testbed private needs an admin write, which the proxy does not allow either.
-
-### Remaining
-
-Experiments 1 to 5 and 8 to 11, run by the operator from their machine with `spk4/run.py`, which also repeats 6, 7 and 9 as the App: `SPK-4-local-run.md`.
+- **Experiment 2, Actions variant**: a workflow in the repository setting the status with its own `GITHUB_TOKEN` (QS-03). It is blocked until GitHub registers `forge-status.yml`: check Settings → Actions → General allows actions, then `gh workflow list -R ex1tium/grindstone-testbed`. If the workflow is still not listed, a pull request that touches the file registers it on merge. Then run `uv run spk4/run.py --only e2` and use the `gh workflow run` command at the pause. The admin-account result already shows that the source restriction holds against a non-App creator, so this run is expected to pass. A failure would trigger the fallback above.
+- The ruleset field `require_extra_approval_for_unattributed_changes: true`, which GitHub added on import, did not block any App merge in this run.
