@@ -57,7 +57,7 @@ Implements:
 
 Delivers:
 - **M1-01**, the kernel side of the execution clause: a task is "matched by need" to a capability "and executed by Claude Code on the operator's subscription" in its own workspace → AC-0603-1, AC-0606-1, AC-0623-1. SPEC-04 delivers the intake clause; SPEC-09 the implementing capability, the worktree and copy-back, and the live run of the whole criterion; SPEC-08 and SPEC-09 delivery.
-- **M1-03**, these clauses → AC-0610-1, AC-0611-1, AC-0612-1, AC-0612-2:
+- **M1-03**, these clauses → AC-0608-1, AC-0610-1, AC-0611-1:
   - an invalid report is "fixed in the same turn" (SPEC-07 delivers the refusal with structured errors);
   - "a turn without a report gets one corrective prompt and then fails `missing_report`";
   - "an `ask` to the operator parks the task, and its answer resumes it in a new session on the same workspace".
@@ -176,7 +176,7 @@ Exactly one remaining is the match. Otherwise the task is `blocked` with an `esc
 
 **A turn** (the workflow `turn-<run>-<k>`, on the lane):
 1. Acquire a slot in `stations.slots`, skipping locked rows. The lane's concurrency guarantees one is free.
-2. Mint the per-task MCP token (SPEC-07) for run and turn.
+2. Mint the per-task MCP token for run and turn, through the minting function SPEC-07 provides and the composition root registers with `work` (`work` may not import `surface`, Components, "Module map").
 3. `create_session` (key `run-<id>:s<k>`), with the preset, the per-session options derived from the capability and the slot's agent user. The options carry:
    - the model and effort;
    - permission allow rules;

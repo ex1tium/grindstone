@@ -50,7 +50,7 @@ Implements:
 - **QS-01, QS-02, QS-03.** A weakened test fails the reviewer's check, so the task stays in verifying. A changed criterion makes evidence stale on the next read and the verification state pending. The check station holds no credential (SPEC-05).
 
 Delivers:
-- **M1-02**, the kernel clauses → AC-0806-1, AC-0806-2, AC-0814-1, AC-0814-2, AC-0815-1, AC-0816-1:
+- **M1-02**, the kernel clauses → AC-0806-1, AC-0806-2, AC-0813-1, AC-0814-1, AC-0814-2, AC-0815-1, AC-0816-1:
   - "the verification status succeeds only when every criterion's … test passes on the check station at the subject commit against the … current item hashes";
   - "a new head commit or a changed criterion sets it back to pending";
   - in unenforced mode, the port "detects the unenforced mode, merges only itself with the verified head SHA, and reports a merge made outside it as a `delivery_bypass` finding".
@@ -236,7 +236,7 @@ Freshness, the gate and the verification state are never stored (FF-09). `status
 
 | Subject | Maker | Prover |
 | --- | --- | --- |
-| The collected subject (a `git_commit` in SDLC) | The `work` task's capability | The check station (`command`, `test`) and each review capability, all different from the maker by REQ-0801 and REQ-0804 |
+| The collected subject | The `work` task's capability | The check station (`command`, `test`) and each review capability, all different from the maker by REQ-0801 and REQ-0804 |
 | Evidence records | The check station and review tasks | None needed: evidence is the proof, and it is immutable |
 | Deliveries | The port, through the adapter | Not a subject; gated by evidence and a person's decision |
 

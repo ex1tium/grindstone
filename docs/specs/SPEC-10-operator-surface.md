@@ -65,7 +65,7 @@ Depends on:
 - **SPEC-06:** templates, tasks, runs and transcripts.
 - **SPEC-08:** evidence summaries, freshness and deliveries.
 
-Scenarios: K1 step 7 (the operator approves the `approval` decision). The operator's part of S1 (approve the import, start `/implement`, answer `delivery`) is exercised by SPEC-09's live run through this surface.
+Scenarios: K1 step 7 (the operator approves the `approval` decision). The operator's part of S1 (approve the import, start the command, answer `delivery`) is exercised by SPEC-09's live run through this surface.
 
 ## 4. Requirements
 

@@ -52,7 +52,7 @@ Delivers:
 - M1-05, these clauses:
   - "From `agent-host` and `runner` no GitHub, database or MCP signing credential is readable and a push to GitHub fails" → AC-0503-1, AC-0503-2.
   - "nothing mounts the Docker socket" → AC-0501-1.
-  - "repository settings never reach a session" → AC-0508-1.
+  - "repository settings never reach a session" → AC-0508-1, AC-0508-2.
   - "deployment and workspace mount lints (FF-05, FF-06) pass" → AC-0501-1, AC-0510-1.
 - SPEC-09 delivers the clauses on hooks in the control plane and copy-back tiers.
 

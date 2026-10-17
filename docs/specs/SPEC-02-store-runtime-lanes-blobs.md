@@ -73,7 +73,7 @@ REQ-0214: Every scheduled workflow states whether missed periods are backfilled;
 | Model | Fields |
 | --- | --- |
 | `LaneSpec` | `station: str`, `lane: writing \| readonly \| check`, `concurrency: int` (≥ 1) |
-| `StoreSettings` | `database: DatabaseSettings` (the M0 dataclass becomes this contract), `blobs_dir: str`, `max_blob_bytes: int` (seed 2 GiB), `max_project_bytes: int` (seed 20 GiB), `workflow_version: str` |
+| `StoreSettings` | `database: DatabaseSettings` (the M0 dataclass becomes this contract), `blobs_dir: str`, `max_blob_bytes: int` (seed 2 GiB), `max_project_bytes: int` (seed 20 GiB) |
 | `BlobRoot` | `blob: BlobRef`, `project: ProjectId`, `owner_module: str`, `owner_kind: str`, `owner_id: str`, `lease: bool` |
 
 The kernel error codes `storage_limit` (limit class), `database_unavailable` (transient), `workflow_version_mismatch` (internal) and `migration_failed` (internal) are registered here.
@@ -106,7 +106,7 @@ Both give the caller one object (`Uow`) with `execute`, `fetch_one` and `fetch_a
 - A step runs at least once; the key makes its effect happen once.
 - The registry of external steps (name, owning module, effect, kill points) is what FF-10 reads.
 
-**Deterministic workflow IDs (REQ-0205).** Every `start_workflow` and `enqueue` goes through `store.start(workflow, id=…)`, which refuses a call without an ID and sets it with `SetWorkflowID`. IDs name the causing record: `task-<task>-run-<n>`, `turn-<run>-<k>`, `decision-<decision>`, `evt-<consumer>-<event>`. Child workflows started inside a workflow get DBOS's deterministic `<parent>-<step>` IDs, so recovery never starts a second child (SPK-2, experiment 3). Messages between workflows (`DBOS.send`) always carry an idempotency key, for example a host event's ID, so a duplicate message is delivered once (SPK-2, experiment 5).
+**Deterministic workflow IDs (REQ-0205).** Every `start_workflow` and `enqueue` goes through `store.start(workflow, id=…)`, which refuses a call without an ID and sets it with `SetWorkflowID`. IDs name the causing record, for example `run-<task>-<n>` and `turn-<run>-<k>` (SPEC-06), `decision-<decision>` (SPEC-04), `evt-<consumer>-<event>` (SPEC-03). Child workflows started inside a workflow get DBOS's deterministic `<parent>-<step>` IDs, so recovery never starts a second child (SPK-2, experiment 3). Messages between workflows (`DBOS.send`) always carry an idempotency key, for example a host event's ID, so a duplicate message is delivered once (SPK-2, experiment 5).
 
 **Lanes (REQ-0206).** One queue per station lane, `lane.<station>.writing`, `lane.<station>.readonly` and `lane.<station>.check`, created with `global_concurrency` from `LaneSpec`. Seeds: writing 1, read-only 4, check 1, matching the capacity envelope. The store creates and names lanes; SPEC-06 decides what runs on them. A writing parent never waits on a child on its own lane. It ends its turn, as ADR-14 requires and SPK-2, experiment 7, showed deadlocks otherwise. SPEC-06 enforces this, and this specification's lane test keeps the control case as a regression test.
 

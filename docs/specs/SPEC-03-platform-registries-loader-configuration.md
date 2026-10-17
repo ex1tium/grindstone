@@ -88,7 +88,7 @@ REQ-0317: The registries answer, for any loaded name, its factory, factory versi
 | `CapabilityDecl` | The fields of Concepts, "Capability": `id`, `version`, `prompt`, `agent` (`preset`, `model` as a named model slot, `effort`), `skills` (`library`, `start`), `toolbox`, `workspace` (`write` with a named workspace provider, or `read_only`), `permissions` (`allow`, `otherwise`: `deny` or `decision`), `produces` (`reports`, `kinds`), `offers` (`need`, `modes` from `delegate`, `consult`, `check`, `accepts`, `yields`, `tags`), `may_check` (`method`, `subjects`), `tier`, `limits` |
 | `TemplateDecl` | `name`, `command`, `args` (JSON Schema), `steps`: `task` (`name`, `need`, `mode`, `inputs`, `output`, `checks` of `method`, `by`, `required`, `targets`, `limits`) or `deliver` (`name`, `adapter`, `from` a task step) |
 | `CheckMethodDecl` | `name`, `shape`, `env_relevant` (bool), `config_schema` |
-| `InstanceConfig` | Sections contributed by their owners: `[store]` (SPEC-02), `[stations]`, `[agents]`, `[limits]` (SPEC-06), `[surface]` (SPEC-10), and this specification's `[platform]` (`factories_allowed`), `[images]` (name → digest-pinned reference) and `[secrets]` (name → file path) |
+| `InstanceConfig` | Sections contributed by their owners: `[store]` (SPEC-02); `[stations]`, `[agents]`, `[limits]`, `[host]` (SPEC-06); `[checks]`, `[delivery]` (SPEC-08); `[surface]`, whose `mcp_*` keys are SPEC-07's and the rest SPEC-10's; and this specification's `[platform]` (`factories_allowed`), `[images]` (name → digest-pinned reference) and `[secrets]` (name → file path) |
 | `ProjectConfig` | `[project]` (`name`), `[factories]` (namespace → exact version), `[grants]` (`tiers`, `secrets`), `[checks]` (`image`, a name from `[images]`), `[capabilities."<id>"]` (overrides: `model`, `effort`, `limits`, `extra_prompt`), and `[factories.<ns>]` sections validated by that factory's schema |
 | `EventEnvelope` | `event_id` (UUIDv7), `project` (a project ID, or the instance stream's nil ID), `seq`, `type`, `occurred_at`, `payload` |
 
@@ -151,7 +151,7 @@ Kinds are data only in M1 (DEC-0301). SPEC-04 owns what the fields mean at revis
 
 **`grindstone check`.** A CLI subcommand of the control-plane image. It loads factories exactly as start-up does, validates `grindstone.toml`, and, against the database if one is reachable or against files given with `--project FILE`, every project configuration. It prints one line per error, `file:field: rule`, and exits 1 if any. Start-up runs the same checks: an invalid instance configuration stops the process, and an invalid project configuration pauses that project (`config.invalid`).
 
-**Secrets (REQ-0315).** `[secrets]` maps names (for example `sdlc.github_app_key`) to files. A factory reads one through `sdk.secrets.read(ctx, name)`. Platform checks that the calling adapter's factory declares the name and that the project in `ctx` grants it, and only then reads the file. Values are never logged, emitted in events or written to the database.
+**Secrets (REQ-0315).** `[secrets]` maps namespaced names (for example `notes.archive_token`) to files. A factory reads one through `sdk.secrets.read(ctx, name)`. Platform checks that the calling adapter's factory declares the name and that the project in `ctx` grants it, and only then reads the file. Values are never logged, emitted in events or written to the database.
 
 **Event outbox.**
 - `platform.events (project, seq, event_id, type, schema_version, payload JSONB, occurred_at)`, primary key `(project, seq)`, with `event_id` unique.

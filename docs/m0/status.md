@@ -17,10 +17,33 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 - Foundation v4.5 (accepted by the operator, 17 October 2026): ADR-44, semantic hashes omit fields at their default (from SPEC-01); ADR-42, the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher (amends ADR-15, resolves Q-1); ADR-43, a skill's tools are listed from session start and refused until loaded (amends ADR-39). SPK-2's version-and-drain finding needs no record (the foundation already names explicit application versions and an upgrade path for in-flight workflows); it goes into SPEC-02 and SPEC-27.
 - SPEC-01 reviewed (`docs/specs/reviews/SPEC-01-review-1.md`), then revised (revision 1) by the same session at the operator's instruction: all nine findings answered; the item ID grammar now admits every foundation form, unordered collections are refused in semantic content, ADR-44 cited.
 
+- SPEC-02 to SPEC-10 drafted (17 October 2026), all by one session, which therefore reviews none of them. Each is in `docs/specs/`, status draft, with `make check` passing:
+  - SPEC-02 store, runtime, lanes and blobs;
+  - SPEC-03 platform, which introduces SDK 0.1.0;
+  - SPEC-04 items, thin ChangeSet and decisions;
+  - SPEC-05 deployment, users and secrets;
+  - SPEC-06 agent station and task runs;
+  - SPEC-07 kernel MCP surface;
+  - SPEC-08 check station, evidence and delivery port;
+  - SPEC-09 SDLC skeleton factory;
+  - SPEC-10 operator surface.
+
+  Every M1 exit criterion maps to acceptance criteria in the specifications the spec map assigns, and every requirement has at least one acceptance criterion and one ticket. New package versions are recorded in `docs/m0/versions.md` under "Resolved for the M1 specifications".
+
 ## Next, in order
-1. **SPEC-01 acceptance**: the M0 review session confirms revision 1 closes every finding of review 1 (the reviewer also revised it, so this check stands in for an independent one); then the operator approves it.
-2. SPEC-02 to SPEC-10 from the spike results and ADR-42 to ADR-44, each reviewed by a session that did not write it.
-3. M0 milestone review: the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+1. **Review, in a session that wrote none of them.** The playbook allows one pass over all ten.
+   - **SPEC-01:** confirm that revision 1 closes every finding of review 1. That session both reviewed and revised it, so this check stands in for an independent one.
+   - **SPEC-02 to SPEC-10:** run the validation checklist. SPEC-03 also needs the independent architecture review the playbook requires for a specification that touches the SDK. SPEC-06 and SPEC-08 define SDK ports too.
+   - **Points the author asks the reviewer to judge:**
+     - Playbook rule 6 says a new dependency is proposed as a decision record. SPEC-01's precedent records dependencies as specification decisions with primary-source pins (checklist item 13). Does any new one need a record: SQLAlchemy as a direct dependency, PyYAML, argon2-cffi, PyJWT with cryptography, Playwright, TypeScript 6 in `web/`?
+     - M1 thinnings of foundation text that is not an ADR:
+       - in M1 a factory is enabled by the operator's configuration command, not a `scope` decision (SPEC-03, OQ-0301);
+       - approval verdicts are `unaffected` only (SPEC-04, DEC-0402);
+       - a task is done once its delivery is delivered, before merge (SPEC-08, DEC-0805).
+     - The spec-level dependency between SPEC-06 and SPEC-08 is acyclic only per module: `stations` ← `evidence` ← `work`.
+     - SPEC-05's root entrypoints, which copy 0600 secrets into each service user's tmpfs (DEC-0501).
+2. **Operator approval** of the ten, and of any records the review proposes. Then the tickets in each specification's section 7 are ready to break down.
+3. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
 - **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
@@ -29,6 +52,9 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 - **SPK-1's VS Code half:** deferred to M4, with SPEC-22, on the operator's machine (M4-05 needs it; M1 does not).
 
 ## Open with the operator
+- Before M1-01's live run: choose the models for the `primary` and `secondary` slots in `deploy/grindstone.toml` (SPEC-06, SPEC-09; different by default).
+- Before M1-08: install the GitHub App on `ex1tium/grindstone` and require `grindstone/verification` from it in that repository's ruleset (SPEC-09, OQ-0902).
+- At the M1 review: whether agent egress stays open at T1 (SPEC-05, OQ-0502), and where M1's real delivery runs (default: the operator's machine; SPEC-05, OQ-0501 checks secrets there).
 - Re-import `.github/rulesets/grindstone-main.json` on `ex1tium/grindstone`: it now also requires the `fixture` CI job (M0-04). The ruleset is otherwise active (checked 17 October 2026).
 - Open a pull request for this branch when ready: the `fixture` CI job runs only on pull requests and `main`.
 - Anything that must act as the App runs on the operator's machine (`docs/spikes/SPK-4-local-run.md`).

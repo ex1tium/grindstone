@@ -71,7 +71,7 @@ REQ-0711: Every refusal is a tool error result carrying an `ErrorEnvelope`; no t
 **Mounting.** As SPK-1, experiment 3, ran it: `mcp_app = mcp.http_app(path="/mcp")`, mounted at `/kernel` on the station application, whose lifespan includes `mcp_app.lifespan`. A pure ASGI middleware in front of the mount checks the bearer token on every HTTP request, not only at session start. A tool reads the verified claims from the request scope; FastMCP's `get_http_headers()` is not trusted on its own. Pins: `fastmcp==4.1.0` and `mcp==2.3.0`. Both are the latest on PyPI on 17 October 2026, and FastMCP requires `mcp>=2.0,<3`. Claude Code speaks MCP revision `2026-07-28` with one POST per request (SPK-5).
 
 **Tokens (REQ-0702).**
-- **Minting:** `mint(task, run, turn, capability, project)` returns `base64url(claims) + "." + base64url(HMAC-SHA256(mcp_token_key, claims))`, where `claims` is the RFC 8785 canonical JSON of `{v: 1, project, task, run, turn, capability, iat}`. `work` mints one per turn (SPEC-06).
+- **Minting:** `mint(task, run, turn, capability, project)` returns `base64url(claims) + "." + base64url(HMAC-SHA256(mcp_token_key, claims))`, where `claims` is the RFC 8785 canonical JSON of `{v: 1, project, task, run, turn, capability, iat}`. `work` mints one per turn (SPEC-06) through this function, which the composition root registers with `work`, because `work` may not import `surface`.
 - **Verification**, on every request:
   1. decode the token and check the signature in constant time;
   2. call `work.context_for(run)` to check that the run is `active` and its current turn equals `turn`.
