@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "DependencyHealth": {
+      "additionalProperties": false,
+      "description": "The state of one thing a service needs, such as its database.",
+      "properties": {
+        "detail": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Short reason for a non-ok status, safe to show to the operator.",
+          "title": "Detail"
+        },
+        "name": {
+          "description": "Stable name of the dependency, e.g. `postgres`.",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/HealthStatus"
+        }
+      },
+      "required": ["name", "status"],
+      "title": "DependencyHealth",
+      "type": "object"
+    },
+    "HealthStatus": {
+      "description": "Overall state of a service or one of its dependencies.",
+      "enum": ["ok", "degraded", "down"],
+      "title": "HealthStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Readiness report of one Grindstone service.",
+  "properties": {
+    "dependencies": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DependencyHealth"
+      },
+      "title": "Dependencies",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "service": {
+      "enum": ["grindstone", "agent-host", "runner"],
+      "title": "Service",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/HealthStatus"
+    },
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": ["service", "version", "status"],
+  "title": "ServiceHealth",
+  "type": "object"
+}
