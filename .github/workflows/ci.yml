@@ -1,0 +1,64 @@
+# Lint, type checks, tests and the fitness functions on every push and pull
+# request (M0-02), plus the M0-01 compose smoke test. Actions are pinned to
+# full commit SHAs (FF-04); Dependabot proposes upgrades.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.13.1"
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  checks:
+    name: Lint, types, tests, fitness functions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # Corepack installs the pnpm version and hash pinned in package.json.
+      - run: corepack enable
+      - run: make setup
+      - run: make lint
+      - run: make typecheck
+      - run: make test
+      - run: make ff
+
+  compose:
+    name: Compose smoke test (M0-01)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - run: make smoke
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --timestamps
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
