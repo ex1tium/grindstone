@@ -4,7 +4,7 @@
 
 Grindstone is a self-hosted orchestrator for agent-driven software development with a person in the loop. You state intent; agents do the work; Grindstone keeps the intent typed and versioned, proves every result independently against the exact intent it claims to satisfy, feeds discoveries back into the specification, and asks you only what only a person should decide.
 
-> **Status: pre-M0.** This repository holds the foundation documents and, soon, the scaffold. Nothing here runs yet. Single operator, self-hosted, GitHub only.
+> **Status: M0 in progress.** The foundation (v4.2), the repository scaffold, CI with the M0 fitness functions, and four empty services that start healthy are in place; the spikes SPK-1 to SPK-5 are next. Single operator, self-hosted, GitHub only.
 
 ## The idea
 
@@ -62,12 +62,35 @@ Correctness, traceability, freshness (computed, never stored), durability (idemp
 
 ## Development
 
-Dependencies are the latest stable releases, pinned exactly; images are pinned by digest; versions are resolved at M0 from primary sources. Python is managed with uv, Node packages with pnpm. Cloud development environment setup lives in `scripts/` once added.
+Requirements: [uv](https://docs.astral.sh/uv/) 0.13.1, Node.js 24.22.0 with Corepack enabled (`corepack enable`), Docker with Compose, GNU Make. Python 3.14.8 and pnpm are installed by uv and Corepack from the pinned versions.
+
+```sh
+make setup   # install the locked Python and Node toolchains
+make check   # lint, type checks, tests, fitness functions: what CI runs
+make up      # build and start the four services (creates dev secrets in secrets/)
+make smoke   # M0-01: start the stack, verify health, mounts and network isolation, stop
+make help    # every target
+```
+
+| Path | Holds |
+| --- | --- |
+| `packages/grindstone/` | The control plane: twelve kernel modules and `grindstone.sdk` |
+| `factories/sdlc/`, `factories/notes/` | The SDLC factory and the code-free test fixture factory |
+| `runner/` | The check-station job executor (standard library only) |
+| `agent-host/` | The agent station's host (TypeScript) |
+| `packages/contracts-ts/` | TypeScript types generated from the Pydantic contracts |
+| `docker/`, `compose.yaml` | Images and the one-host deployment |
+| `scripts/ff/` | Architecture fitness functions |
+| `docs/foundation/` | The foundation: the source of every commitment |
+| `docs/m0/` | M0 kickoff decisions, resolved versions, operator setup |
+| `docs/specs/`, `docs/spikes/` | Specifications and spike reports |
+
+Dependencies are the latest stable releases, pinned exactly, and images are pinned by digest (`docs/m0/versions.md`). Dependabot proposes upgrades as pull requests.
 
 ## Contributing
 
-Specification before code. Each spec cites the invariants and decisions it implements and maps every exit criterion it delivers to acceptance criteria tied to tests. A choice that crosses a module or factory boundary is proposed as a decision record, not decided inline. See the planning playbook in the foundation.
+Specification before code. Commits follow [Conventional Commits](https://www.conventionalcommits.org/); pull requests are squash-merged into a protected `main`. Each spec cites the invariants and decisions it implements and maps every exit criterion it delivers to acceptance criteria tied to tests. A choice that crosses a module or factory boundary is proposed as a decision record, not decided inline. See the planning playbook in the foundation.
 
 ## License
 
-Not yet chosen. Private repository; all rights reserved until decided.
+[Apache License 2.0](LICENSE).
