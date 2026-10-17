@@ -73,14 +73,14 @@ REQ-0406: An item created by apply enters its kind's `initial` lifecycle state.
 REQ-0407: The kernel allocates IDs for kinds that declare an allocation format, never reusing a number in a project, and refuses an imported or proposed ID that does not match its kind's pattern or is already taken by another kind.
 REQ-0408: `render(revision)` produces Markdown with a header naming the item and the ledger as source of truth, the title, every semantic field and every reference as `[[ID]]`.
 REQ-0409: An item bundle (YAML, schema version 1: a list of items with kind, ID, title and fields) parses into one ChangeDraft from the operator, or is refused with every item's errors.
-REQ-0410: A ChangeDraft records its source (operator, task output, delegation result, intake, revert), its trust, its proposed revisions with the base hash each was drafted against, and the provenance every revision will carry.
+REQ-0410: A ChangeDraft records its source (operator, task output, delegation result, intake, revert), its trust, its proposed revisions with the base hash each was drafted against, and the provenance every revision will carry; an operator draft carries the client key of the request that made it, unique per project, so a repeated import returns the original draft.
 REQ-0411: The walk of a ChangeSet lists, for every semantically changed item, every current item outside the set that has a `review` edge to it; when that list is empty the walk is at its fixed point, and otherwise it is at its fixed point once each listed item has an `unaffected` verdict with a reason.
 REQ-0412: A walked ChangeSet that passes the M1 rules raises one `approval` decision listing every proposed revision and every item the walk reached, flagged `untrusted` when its draft is untrusted.
 REQ-0413: An approval answer applies the ChangeSet only if it gives an `unaffected` verdict with a non-empty reason for every reached item; otherwise the answer is refused with `verdict_missing`, and `reject` ends the ChangeSet with nothing applied.
 REQ-0414: Apply is one transaction serialized per project: it checks every base hash against the current revision, then writes all revisions, edges, current pointers and initial lifecycle states, and emits `item.revised` for each item and `changeset.applied`, or writes nothing.
 REQ-0415: When a base hash no longer matches at apply, the ChangeSet is walked again against the new base; it applies on the existing approval if the reached set is unchanged, and otherwise its approval is superseded and raised again.
 REQ-0416: Every decision has a registered kind, a scope, a context hash, a recommended answer with its reason and source, and kernel-set flags; raising one without a recommendation is refused.
-REQ-0417: An answer is refused if the decision is not open (`decision_superseded` when it was superseded), if the context hash the answerer saw differs from the decision's (`context_changed`), or if it fails the kind's answer schema; an accepted answer records who answered, through which channel and when.
+REQ-0417: An answer is refused if the decision is not open (`decision_superseded` when it was superseded), if the context hash the answerer saw differs from the decision's (`context_changed`), or if it fails the kind's answer schema; an accepted answer records who answered, through which channel and when; repeating an accepted answer with the same client key returns the original result.
 REQ-0418: An accepted answer starts the decision's registered continuation exactly once, even if the process is killed after the answer commits.
 REQ-0419: Only the module that raised a decision supersedes it, naming the replacement, and a superseded decision stays readable.
 
@@ -104,7 +104,7 @@ REQ-0419: Only the module that raised a decision supersedes it, naming the repla
 
 `grindstone.contracts.decisions`:
 - `Decision`: `id`, `project`, `kind`, `flags`, `scope` (`task`, `changeset`, `delivery` or `run` IDs), `context_hash`, `title`, `payload`, `recommendation` (`answer`, `reason`, `source`: `fixed`, `agent` or `advisor`), `state`, `raised_by`, `raised_at`.
-- `Answer`: `decision`, `answer`, `answered_by`, `channel` (`ui`, `api`, `vscode`, `plugin`), `context_hash_seen`, `at`.
+- `Answer`: `decision`, `answer`, `answered_by`, `channel` (`ui`, `api`, `vscode`, `plugin`), `context_hash_seen`, `client_key`, `at`.
 
 **Kernel decision kinds** (registered with SPEC-03; their eligibility classes are seeds owned by SPEC-15):
 
@@ -247,7 +247,7 @@ AC-0405-1: For a fixture lifecycle, a transition not in the table, or by a write
 AC-0406-1: Items created by apply are in their kind's initial state · verifies REQ-0406 · unit · `test_initial_state_on_apply`.
 AC-0407-1: Allocating `FND` IDs concurrently in one project yields distinct, increasing numbers; an imported ID that fails its pattern is refused with `id_invalid`, and one already used by another kind with `id_taken` · verifies REQ-0407 · integration · `test_id_allocation_and_validation`.
 AC-0408-1: `render` of a fixture revision contains the ledger header, `# N-3 — <title>`, each semantic field, and each reference as `[[ID]]` · verifies REQ-0408 · unit · `test_render_item_markdown`.
-AC-0409-1: A bundle of three valid fixture items becomes one ChangeDraft with source `operator`; a bundle with two invalid items is refused listing both items' errors; a bundle with a YAML object tag is refused · verifies REQ-0409 · unit · `test_bundle_import`.
+AC-0409-1: A bundle of three valid fixture items becomes one ChangeDraft with source `operator`; importing it again with the same client key returns that draft; a bundle with two invalid items is refused listing both items' errors; a bundle with a YAML object tag is refused · verifies REQ-0409 · unit · `test_bundle_import`.
 AC-0410-1: Drafts from each source record source, trust, bases and provenance, and a draft from intake has trust `untrusted` · verifies REQ-0410 · unit · `test_draft_records_source_and_trust`.
 AC-0411-1: Over generated graphs (property test), the walk lists exactly the current items outside the set with a `review` edge to a changed item, never a `notify` source as needing a verdict, and is a fixed point when every listed item has `unaffected` · verifies REQ-0411 · property · `test_walk_lists_review_dependents`.
 AC-0412-1: Importing a fixture bundle raises one open `approval` decision whose payload lists every revision and reached item; an intake draft's approval carries the `untrusted` flag · verifies REQ-0412 · integration · `test_import_raises_approval`.
@@ -256,7 +256,7 @@ AC-0414-1: Approving the imported bundle writes every revision, edge and initial
 AC-0414-2: Two ChangeSets on the same item, approved concurrently, apply one after the other; the second, with a moved base, is re-walked · verifies REQ-0414 · integration · `test_apply_serialized_per_project`.
 AC-0415-1: A ChangeSet whose base moved applies on its existing approval when the reached set is unchanged, and gets a new approval, with the old one superseded, when it changed · verifies REQ-0415 · integration · `test_moved_base_rewalks`.
 AC-0416-1: Raising a decision without a recommendation, or with a flag in its payload instead of from the kernel, is refused · verifies REQ-0416 · unit · `test_decision_needs_recommendation`.
-AC-0417-1: Answering a superseded decision fails `decision_superseded`; answering with a stale context hash fails `context_changed`; an accepted answer records answerer, channel and time · verifies REQ-0417 · unit · `test_answer_guards`.
+AC-0417-1: Answering a superseded decision fails `decision_superseded`; answering with a stale context hash fails `context_changed`; an accepted answer records answerer, channel and time; the same answer repeated with its client key returns the original result, and with another key fails `decision_closed` · verifies REQ-0417 · unit · `test_answer_guards`.
 AC-0418-1: Killed after an answer commits and before its continuation starts, the process on restart runs the continuation once; answering twice runs it once · verifies REQ-0418 · crash-and-resume · `test_continuation_exactly_once`.
 AC-0419-1: Superseding a decision from a module other than its raiser is refused; a superseded decision and its replacement are both readable · verifies REQ-0419 · unit · `test_only_raiser_supersedes`.
 

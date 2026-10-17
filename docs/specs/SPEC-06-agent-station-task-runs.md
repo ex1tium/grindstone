@@ -81,7 +81,7 @@ Scenarios: K1 steps 2–5 and 8.
 REQ-0601: The task lifecycle has the eight states of the Concepts tab, and one transition function in `work` is its only writer, refusing any transition not in section 5's table.
 REQ-0602: Readiness is computed, never stored: a queued task is ready when its inputs exist at their pinned revisions, no open decision blocks its scope, and a station of its tier is configured.
 REQ-0603: A task's need is matched to exactly one capability from the factories enabled in its project that offers the need in the task's mode, preferring the requesting factory's own capability; no candidate, or more than one, raises an escalation and creates no run.
-REQ-0604: A template run executes its steps in order; a `deliver` step sets the delivery target of the `task` step before it, and the template run is done when its last task is done.
+REQ-0604: A template run executes its steps in order; a `deliver` step sets the delivery target of the `task` step before it, and the template run is done when its last task is done; a template run started twice with the same client key is started once.
 REQ-0605: Before a run's first session is created, the run record holds a `RunManifest` with the pinned item revisions, capability and its hash, factory and version, agent preset, configured model, subject version, context-pack hash and the initial prompt as a blob; each turn records the model the host reported for it.
 REQ-0606: Each run has a fresh workspace prepared by its capability's workspace provider (writing) or from its subject (read-only), owned by the run's lane-slot agent user, and never shared with another run.
 REQ-0607: Each turn runs as a child workflow on its station's lane for the capability's workspace mode, holds one lane slot and its agent user for the turn only, and frees both when the turn ends.
@@ -151,7 +151,7 @@ The run lifecycle is `preparing → active → collecting → succeeded`, with `
 
 Exactly one remaining is the match. Otherwise the task is `blocked` with an `escalation` (`match_none` or `match_ambiguous`, recommendation `cancel`, reason naming the candidates). SPEC-17 adds the other filters and the project pin.
 
-**Templates (REQ-0604).** `work.start_template(project, template, args, by)` validates `args` against the template's schema and records `work.template_runs`. A `deliver` step's adapter becomes the preceding task's `output.delivery`. Each `task` step creates a task:
+**Templates (REQ-0604).** `work.start_template(project, template, args, by, client_key)` validates `args` against the template's schema and records `work.template_runs`, whose `client_key` is unique per project, so a repeated command returns the original run. A `deliver` step's adapter becomes the preceding task's `output.delivery`. Each `task` step creates a task:
 - **Inputs:** the closure binding resolves to pinned revisions: from an argument's item, follow the named edge types forward or inverted (for example, from `args.note`, follow `notes.cites`). Each revision is pinned at its current hash.
 - **Checks:** `evidence.plan_checks` (SPEC-08) checks make and prove against the matched capability.
 
