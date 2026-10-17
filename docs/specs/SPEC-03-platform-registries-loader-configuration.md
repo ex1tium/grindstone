@@ -57,7 +57,7 @@ Scenarios: K1 step 1 (a template step names a need, inputs and a check by anothe
 
 ## 4. Requirements
 
-REQ-0301: Registries hold every kind, edge type, need, capability, template, check method, subject kind, workspace provider, delivery adapter, decision kind, error code and event type by full namespaced name, and the kernel registers its `core` names before any factory loads.
+REQ-0301: Registries hold every kind, edge type, need, capability, template, check method, subject kind, subject resolver, workspace provider, delivery adapter, decision kind, error code and event type by full namespaced name, and the kernel registers its `core` names before any factory loads.
 REQ-0302: The loader discovers factories through the entry-point group `grindstone.factories`, reads each factory's `manifest.yaml` from its package with a safe YAML loader, validates it against the manifest schema, and registers all of its names or none.
 REQ-0303: A manifest that registers a name outside its namespace, registers a name already registered, or declares a factory SDK range the running SDK does not satisfy is refused.
 REQ-0304: A refused factory stays unloaded and is listed in the start-up report with the file, field and rule that failed; projects that enable it are paused; the kernel and every other factory still start.
@@ -165,7 +165,7 @@ Kinds are data only in M1 (DEC-0301). SPEC-04 owns what the fields mean at revis
 | Area | Contents |
 | --- | --- |
 | Declarations | `FactoryManifest`, `KindDecl`, `FieldDecl`, `EdgeDecl`, `CapabilityDecl`, `TemplateDecl`, `CheckMethodDecl`, and the reference contracts of SPEC-01 |
-| Ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`; SPEC-06 defines its contexts and `CollectOutcome`), `CheckMethod` (`build_job`, `interpret`; SPEC-08), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `publish_status`, `observe`; SPEC-08) |
+| Ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`; SPEC-06 defines its contexts and `CollectOutcome`), `SubjectResolver` (`materialize`, `read_file`; SPEC-08), `CheckMethod` (`build_job`, `environment`, `interpret`; SPEC-08), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `publish_status`, `merge`, `observe`; SPEC-08) |
 | Read services | `items.read(ctx, ref)` by pin, `blobs.open(ctx, hash)`, `storage.dir(ctx)` (a directory on `repos` private to the factory and project), `secrets.read(ctx, name)` |
 | Errors | `ErrorEnvelope` and the factory-registrable error codes |
 
