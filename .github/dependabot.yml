@@ -1,6 +1,9 @@
 # Dependabot proposes upgrades; each is a deliberate pull request that must
 # pass CI (ADR-01). A seven-day cooldown keeps brand-new releases out, matching
-# pnpm's minimumReleaseAge.
+# pnpm's minimumReleaseAge. Runtime lines (Node.js, Python, PostgreSQL) move
+# only by a deliberate change recorded in docs/m0/versions.md, so their
+# major (and, for Python, minor) versions are ignored here, along with
+# @types/node, which must match the Node.js runtime.
 version: 2
 
 updates:
@@ -19,6 +22,9 @@ updates:
     cooldown: { default-days: 7 }
     versioning-strategy: increase
     commit-message: { prefix: "build(deps)" }
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       node-minor-and-patch:
         update-types: [minor, patch]
@@ -28,12 +34,20 @@ updates:
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 7 }
     commit-message: { prefix: "build(deps)" }
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      - dependency-name: python
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: docker-compose
     directory: /
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 7 }
     commit-message: { prefix: "build(deps)" }
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
