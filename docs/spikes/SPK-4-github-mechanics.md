@@ -1,6 +1,6 @@
 # SPK-4 — GitHub mechanics
 
-Status: done, except experiment 2's Actions variant · Box: 1 day · Settles: Q-7; how the verification status gates merge (M1-02, ADR-27); how the delivery mode is detected and how Grindstone merges safely in unenforced mode (ADR-40)
+Status: done · Box: 1 day · Settles: Q-7; how the verification status gates merge (M1-02, ADR-27); how the delivery mode is detected and how Grindstone merges safely in unenforced mode (ADR-40)
 
 ## Why
 
@@ -35,9 +35,9 @@ If experiment 2 fails, a forged status could merge a pull request in enforced mo
 
 ## Report (17 October 2026)
 
-**Every experiment passed. Q-7 is confirmed and no fallback is needed.** One part is still open: experiment 2's GitHub Actions variant (below).
+**Every experiment passed. Q-7 is confirmed and no fallback is needed.**
 
-How it ran: `spk4/run.py` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (spike code, never merged), run by the operator on their own machine as the App `grindstone-dev-rootnode` (run `20261017T151254Z`, pull requests ex1tium/grindstone-testbed#2 to ex1tium/grindstone-testbed#9). Raw results: `spk4/results/` on that branch, once pushed. How to run it: `SPK-4-local-run.md`.
+How it ran: `spk4/run.py` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (spike code, never merged), run by the operator on their own machine as the App `grindstone-dev-rootnode` (run `20261017T151254Z`, pull requests ex1tium/grindstone-testbed#2 to ex1tium/grindstone-testbed#9). Raw results: `spk4/results/20261017T151254Z/` on that branch. How to run it: `SPK-4-local-run.md`.
 
 ### A cloud session cannot act as the App
 
@@ -49,7 +49,7 @@ A Claude Code cloud session reaches `api.github.com` only through its proxy. The
 | --- | --- | --- |
 | Setup | ok | The installation token was minted from the App key; the installation sees only the testbed. The ruleset's `required_status_checks` entry carries `integration_id` = the App ID, so the source was restricted without a first status. |
 | 1 | pass | No status: `blocked`. Pending: `blocked`. App success (creator `grindstone-dev-rootnode[bot]`, type `Bot`): merge with the head SHA accepted (`200`). The run's verdict line says FAIL because the state read `unstable`. That came from the run's own throwaway statuses: optional statuses left pending make `mergeable_state` read `unstable` rather than `clean`. The script now settles them. |
-| 2 | pass (operator account); Actions variant pending | A `success` on `grindstone/verification` set by the operator's own account (an admin, type `User`) leaves the pull request `blocked`, and the App's merge is refused: `405 Repository rule violations found. Required status check "grindstone/verification" was not set by the expected GitHub app.` The Actions variant could not run: GitHub has not registered `forge-status.yml` (`gh workflow run` answers 404 "not found on the default branch"). |
+| 2 | pass | Two forgeries of `success` on `grindstone/verification`: one by the operator's own account (an admin, type `User`), one by the repository's own workflow with its `GITHUB_TOKEN` (`github-actions[bot]`, type `Bot`). Either way the pull request stays `blocked`, and the App's merge is refused: `405 Repository rule violations found. Required status check "grindstone/verification" was not set by the expected GitHub app.` (QS-03) |
 | 3 | pass | After success, a new commit makes the pull request `blocked`. Merge with the old SHA: `409 Head branch was modified`. Merge with the new SHA and no status: `405 ... Required status check "grindstone/verification" is expected`. A status on the new head makes it `clean`. |
 | 4 | pass | After the base advances, the state is `behind` even with a success on the head, and merging is refused (`405`). `PUT /pulls/{n}/update-branch` (as the App) makes a new head, which is `blocked` until it gets its own status; then `clean`, and the merge succeeds. |
 | 5 | pass | GraphQL `enablePullRequestAutoMerge` (squash) arms auto-merge as the App, and `disablePullRequestAutoMerge` clears it (`autoMergeRequest: null`). Re-armed: with a success on the behind head it does not merge (`behind`), and it does not update the branch itself. After update-branch, with no status at the new head, it still waits. Once the new head has a status, it merges, merged by `grindstone-dev-rootnode[bot]`. |
@@ -62,7 +62,7 @@ A Claude Code cloud session reaches `api.github.com` only through its proxy. The
 
 ### What this settles
 
-- **The verification status gates merge, and only from the App.** On an enforced target, a status from anyone else, even an admin, does not count, and GitHub names the reason. The required check is pinned by `integration_id` in the ruleset.
+- **The verification status gates merge, and only from the App.** On an enforced target, a status from anyone else, whether an admin or the repository's own workflows, does not count, and GitHub names the reason. The required check is pinned by `integration_id` in the ruleset.
 - **Q-7, as decided.** With strict checks, a behind branch must be updated and verified again at the new head. Auto-merge waits for both, and it never updates the branch itself. So whoever delivers must call update-branch and then set a fresh status. Disarming works.
 - **ADR-40 is buildable as specified.** Mode detection is one call (`rules/branches/{branch}`); a `403`, or a missing App `integration_id`, means unenforced. In unenforced mode, a merge passing the verified SHA is refused after a concurrent push. Bypasses are visible through `merged_by`, commits with no pull request, and the activity API.
 - **Delivery's find-or-create** can look pull requests up by head branch across all states.
@@ -70,7 +70,8 @@ A Claude Code cloud session reaches `api.github.com` only through its proxy. The
 - **Limits**: a status description is at most 140 characters, and a context at most 255 (one more character is `422`).
 - **Pushing without hooks** works from a bare mirror and a private clone with the installation token (QS-06).
 
-### Still open
+### Side findings
 
-- **Experiment 2, Actions variant**: a workflow in the repository setting the status with its own `GITHUB_TOKEN` (QS-03). It is blocked until GitHub registers `forge-status.yml`: check Settings → Actions → General allows actions, then `gh workflow list -R ex1tium/grindstone-testbed`. If the workflow is still not listed, a pull request that touches the file registers it on merge. Then run `uv run spk4/run.py --only e2` and use the `gh workflow run` command at the pause. The admin-account result already shows that the source restriction holds against a non-App creator, so this run is expected to pass. A failure would trigger the fallback above.
-- The ruleset field `require_extra_approval_for_unattributed_changes: true`, which GitHub added on import, did not block any App merge in this run.
+- **Workflow registration.** A workflow file that reached the default branch while Actions were off stays unregistered (`GET /actions/workflows` is empty, and dispatch is `404`) even after Actions are enabled and other commits land. It registers only when a push changes the file itself. Pushing that change needs a person or a token with the Workflows permission, which the App does not have.
+- The ruleset field `require_extra_approval_for_unattributed_changes: true`, which GitHub added on import, did not block any App merge.
+- The runner gained `--merge <PR>`, which sets the App's status and merges, for changes the operator authors on the testbed.

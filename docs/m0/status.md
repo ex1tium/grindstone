@@ -10,19 +10,17 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 - M0-03 (partly): versions recorded (`docs/m0/versions.md`); spike plans in `docs/spikes/`.
 - M0-04 (partly): `ex1tium/grindstone-testbed` is public with the fixture project on `main`; the operator created the GitHub App (installed on the testbed only), imported the testbed ruleset, and set the cloud environment variables `GRINDSTONE_CLAUDE_OAUTH_TOKEN`, `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY_B64`.
 - Environment verified (17 October 2026): the four variables are set and the App key signs a JWT; the testbed's `main` rules require `grindstone/verification` from the App (`integration_id` matches the App ID), strict.
-- SPK-4 (17 October 2026, run by the operator as the App; report in `docs/spikes/SPK-4-github-mechanics.md`): all eleven experiments pass. Only the App's status satisfies the check (an admin's forged status is refused); a new head or a behind base needs a fresh status; Q-7 confirmed; delivery mode detectable through `rules/branches` (`403` when private on the free plan); merging with the verified SHA refuses a concurrent push; bypasses visible; 6 calls a poll, ETag 304s free, 5,000 calls an hour; pushes without hooks work. Open: experiment 2's Actions variant.
+- SPK-4 (17 October 2026, run by the operator as the App; report in `docs/spikes/SPK-4-github-mechanics.md`): all eleven experiments pass. Only the App's status satisfies the check (forgeries by an admin and by a workflow's own token are refused); a new head or a behind base needs a fresh status; Q-7 confirmed; delivery mode detectable through `rules/branches` (`403` when private on the free plan); merging with the verified SHA refuses a concurrent push; bypasses visible; 6 calls a poll, ETag 304s free, 5,000 calls an hour; pushes without hooks work.
 - SPEC-01 drafted (`docs/specs/`), with one proposed decision record (hashes omit defaulted fields); awaiting independent review.
 
 ## Next, in order
-1. **SPK-4 experiment 2, Actions variant** (small): once GitHub registers `forge-status.yml` on the testbed, the operator runs `uv run spk4/run.py --only e2` (see "Still open" in the report).
-2. **SPK-2 DBOS in FastAPI** (runs in a cloud session) and **SPK-1 host and Claude** (SPK-1 uses `GRINDSTONE_CLAUDE_OAUTH_TOKEN`).
-3. **SPK-5 cooperation**, after SPK-1.
-4. Remaining M0-04: runner toolchain image and the benchmark project generator; wire the testbed into CI.
-5. Independent review of SPEC-01; then SPEC-02 to SPEC-10 from the spike results.
+1. **SPK-2 DBOS in FastAPI** (runs in a cloud session) and **SPK-1 host and Claude** (SPK-1 uses `GRINDSTONE_CLAUDE_OAUTH_TOKEN`).
+2. **SPK-5 cooperation**, after SPK-1.
+3. Remaining M0-04: runner toolchain image and the benchmark project generator; wire the testbed into CI.
+4. Independent review of SPEC-01; then SPEC-02 to SPEC-10 from the spike results.
 
 ## Open with the operator
 - Anything that must act as the App runs on the operator's machine (decided 17 October 2026; `docs/spikes/SPK-4-local-run.md`): a cloud session's GitHub proxy never lets it act as the App. The same holds for M1 delivery.
-- Testbed Actions: `forge-status.yml` is not registered yet (SPK-4 experiment 2's Actions variant). Check Settings → Actions → General.
-- Push the SPK-4 results folder (`spk4/results/`) to the testbed branch, so the raw responses are kept.
+- Push the latest SPK-4 results (`spk4/results/`) to the testbed branch.
 - Both repositories are public (decided 17 October 2026), so Actions minutes are free and the `main` ruleset on `ex1tium/grindstone` can be enforced: import `.github/rulesets/grindstone-main.json` if not done. With both public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
 - Where the stable self-hosting instance runs: decided at the M1 review.
