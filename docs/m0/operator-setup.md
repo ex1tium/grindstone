@@ -8,17 +8,15 @@ Settings → Rules → Rulesets → New ruleset → **Import a ruleset**, and ch
 
 Also under Settings → General → Pull Requests: allow squash merging only, and turn on automatically deleting head branches.
 
-**Plan check:** rulesets on private repositories are enforced only on paid plans (GitHub Pro for a personal account). On the Free plan they are saved but not enforced.
+**Plan check:** on GitHub's free plans, rulesets on private repositories are saved but not enforced. This repository stays private, so its deliveries run in unenforced mode (ADR-40): CI still runs on every pull request, and Grindstone merges its own deliveries and reports any merge made outside it. Import the ruleset anyway; it takes effect if the plan or visibility ever changes.
 
 Settings → Code security: turn on Dependabot alerts and security updates, secret scanning and push protection.
 
 ## 2. Create the GitHub test repository (M0-04; needed by SPK-4)
 
-Create **private** `ex1tium/grindstone-testbed`, initialised with a README. Grindstone pushes to it, opens pull requests and sets statuses on it; it is never Grindstone's own repository, so tests cannot disturb real work (the dogfooding risk in the Roadmap).
+Create `ex1tium/grindstone-testbed` and make it **public**: the free plan enforces rulesets only on public repositories, and the testbed only ever holds the fixture project. (Done: created 17 October 2026; the fixture project is pushed from a cloud session.) Grindstone pushes to it, opens pull requests and sets statuses on it; it is never Grindstone's own repository, so tests cannot disturb real work (the dogfooding risk in the Roadmap).
 
-The fixture project inside it (a small Python package with tests annotated `@verifies AC-…`) is committed by the first M0-04 task; you only create the empty repository.
-
-Its ruleset: import `.github/rulesets/testbed-main.json`, then set the source of the required check `grindstone/verification` to the Grindstone App (after step 3). That source restriction is what makes the status unforgeable from inside the repository: a GitHub Actions workflow posting the same context must not satisfy it. SPK-4 verifies it. If your plan does not enforce rulesets on private repositories, make the testbed public; it only ever holds the fixture project.
+Its ruleset: import `.github/rulesets/testbed-main.json`, then set the source of the required check `grindstone/verification` to the Grindstone App (after step 3). That source restriction is what makes the status unforgeable from inside the repository: a GitHub Actions workflow posting the same context must not satisfy it. SPK-4 verifies it.
 
 Then attach the testbed to the Claude cloud environment (or start a session with it selected), so sessions can push the fixture project and run SPK-4.
 
@@ -35,7 +33,7 @@ Settings (your account) → Developer settings → GitHub Apps → New GitHub Ap
 | Account permissions | None |
 | Where can it be installed | Only on this account |
 
-Then generate a private key and install the App on **`ex1tium/grindstone-testbed` only**; it is added to `ex1tium/grindstone` at the end of M1, when Grindstone starts delivering its own tickets (M1-08). Keep these on the host that runs the spikes:
+Then generate a private key and install the App on **`ex1tium/grindstone-testbed` only**; it is added to `ex1tium/grindstone` at the end of M1, when Grindstone starts delivering its own tickets (M1-08). Keep these for step 5 (on a self-hosted machine they would be these files):
 
 ```
 secrets/github_app_id               # the numeric App ID
@@ -71,9 +69,10 @@ The names are prefixed so the tools themselves never pick them up implicitly; sp
 ## Checklist
 
 - [ ] Ruleset imported on `ex1tium/grindstone` from `grindstone-main.json`; squash-only merges; head branches auto-deleted
-- [ ] Plan enforces rulesets on private repositories (or the testbed is public)
 - [ ] Code security features on
-- [ ] `ex1tium/grindstone-testbed` created and attached to the cloud environment
+- [x] `ex1tium/grindstone-testbed` created and attached to this session
+- [ ] Testbed switched to public
+- [ ] Testbed attached to the cloud environment for future sessions
 - [ ] GitHub App created, key generated, installed on the testbed only
 - [ ] Testbed ruleset imported from `testbed-main.json`, check source set to the App
 - [ ] Cloud environment: token and key variables, network allow-list

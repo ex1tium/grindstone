@@ -1,4 +1,4 @@
-# Project Grindstone — Foundation v4.2
+# Project Grindstone — Foundation v4.3
 
 17 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
@@ -154,7 +154,7 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 | Measure | Definition | Initial target at MVP |
 | --- | --- | --- |
 | Delegation rate | Share of merged ticket PRs with no commit authored by a person on the branch | ≥ 60% on Grindstone's own repository |
-| Evidence integrity | Share of merges whose every criterion had fresh, independent, passing evidence at the merge commit | 100%, with zero merges bypassing the status |
+| Evidence integrity | Share of merges whose every criterion had fresh, independent, passing evidence at the merge commit | 100%; zero bypassing merges where the remote enforces the gate, and every bypass detected and counted where it does not (ADR-40) |
 | Regression catch | Share of broken proven criteria found by re-checks or the regression sweep before a person reports them | ≥ 90% |
 | Decision load | Decisions a person answers per merged ticket, and median wait for an answer | Baseline at M3; falling month over month once L2 is available (M5), with no tripwire trips caused by policy answers |
 | Lead time | Median time from specification approval to all its tickets merged | Baseline at M3; trend tracked |
@@ -375,7 +375,7 @@ Invariants are the rules every specification cites and every factory inherits. N
 | I-05 | Evidence is valid only for its input hashes, subject version and environment; freshness is computed, never stored | No freshness column; one freshness function | Property tests for freshness |
 | I-06 | Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it used | The run record is written before the session opens | Crash-and-resume tests |
 | I-07 | Scope expansion and content from outside the project need a person | `scope_expansion` and `untrusted` flags are class `never` | Decision service tests |
-| I-08 | Agents never deliver; delivery adapters deliver only verified subjects after a decision | Delivery credentials exist only in the control plane; the port checks evidence | Integration test with a fake remote |
+| I-08 | Agents never deliver; delivery adapters deliver only verified subjects after a decision; where the remote cannot enforce the gate, the adapter says so and reports every merge made outside it | Delivery credentials exist only in the control plane; the port checks evidence; the adapter observes the delivery mode (ADR-40) | Integration test with a fake remote in both modes |
 | I-09 | Credentials are split by container and purpose; the control plane never executes work content; nothing mounts the Docker socket | Compose file, images, secret scoping | Deployment lint in CI |
 | I-10 | Search results, mentions, consult answers and advisor output are suggestions only | They enter as context or `suggestion` decisions, never as revisions | Tool and decision tests |
 | I-11 | Every point that needs a person is a typed decision with a recommendation | The decision service is the only way to wait on a person | Contract tests |
@@ -457,6 +457,7 @@ The adversary is the work itself: agent output, code agents write and run, and c
 | Privilege escalation through tools | An agent asks for network access or a protected path | Default deny; a `permission` decision for anything outside the capability's grants | I-11 | M1-05 |
 | Runaway spend | Delegation loop, oversized context, stuck session | Depth and live-children caps; liveness timeout; provider quota signals park runs; optional project cap; cost visible per tree | I-17 | QS-10, QS-15 |
 | Event spoofing | A process forges a host event to end a run | HMAC-signed events with IDs and turn numbers; unknown or duplicate IDs ignored | — | M1-04 |
+| Merge outside Grindstone | Someone merges a Grindstone pull request in GitHub, or pushes to the default branch, where the ruleset is not enforced | Enforced mode: the remote refuses it. Unenforced mode: Grindstone merges itself with the head SHA it verified; `observe` reports any other merge as an `untrusted` `delivery_bypass` finding (ADR-40) | I-08 | M1-02 |
 | Container escape to the host | A malicious build escapes the runner container | Accepted residual risk at T1 for trusted repositories; T2 microVMs for untrusted code (R3); nothing mounts the Docker socket | I-09, I-20 | Deployment lint |
 
 **Accepted residual risks for the MVP.** Agents can read the model credential of their own station and use it with network egress; mitigated by per-provider spend limits, a rotation runbook, and per-run isolation at T2. A kernel-level container escape on T1 is out of scope; repositories with untrusted code wait for T2.
@@ -1320,7 +1321,9 @@ The result is a `git_commit` subject on the mirror; the worktree is discarded. C
 
 **Environment fingerprint.** The runner image digest plus the toolchain versions the project declares (runtime, package manager, lockfile hash). Changing the lockfile therefore stales test evidence.
 
-**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status that the repository ruleset requires for merge. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane.
+**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane.
+
+**Delivery modes** (ADR-40). The adapter observes, at project setup and before every delivery, whether the target branch's rules actually require the verification status from the Grindstone App. **Enforced:** GitHub itself refuses an unverified merge. **Unenforced** (for example, rulesets on a private repository on GitHub's free plans): Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified so a concurrent push fails the merge, and `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not come through a delivery, as a high-severity `untrusted` `delivery_bypass` finding. The mode is shown on the project and on every delivery card; a switch from enforced to unenforced raises an escalation before the next delivery.
 
 **Decisions and autonomy.** SDLC maps its decisions to eligibility classes and ships default L2 policy rules a project starts from:
 
@@ -1393,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Thirty-nine records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff.
+Forty records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1444,6 +1447,7 @@ Thirty-nine records cover every choice that is expensive to reverse. Each states
 | 37 | Limits bound runaway work; cost is recorded, never gating | Execution |
 | 38 | A consult holds the call open until it answers, under a ceiling | Execution |
 | 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
+| 40 | Delivery states whether the remote enforces the gate | Factories |
 
 ## Platform and runtime
 
@@ -1613,6 +1617,8 @@ Thirty-nine records cover every choice that is expensive to reverse. Each states
 
 #### ADR-27 — The SDLC factory owns git workspaces, copy-back and GitHub delivery
 
+**Status.** Amended by ADR-40 (delivery modes).
+
 **Decision.** Bare mirrors, worktrees, branches, copy-back path tiers, the CI-suite check method and the GitHub pull-request adapter are SDLC factory code behind kernel ports. The control plane commits with hooks disabled from private clones and is the only place that pushes, using a GitHub App installation token. Each delivery posts one verification status that the repository ruleset requires for merge. The workspace provider returns, with the subject, the extra checks its path policy requires and a permission request for each protected path, so path rules stay in the factory while the kernel enforces them. The kernel knows `git_commit` only as a subject kind.
 
 **Why.** Keeps the kernel free of git policy while giving code the strongest copy-back safety: agent work reaches the repository only as a commit the control plane made and the check station proved. **Rejected:** git handling in the kernel (every factory would inherit software assumptions); agents pushing directly (credentials in agent reach); a personal access token (broader than one installation).
@@ -1693,6 +1699,12 @@ Thirty-nine records cover every choice that is expensive to reverse. Each states
 
 **Why.** Native discovery uses each agent's own skill mechanism for the skills it always needs; inline return keeps mid-session loading uniform and fully recorded across Claude Code, Codex and later agents. **Rejected:** skills only inline (loses native behaviour for start skills); materializing into the workspace (configuration next to agent-writable files and repository content, against I-14); materializing the whole library natively (agents could use skills the run never records).
 
+#### ADR-40 — Delivery states whether the remote enforces the gate
+
+**Decision.** Amends ADR-27 and I-08. A delivery target is in one of two modes, observed by the adapter and never assumed. **Enforced:** the target branch's rules require the verification status with its source restricted to the Grindstone App, so the remote itself refuses an unverified merge. **Unenforced:** the remote cannot or does not require it — for example, rulesets on a private repository on GitHub's free plans. The adapter observes the mode at project setup and before every delivery, from the API that lists the rules in force on the target branch, and records each observation with its time; the mode is an observed fact, never configuration, and it is shown on the project and on every delivery card. In both modes the adapter opens the pull request and posts the verification status. In unenforced mode Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified, so a concurrent push fails the merge. `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not arrive through a delivery, as a high-severity `untrusted` `delivery_bypass` finding, counted against evidence integrity. Plain pull requests that touch no published file stay allowed (ADR-33) and count only against the governed share. A change from enforced to unenforced raises an escalation before the next delivery.
+
+**Why.** One operator on a free plan with private repositories is a core user, and Grindstone's own repository is one. Refusing to deliver there fails the product goal; silently promising a guarantee the remote does not give fails it worse. Grindstone-performed merges plus bypass detection keep evidence integrity measurable and every bypass visible. **Consequences.** In unenforced mode Grindstone detects bypass but cannot prevent it, and says so. The App needs no permission beyond contents write, already granted. SPK-4 settles how the mode is detected. **Rejected:** refusing unenforced targets (excludes the operator's own repository); treating every target as enforced (a false guarantee); requiring a paid plan (a cost the product should not impose on its first user).
+
 
 # Roadmap
 
@@ -1730,7 +1742,7 @@ Repository, CI and four empty services running; the unknowns that could change t
 A hand-written ticket becomes a verified pull request through every container and the skeleton SDLC factory, and Grindstone starts building itself.
 
 - [ ] M1-01: Live run: a ticket with acceptance criteria, imported from a file as a ChangeSet approved on a decision card, is matched by need to `sdlc.implementer` and executed by Claude Code on the operator's subscription in its own worktree; the SDLC workspace provider copies the work back into the mirror and commits with hooks disabled; after a `delivery` decision the `sdlc.github_pr` adapter pushes and opens the pull request.
-- [ ] M1-02: The pull request's verification status succeeds only when every criterion's tagged test passes on the check station at the subject commit against the ticket's current item hashes; a new head commit or a changed criterion sets it back to pending; the ruleset blocks merge until it succeeds.
+- [ ] M1-02: The pull request's verification status succeeds only when every criterion's tagged test passes on the check station at the subject commit against the ticket's current item hashes; a new head commit or a changed criterion sets it back to pending; on the test repository, whose ruleset is enforced, the ruleset blocks merge until it succeeds; on a repository whose ruleset is not enforced, the adapter detects the unenforced mode, merges only itself with the verified head SHA, and reports a merge made outside it as a `delivery_bypass` finding (ADR-40).
 - [ ] M1-03: With the scripted agent: an invalid report is refused with structured errors and fixed in the same turn; a turn without a report gets one corrective prompt and then fails `missing_report`; an `ask` to the operator parks the task, and its answer resumes it in a new session on the same workspace.
 - [ ] M1-04: Killing `grindstone` between each external action and its record — session, prompt, copy-out, push, pull request, status — and replaying duplicate host events resumes with no duplicate session, turn, blob, push, pull request or status.
 - [ ] M1-05: From `agent-host` and `runner` no GitHub, database or MCP signing credential is readable and a push to GitHub fails; nothing mounts the Docker socket; repository settings never reach a session; a hook written in a workspace never runs in `grindstone`; copy-back refuses protected paths and holds reviewed-tier paths for their reviewer; deployment and workspace mount lints (FF-05, FF-06) pass.
@@ -1794,7 +1806,7 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | SPK-1 Host, Claude and VS Code | 2 days | A host on `@ahpd/sdk` with the vendored ACP plugin runs a Claude Code session in a given workspace, as a different user from the host, on the subscription token; the session calls a stub kernel MCP server (FastMCP in FastAPI) with its own per-task token; a permission request is answered through the control API and refused from a browser client; VS Code attaches; the credential self-test, disabling repository settings, and behaviour on a host restart mid-turn are recorded (Q-1, Q-2, Q-6). Fallback: M1 drives the Claude ACP adapter through a minimal host behind the same control API and events; live sessions in the browser move to M4 |
 | SPK-2 DBOS in FastAPI | 2 days | DBOS in the FastAPI lifespan survives a kill during a step, a message wait, a child workflow and a scheduled run with no duplicate effects; idempotent messages; a concurrency-1 queue serializes work across projects; a parked workflow resumes exactly once after an application-version bump; a parent on the writing lane waiting on a child on the read-only lane does not deadlock |
 | SPK-3 Codex and pi | 1 day | Codex through its ACP adapter with an API key reaches an HTTP MCP server and runs read-only and workspace-write sandboxes; pi through its ACP adapter reaches the kernel MCP with a per-task token and reports on every turn; whether Codex's subscription login works headless in a container; how each discovers skills natively from a session configuration directory (Q-3, Q-4, Q-5) |
-| SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7) |
+| SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7); the delivery mode is detectable through the API on the public testbed (enforced) and on a private repository (unenforced); a merge with an expected head SHA fails after a concurrent push |
 | SPK-5 Cooperation mechanics | 2 days | With Claude Code and Codex: an MCP tool call held open with progress keepalives while a child task runs for 2, 10, 30 and 120 minutes — the client, server and model timeouts and how each is raised by configuration (Q-9); a session dropped mid-wait re-asking and joining the in-flight consult; the ceiling suspend; `load_skill` returning instructions inline and adding tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: for an agent whose call cannot be held open, consults park and resume |
 
 **Open questions.** The operator answered every open question at the M0 kickoff (17 October 2026). Answers marked *confirm* stand unless the named spike contradicts them; a contradiction is answered by a superseding record, defaulting to the recorded fallback.
@@ -1924,6 +1936,7 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | A reviewer marks items unaffected too readily | Every verdict needs a reason; affected evidence still goes stale mechanically; auditors see what a verdict stopped | M3-01 |
 | Prompt injection through external signals or analysed content | Fixed-code mapping with no agent reading first; untrusted content reaches only drafting capabilities; everything derived stays `untrusted` and needs a person | M5-03 |
 | The policy answers wrongly at higher autonomy | L1 by default; eligibility classes; always-asked flags; every answer revertible; the tripwire; L3 deferred | M5-04 |
+| On free plans the remote does not enforce the merge gate on private repositories | Delivery modes: Grindstone merges itself and reports every bypass as a finding; the mode is visible on every delivery (ADR-40) | M1-02 |
 | Dogfooding couples Grindstone's development to its own bugs | A manual path stays open (plain pull requests that touch no published file); the scripted agent and test repository are independent of Grindstone's own repository; a stable instance orchestrates | M1-08 |
 | The implementer weakens the tests it writes | Test reviewer as a required prover; protected and reviewed copy-back tiers; operator reviews pull requests below L3 | M1-05, M1-07 |
 | Ceremony drives the operator around the system, and intent rots | `/patch` for small changes; scope decisions instead of refused copy-backs; mentions notify; group verdicts; governed share is a success measure | M4-06, M3-01 |
@@ -2076,6 +2089,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
 | 4.2 | 17 October 2026 | M0 kickoff: open questions Q-1 to Q-11 answered by the operator; ADR-37 replaces budgets with limits (supersedes ADR-20), ADR-38 holds consults open until they answer under a ceiling, ADR-39 materializes start skills per session and returns `load_skill` bodies inline; QS-15 added; the task lifecycle table restated in text, since the diagram that held it was not reproduced; diagram placeholders replaced by captions; the export's duplicate title removed. This repository copy is the maintained source from this version on. |
 | 4.1 | 17 October 2026 | From an external review: delegating and asking the operator end the turn and free the lane (no writing-lane deadlock); the workspace provider returns a collect outcome with extra checks and permission requests, so path policy stays in the factory; budgets split into run limits and a per-unit tree budget, replacing a fixed fraction of the parent; blobs are rooted from the moment they are written; any kind may have a lifecycle and lifecycle state is never hashed; compact walking-skeleton specifications for M1. |
 | 4.0 | 17 October 2026 | First self-contained foundation: product, architecture with quality scenarios, threat and failure models and fitness functions, kernel concepts, component specifications, factories with the complete SDLC factory, 36 decision records, roadmap M0–M5 with 39 exit criteria and 27 specifications, and this playbook. |
