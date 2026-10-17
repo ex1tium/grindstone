@@ -126,6 +126,6 @@ The start-up self-test (`spk1/src/selftest.mjs`) refuses to start the session if
 - **Session records are kept outside the host.** The default store forgets everything on restart, which is what ADR-15 allows ("correctness never depends on a session surviving a restart"). Claude Code still keeps its own transcript in the session's `CLAUDE_CONFIG_DIR`, which a resume could use; not tested.
 - **The model may fall back during a session.** A refusal moved one session from Sonnet 5.5 to Sonnet 5 for the rest of the session. Runs should record the model of each turn from the events, not assume the one configured.
 
-### Proposed amendment to ADR-15: written as ADR-42 (foundation v4.5, proposed)
+### Proposed amendment to ADR-15: accepted as ADR-42 (foundation v4.5)
 
 ADR-15 says the host uses "a vendored, patched ACP agent plugin". The spike shows no patch is needed: `@ahpd/sdk` and `@ahpd/agent-acp` are used unmodified. The two Grindstone pieces are (1) a backend wrapper that adds the per-session kernel MCP server and token and builds each agent's environment and user, and (2) the vendored plugin as a launcher in front of the unmodified `claude-agent-acp` that enforces Grindstone's Claude Code options and runs the credential self-test. The proposal is to supersede the words "vendored, patched ACP agent plugin" with "a vendored launcher in front of the unmodified ACP agent, and a backend wrapper", and to change Q-1's answer to match. That needs a decision record (append-only) when SPEC-05 is written.

@@ -553,7 +553,7 @@ An item is the unit of intent and knowledge: a requirement, a design decision, a
 | **Kind** | A namespaced name, `namespace.name` (`core.principle`, `sdlc.requirement`, `re.claim`). Each kind is a flat Pydantic model registered by the kernel or by one factory, declaring its fields, its references with cardinality, its ID prefix and the edge types it takes part in. No inheritance between kinds |
 | **Identity** | A stable ID, `PREFIX-n`, unique within a project and typed per kind (`ReqId`, `ClaimId`). IDs never change and are never reused; titles may change |
 | **Fields** | Semantic fields are hashed and drive freshness; presentation fields (display order, editorial notes) are not. A change to a presentation field never makes anything stale |
-| **Hash** | SHA-256 over the RFC 8785 canonical JSON of the semantic fields, with text normalised to NFC and LF line endings, so every implementation and every round trip agrees; a field at its declared default is left out, and the hash is written `sha256:<hex>` (ADR-44, proposed) |
+| **Hash** | SHA-256 over the RFC 8785 canonical JSON of the semantic fields, with text normalised to NFC and LF line endings, so every implementation and every round trip agrees; a field at its declared default is left out, and the hash is written `sha256:<hex>` (ADR-44) |
 | **References** | Three sources, all derived from content and never edited separately: typed reference fields (a criterion *verifies* a requirement), mentions `[[ID]]` and embeds `![[ID]]`. A revision with an unresolved reference is refused. References may point at any kind whose factory is enabled in the project |
 | **Edge types** | Registry entries declaring endpoints, an inverse name, whether the edge belongs to a check's dependency set, and an impact rule: **review** (a change marks the source for a verdict), **notify** (the source is told; no verdict), **render** (embedded text re-renders). Typed dependency edges use review; mentions notify; embeds render (ADR-09) |
 | **Blobs** | An item may reference blobs by hash, media type and size; the blob hash is part of the item's semantic fields |
@@ -1057,7 +1057,7 @@ One PostgreSQL database (ADR-02). Each module owns one Postgres schema named aft
 
 **Compatible changes** are additive: new optional or defaulted fields, new kinds, new states that old readers can ignore, new tools. The schema diff in CI (FF-03) classifies every change and fails an incompatible one without a version bump and an upgrade step.
 
-**Hashing contract.** Semantic hashes are SHA-256 over RFC 8785 canonical JSON of semantic fields with NFC-normalised text and LF line endings; a semantic field equal to its declared default is omitted, changing a semantic default is a breaking change, and hashes are written `sha256:<hex>` (ADR-44, proposed). Golden test vectors live in `contracts` and are run by every implementation that hashes — Python and TypeScript.
+**Hashing contract.** Semantic hashes are SHA-256 over RFC 8785 canonical JSON of semantic fields with NFC-normalised text and LF line endings; a semantic field equal to its declared default is omitted, changing a semantic default is a breaking change, and hashes are written `sha256:<hex>` (ADR-44). Golden test vectors live in `contracts` and are run by every implementation that hashes — Python and TypeScript.
 
 ## Error model and configuration
 
@@ -1396,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty-four records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 (from the M0 spike results, SPK-1 and SPK-5) and ADR-44 (from SPEC-01) are **Proposed**, and bind once the operator approves them.
+Forty-four records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1498,7 +1498,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-08 — Items are namespaced, typed and hashed; the kernel defines five kinds
 
-**Status.** Amended by ADR-44 (defaults omitted from the hash), proposed.
+**Status.** Amended by ADR-44 (defaults omitted from the hash).
 
 **Decision.** An item is a typed record with a stable ID, a kind in a namespace (`core.*`, `sdlc.*`, `re.*`), fields marked semantic or presentation, typed references, mentions `[[ID]]` and embeds `![[ID]]`. Its semantic hash is SHA-256 over RFC 8785 canonical JSON of the semantic fields after NFC and LF normalisation. Revisions are immutable and carry provenance. Artifacts are containers with a header item; any kind may declare a lifecycle — a transition table with one writer per transition — whose state is stored beside the item and never hashed. The kernel defines `core.principle`, `core.learning`, `core.finding`, `core.observation` and `core.interface`.
 
@@ -1544,7 +1544,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-15 — Grindstone runs its own thin AHP host; agents connect over ACP
 
-**Status.** Amended by ADR-42 (no patch; a launcher and a backend wrapper), proposed.
+**Status.** Amended by ADR-42 (no patch; a launcher and a backend wrapper).
 
 **Decision.** All agent work runs as AHP sessions on a host built on `@ahpd/sdk`, with a vendored, patched ACP agent plugin; agents connect over ACP and run as child processes under their own Unix user. The control plane drives sessions through a small typed control API that is idempotent on client keys, and receives HMAC-signed, at-least-once events with event IDs and turn numbers. Permission requests are answered only through the control API, from their decision. Steering prompts from the UI or VS Code are recorded but never end a run. Correctness never depends on a session surviving a restart.
 
@@ -1702,7 +1702,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-39 — Skills are materialized per session outside the workspace and returned inline
 
-**Status.** Amended by ADR-43 (skill tools listed from session start), proposed.
+**Status.** Amended by ADR-43 (skill tools listed from session start).
 
 **Decision.** At session start the agent host materializes the skills a capability loads at start, read-only, into that session's private configuration directory outside the workspace — in the location the agent discovers skills from natively — and records them in the context pack. `load_skill` for any other skill in the capability's library returns the skill's instructions inline as the tool result and adds its declared tools, which works with every agent whether or not it discovers skills natively, and is recorded on the run. Skills, settings and hooks shipped inside a repository or workspace are still never loaded (ADR-18), and nothing materialized is reachable from the workspace or the copy-back (I-14).
 
@@ -1723,7 +1723,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-42 — The agent host uses its packages unmodified, behind a launcher and a backend wrapper
 
-**Status.** Proposed, from SPK-1; binds once the operator approves it.
+**Status.** Accepted on 17 October 2026, from SPK-1.
 
 **Decision.** Amends ADR-15. The agent host uses `@ahpd/sdk`, `@ahpd/agent-acp` and each agent's ACP adapter unmodified. Grindstone adds two pieces of its own. **A backend wrapper** around the ACP backend creates each session's agent with that session's environment, Unix user and kernel MCP server — an HTTP server entry with the per-task bearer token in its headers — read from the control API's own session record, never from session configuration an AHP client can read. **A vendored launcher** in front of each agent's ACP adapter runs the credential self-test (ADR-18) and merges Grindstone's per-session agent options into every session it opens — for Claude Code, every settings source off — so no repository configuration reaches a session. The host is given a people directory, because the AHP SDK checks a client's grants only when it has one; a viewer is never granted the answer to a permission request.
 
@@ -1731,7 +1731,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-43 — A skill's tools are listed from session start and refused until the skill is loaded
 
-**Status.** Proposed, from SPK-5; binds once the operator approves it.
+**Status.** Accepted on 17 October 2026, from SPK-5.
 
 **Decision.** Amends ADR-39. `load_skill` still returns the skill's instructions inline and is recorded on the run. The tools that the skills in a capability's library declare are listed on the kernel MCP surface from session start, and the kernel refuses a call to a skill's tool until that skill is loaded in the run, with the structured error `skill_not_loaded` naming the skill to load. The tool list a session sees never changes after it starts.
 
@@ -1739,7 +1739,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-44 — Semantic hashes omit fields at their default
 
-**Status.** Proposed, from SPEC-01 (section 6); binds once the operator approves it.
+**Status.** Accepted on 17 October 2026, from SPEC-01 (section 6).
 
 **Decision.** Amends ADR-08 and the hashing contract. A semantic field whose value equals its declared default is omitted from the canonical form before hashing. Changing a semantic field's default is a breaking change under the schema compatibility check (FF-03), with a version bump and an upgrade note that says how stored hashes are treated. Semantic hashes are written with their algorithm, `sha256:<64 lowercase hex>`.
 
@@ -2129,7 +2129,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
-| 4.5 | 17 October 2026 | Proposed, awaiting the operator's approval: ADR-44 (semantic hashes omit fields at their default, hashes written `sha256:<hex>`; amends ADR-08 and the hashing contract; from SPEC-01, carried by its first review); and, from the M0 spikes, ADR-42 (the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher; amends ADR-15; resolves Q-1) and ADR-43 (a skill's tools are listed from session start and refused until it is loaded; amends ADR-39). The agent-host component, the skills concept, the glossary's hash, the hashing contract, Q-1, Q-5 and the risk table follow. |
+| 4.5 | 17 October 2026 | Accepted by the operator: ADR-44 (semantic hashes omit fields at their default, hashes written `sha256:<hex>`; amends ADR-08 and the hashing contract; from SPEC-01, carried by its first review); and, from the M0 spikes, ADR-42 (the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher; amends ADR-15; resolves Q-1) and ADR-43 (a skill's tools are listed from session start and refused until it is loaded; amends ADR-39). The agent-host component, the skills concept, the glossary's hash, the hashing contract, Q-1, Q-5 and the risk table follow. |
 | 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
 | 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
 | 4.2 | 17 October 2026 | M0 kickoff: open questions Q-1 to Q-11 answered by the operator; ADR-37 replaces budgets with limits (supersedes ADR-20), ADR-38 holds consults open until they answer under a ceiling, ADR-39 materializes start skills per session and returns `load_skill` bodies inline; QS-15 added; the task lifecycle table restated in text, since the diagram that held it was not reproduced; diagram placeholders replaced by captions; the export's duplicate title removed. This repository copy is the maintained source from this version on. |
