@@ -30,20 +30,30 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 
   Every M1 exit criterion maps to acceptance criteria in the specifications the spec map assigns, and every requirement has at least one acceptance criterion and one ticket. New package versions are recorded in `docs/m0/versions.md` under "Resolved for the M1 specifications".
 
+- M1 specifications reviewed (17 October 2026) by a session that wrote none of them. The results are in `docs/specs/reviews/`, starting with `M1-specifications-review-1.md`: the summary, cross-cutting findings X1–X8, and the judgments on the author's four questions.
+  - SPEC-01 revision 1 closes all nine review 1 findings; approve after minor changes (`SPEC-01-review-2.md`).
+  - SPEC-05, SPEC-07 and SPEC-10: approve after minor changes.
+  - SPEC-02, SPEC-03 (with its architecture review), SPEC-04, SPEC-06, SPEC-08 and SPEC-09: changes required.
+  - Blocking themes:
+    - four module-map violations (X1);
+    - FF-07, FF-08 and FF-09 built by no ticket (X2);
+    - idempotency keys under `fork` (SPEC-02);
+    - a lost update on a moved base (SPEC-04);
+    - run and slot affinity, and a suspended run state (SPEC-06);
+    - the status-post key (SPEC-08);
+    - a symlink escape at collect, and a test reviewer that cannot see the base (SPEC-09);
+    - SDK contexts, the delivery-port shape and order-dependent loading (architecture review).
+  - Two records are proposed: delivery-port operations (amends ADR-26) and dependency currency (amends ADR-01, for TypeScript 6 in `web/`).
+
 ## Next, in order
-1. **Review, in a session that wrote none of them.** The playbook allows one pass over all ten.
-   - **SPEC-01:** confirm that revision 1 closes every finding of review 1. That session both reviewed and revised it, so this check stands in for an independent one.
-   - **SPEC-02 to SPEC-10:** run the validation checklist. SPEC-03 also needs the independent architecture review the playbook requires for a specification that touches the SDK. SPEC-06 and SPEC-08 define SDK ports too.
-   - **Points the author asks the reviewer to judge:**
-     - Playbook rule 6 says a new dependency is proposed as a decision record. SPEC-01's precedent records dependencies as specification decisions with primary-source pins (checklist item 13). Does any new one need a record: SQLAlchemy as a direct dependency, PyYAML, argon2-cffi, PyJWT with cryptography, Playwright, TypeScript 6 in `web/`?
-     - M1 thinnings of foundation text that is not an ADR:
-       - in M1 a factory is enabled by the operator's configuration command, not a `scope` decision (SPEC-03, OQ-0301);
-       - approval verdicts are `unaffected` only (SPEC-04, DEC-0402);
-       - a task is done once its delivery is delivered, before merge (SPEC-08, DEC-0805).
-     - The spec-level dependency between SPEC-06 and SPEC-08 is acyclic only per module: `stations` ← `evidence` ← `work`.
-     - SPEC-05's root entrypoints, which copy 0600 secrets into each service user's tmpfs (DEC-0501).
-2. **Operator approval** of the ten, and of any records the review proposes. Then the tickets in each specification's section 7 are ready to break down.
-3. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+1. **Revise SPEC-01 to SPEC-10** from the review files, blocking findings first. X1 and X2 touch several specifications at once. Split SPEC-06 into two parts, `stations` and the host core, then `work` (summary, question 3).
+2. **Operator decisions:**
+   - the two proposed records;
+   - the ownership-table amendments (X3);
+   - the editorial foundation alignments (X7);
+   - whether playbook rule 6 is reworded for dependencies (summary, question 1).
+3. **Confirmation pass** on the blocking findings, then **operator approval** of the ten. Then the tickets in each specification's section 7 are ready to break down.
+4. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
 - **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
