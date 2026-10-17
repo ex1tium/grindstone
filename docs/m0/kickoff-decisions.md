@@ -1,6 +1,6 @@
 # M0 kickoff decisions
 
-Answers from the operator on 17 October 2026 to the open questions in Foundation v4.1 and to the Step 1 scaffold choices. Choices that change the foundation are applied to it in the v4.2 edit and recorded as new decision records. This file is the record until that edit lands.
+Answers from the operator on 17 October 2026 to the open questions in Foundation v4.1 and to the Step 1 scaffold choices. Choices that change the foundation are applied in Foundation v4.2 (ADR-37, ADR-38, ADR-39 and the open-questions table); the foundation is authoritative, and this file keeps the kickoff answers and the scaffold choices together in one place.
 
 ## Scope and governance
 
