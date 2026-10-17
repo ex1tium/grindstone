@@ -2,7 +2,7 @@
 # credentials only; never a control-plane credential (I-09). M0 serves health
 # only; agents as their own Unix users arrive with SPEC-05 and SPEC-06.
 
-FROM node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315 AS runtime
+FROM node:26.11.1-trixie-slim@sha256:193fe51b64e77981119c98c2002c9e32a70e2f006fb4d25068ce0558998917f0 AS runtime
 RUN groupadd --system --gid 10100 gs-workspaces \
  && groupadd --system --gid 10002 gs-host \
  && useradd --system --uid 10002 --gid gs-host --groups gs-workspaces \
