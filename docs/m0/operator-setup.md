@@ -59,7 +59,7 @@ In the environment's settings (the cloud environment menu in the session's title
 | --- | --- | --- |
 | Environment variable `GRINDSTONE_CLAUDE_OAUTH_TOKEN` | The subscription token from step 4 | SPK-1, SPK-5 |
 | Environment variable `GRINDSTONE_OPENAI_API_KEY` | The fallback key from step 4 | SPK-3, SPK-5 |
-| Environment variables `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY` | From step 3 (the key's PEM text) | SPK-4 |
+| Environment variables `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY_B64` | From step 3; the key is the `.pem` file base64-encoded on one line (`base64 -w0 key.pem` on Linux, `base64 -i key.pem` on macOS), because multi-line values do not survive every settings form | SPK-4 |
 | Network access | Allow `api.openai.com`, `auth.openai.com` and `chatgpt.com` (Codex), `github.com` and `api.github.com`, `ghcr.io`, `mirror.gcr.io`, `nodejs.org` | SPK-3, SPK-4, the hook |
 
 The names are prefixed so the tools themselves never pick them up implicitly; spike code passes each one explicitly to the one process that needs it, mirroring how the containers scope secrets.
@@ -71,7 +71,7 @@ The names are prefixed so the tools themselves never pick them up implicitly; sp
 - [ ] Ruleset imported on `ex1tium/grindstone` from `grindstone-main.json`; squash-only merges; head branches auto-deleted
 - [ ] Code security features on
 - [x] `ex1tium/grindstone-testbed` created and attached to this session
-- [ ] Testbed switched to public
+- [x] Testbed switched to public
 - [ ] Testbed attached to the cloud environment for future sessions
 - [ ] GitHub App created, key generated, installed on the testbed only
 - [ ] Testbed ruleset imported from `testbed-main.json`, check source set to the App
