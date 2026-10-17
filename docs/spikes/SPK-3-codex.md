@@ -1,6 +1,8 @@
 # SPK-3 — Codex and pi
 
-Status: planned · Box: 1 day · Settles: Q-3, Q-4, Q-5 (Codex part)
+Status: deferred until the operator adds a second provider (ADR-41) · Box: 1 day · Settles: Q-3, Q-4, Q-5 (Codex part)
+
+The plan below is kept for when it runs.
 
 ## Why
 

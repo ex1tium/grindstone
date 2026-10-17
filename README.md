@@ -33,7 +33,7 @@ A modular monolith with a domain-neutral **kernel** and plug-in **factories**. S
 | Container | Role |
 | --- | --- |
 | `grindstone` | Kernel, factories, DBOS workflows, REST API and static UI, kernel MCP server, delivery adapters. Holds all authority and credentials. |
-| `agent-host` | Thin AHP host on `@ahpd/sdk`; runs Claude Code, then Codex, over ACP. Holds model credentials only. |
+| `agent-host` | Thin AHP host on `@ahpd/sdk`; runs Claude Code over ACP (further agents by configuration). Holds model credentials only. |
 | `runner` | Runs mechanical checks on a materialized subject, one job at a time, with no credentials. |
 | `postgres` | The only store of records. |
 

@@ -4,7 +4,7 @@ Status: planned · Box: 2 days · Settles: Q-9 configuration under ADR-38; `load
 
 ## Why
 
-ADR-38 holds a consult's `ask` call open until the consult answers, under a ceiling (seed 2 hours), with MCP progress notifications as keepalives and each agent's client tool timeout raised by configuration. This spike measures whether that holds for Claude Code and Codex, and what to configure.
+ADR-38 holds a consult's `ask` call open until the consult answers, under a ceiling (seed 2 hours), with MCP progress notifications as keepalives and each agent's client tool timeout raised by configuration. This spike measures whether that holds for Claude Code, and what to configure; each further agent repeats it when added (ADR-41).
 
 ## Setup
 
@@ -12,7 +12,7 @@ The SPK-1 host and stub kernel MCP server, extended with an `ask` tool whose ans
 
 ## Experiments
 
-1. **Long open call.** `ask` answers after 2, 10, 30 and 120 minutes, with progress notifications every 30 seconds. For each agent, record the client-side MCP tool timeout and how to raise it by configuration, whether progress notifications reset it, any server or proxy idle timeout, and whether the model itself abandons the call. *Pass:* with configuration, both agents receive the 120-minute answer in the open call.
+1. **Long open call.** `ask` answers after 2, 10, 30 and 120 minutes, with progress notifications every 30 seconds. For each agent, record the client-side MCP tool timeout and how to raise it by configuration, whether progress notifications reset it, any server or proxy idle timeout, and whether the model itself abandons the call. *Pass:* with configuration, Claude Code receives the 120-minute answer in the open call.
 2. **Without keepalives.** Repeat at 10 minutes with no progress notifications. Records how much the keepalives matter.
 3. **Dropped session, single-flight join.** Kill the session 5 minutes into a 30-minute consult; start a new session on the same workspace and ask the same question. *Pass:* the second ask joins the in-flight consult; one consult run in total; the answer arrives once.
 4. **Ceiling.** Set the ceiling to 5 minutes and the consult to 10. *Pass:* at 5 minutes the call returns `consult_ceiling`, the turn suspends with outcome waiting, and the answer at 10 minutes resumes the run in a new session with the answer in context.

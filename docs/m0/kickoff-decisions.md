@@ -17,8 +17,8 @@ Answers from the operator on 17 October 2026 to the open questions in Foundation
 | --- | --- | --- |
 | Q-1 | Vendored, patched ACP agent plugin | No |
 | Q-2 | AHP 1.0, accepting 0.9 clients; VS Code attaches as a remote agent host with the token | No |
-| Q-3 | Codex: SPK-3 tries subscription login headless; API key is the configuration-only fallback (mirrors Claude) | **Yes** |
-| Q-4 | Codex sandbox mode through Codex's own configuration file, supplied by the capability | No |
+| Q-3 | Codex: SPK-3 tries subscription login headless; API key is the configuration-only fallback (mirrors Claude). **Later deferred** with SPK-3: Claude only for now (ADR-41) | **Yes** |
+| Q-4 | Codex sandbox mode through Codex's own configuration file, supplied by the capability. Deferred with SPK-3 (ADR-41) | No |
 | Q-5 | Skills are materialized into an agent-specific folder in the workspace before the session starts; `load_skill` returns skill bodies inline for any agent that cannot load workspace skills. Materialized skills are read-only to the agent and refused at copy-back (I-14) | **Yes** |
 | Q-6 | FastMCP mounted in FastAPI, bearer token checked per request | No |
 | Q-7 | Auto-merge waits for the branch update and a fresh status at the new head | No |

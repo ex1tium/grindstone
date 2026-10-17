@@ -1,4 +1,4 @@
-# Project Grindstone — Foundation v4.3
+# Project Grindstone — Foundation v4.4
 
 17 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
@@ -147,7 +147,7 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 
 ## MVP outcome and success measures
 
-**The MVP is done when** an operator can take a new or an existing GitHub repository from an idea to merged pull requests through Grindstone — discovery, planning, breakdown, execution by Claude Code or Codex with specialists consulted and proving as needed, verification and merge — where every merged change traces to approved requirement revisions with fresh, independent evidence, every change of intent was shown in full before it applied, and the operator's time goes to decisions rather than supervising sessions; **and** the kernel has been shown to carry a second, code-free factory with no change. Grindstone builds itself from the end of M1, so its own repository is the first and hardest test project.
+**The MVP is done when** an operator can take a new or an existing GitHub repository from an idea to merged pull requests through Grindstone — discovery, planning, breakdown, execution by Claude Code, with further agents added by configuration, with specialists consulted and proving as needed, verification and merge — where every merged change traces to approved requirement revisions with fresh, independent evidence, every change of intent was shown in full before it applied, and the operator's time goes to decisions rather than supervising sessions; **and** the kernel has been shown to carry a second, code-free factory with no change. Grindstone builds itself from the end of M1, so its own repository is the first and hardest test project.
 
 **Success measures.** Grindstone computes each from its own records. Targets are initial hypotheses, confirmed or reset at the M3 review from measured baselines (Q-8).
 
@@ -170,7 +170,7 @@ Every term the set uses with a specific meaning. Specifications use these words 
 
 | Term | Meaning |
 | --- | --- |
-| ACP | Agent Client Protocol: how the agent host talks to each agent runtime (Claude Code, Codex) |
+| ACP | Agent Client Protocol: how the agent host talks to each agent runtime (Claude Code in the MVP; others by configuration) |
 | Agent host | The process on an agent station that runs agent sessions; built on `@ahpd/sdk` |
 | AHP | Agent Host Protocol: how the UI and VS Code attach to live agent sessions |
 | Artifact | A container kind with one header item and member items, such as a specification |
@@ -262,7 +262,7 @@ Generality ranks last on purpose: when making the kernel more general would make
 | One operator, self-hosted on one machine with Docker Compose | ADR-01, ADR-36 |
 | Python for the control plane, kernel and factories; TypeScript only for the agent host and the UI | ADR-01, ADR-06, ADR-15 |
 | PostgreSQL holds every record; one content-addressed volume holds files; DBOS Transact runs every workflow | ADR-02, ADR-03, ADR-04 |
-| Agents run behind an AHP host over ACP and reach Grindstone only through MCP; Claude Code first, then Codex | ADR-15, ADR-16, ADR-18 |
+| Agents run behind an AHP host over ACP and reach Grindstone only through MCP; Claude Code is the only real agent until the operator adds another | ADR-15, ADR-16, ADR-18, ADR-41 |
 | The UI is a static SvelteKit app; VS Code and the operator plugin use the same API | ADR-06 |
 | GitHub is the only git host and the SDLC factory's only delivery target | ADR-27 |
 | Every dependency is the latest stable release, pinned exactly; images by digest; upgrades are deliberate commits that pass CI; versions are resolved at M0 from primary sources | ADR-01 |
@@ -300,7 +300,7 @@ Grindstone runs on one host the operator controls. Everything it trusts is insid
 | --- | --- | --- | --- | --- |
 | Operator | Commands, decision answers, edits to intent, steering prompts; views of every record and live session | Both | Operator login (password + session); per-client tokens for VS Code and the plugin | Trusted |
 | GitHub | Pushes, pull requests, verification status, comments — out. Repository state, PR state, review comments, issues, check results — in | Both | GitHub App installation token, held only by the control plane | Content coming in is untrusted |
-| Model providers | Prompts and tool results out; model output in | Both | Claude subscription token or API key; OpenAI API key — held by the agent station, readable by agents | Output is untrusted work content |
+| Model providers | Prompts and tool results out; model output in | Both | Claude subscription token or API key (keys for further providers when added) — held by the agent station, readable by agents | Output is untrusted work content |
 | Package registries | Dependency downloads for builds and tests | In | None | Untrusted; reached only from stations |
 
 Nothing else is contacted. Later factories add their own external parties (a tracker, a fab house) only through delivery adapters and station toolboxes, each declared in the factory manifest and granted per project.
@@ -583,7 +583,7 @@ A capability is a specialist: everything the kernel needs to start an agent that
 | `id` | Namespaced name: `sdlc.implementer`, `sdlc.security_reviewer`, `re.analyst` |
 | `version` | Bumped on any change; the capability's hash is recorded on every task run (I-06) |
 | `prompt` | The specialist's instructions, as a file in the factory |
-| `agent` | Agent runtime and model: preset (`claude`, `codex`, `scripted`), model, effort |
+| `agent` | Agent runtime and model: preset (`claude`, `scripted`; others when added, ADR-41), model, effort |
 | `skills` | The **library** of skills this specialist may load, and the subset loaded at start. Loading anything outside the library is refused |
 | `toolbox` | The station image it needs, and allow-listed tool servers it may use — local stdio processes on its station, holding no secrets |
 | `workspace` | `write` (a writable workspace for making) or `read_only` (a checkout at a subject version, for reviewing and consulting) |
@@ -1188,7 +1188,7 @@ The one rule every factory shares is that nothing grades itself (I-15, ADR-12). 
 | Prover — judgement | A different capability, `review` method, read-only | Read-only copy and pinned items | Structured verdicts as evidence | Yes |
 | Prover — person | Operator, through `manual_check` | — | Verdict and attachments | Yes |
 
-**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer on a different model family from the author and implementer by default.
+**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer on a different model from the author and implementer, in a fresh read-only session, and on a different model family once a second agent is configured (ADR-41).
 
 **Tests written by the maker.** In SDLC the implementer writes tests, and tests are the main evidence. The rule handles this in two steps: the **test reviewer** (a prover) checks that each added or changed test verifies its criterion and was not weakened — a weakened or deleted test fails that check — and the tests then run on the check station against the copied-back commit. Implementation and its proof stay separate even though one agent typed both.
 
@@ -1273,16 +1273,16 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 | `sdlc.implementer` | `sdlc.implement` · delegate | write, git worktree | No | Claude Code | M1 |
 | `sdlc.test_reviewer` | `sdlc.review.tests` · check | read-only | Yes | Claude Code | M1 |
 | `sdlc.spec_author` | `sdlc.specify` · delegate | write, items only | No | Claude Code | M2 |
-| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code; Codex from M3 | M2 |
+| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code, on a different model from the spec author | M2 |
 | `sdlc.impact_reviewer` | `core.review.impact` · check | read-only | Yes | Claude Code | M3 |
-| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Codex | M3 |
+| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Claude Code, on a different model from the implementer | M3 |
 | `sdlc.security_reviewer` | `sdlc.review.security` · check, consult | read-only | Yes | Claude Code | M3 |
 | `sdlc.discoverer` | `sdlc.discover` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.planner` | `sdlc.breakdown` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.advisor` | `core.advise` · consult | read-only | No | Claude Code | M4 |
 | `sdlc.repairer` | `sdlc.repair` · delegate | write, git worktree | No | Claude Code | M5 |
 
-**Independence.** The auditor and the code reviewer default to a different model family from the author and the implementer. This is SDLC policy above make/prove; a project may relax it only by a `principle`-flagged decision.
+**Independence.** The auditor and the code reviewer run on a different model from the author and the implementer, in a fresh read-only session that shares none of their context; once a second agent is configured they default to a different model family (ADR-41). This is SDLC policy above make/prove; a project may relax it only by a `principle`-flagged decision.
 
 **Skills.** `sdlc.repo-conventions` (generated by `/init`), `sdlc.security-basics`, `sdlc.testing-patterns`, `sdlc.migration-safety`, `sdlc.api-design`.
 
@@ -1396,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced.
+Forty-one records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1425,7 +1425,7 @@ Forty records cover every choice that is expensive to reverse. Each states the d
 | 15 | Grindstone runs its own thin AHP host; agents connect over ACP | Execution |
 | 16 | Agents act only through a per-task kernel MCP surface | Execution |
 | 17 | Stations have tiers T0 to T3 | Execution |
-| 18 | Agents in order: Claude Code, then Codex | Execution |
+| 18 | Agents in order: Claude Code, then Codex (amended by 41) | Execution |
 | 19 | A scripted agent proves mechanisms in CI | Execution |
 | 20 | Every task tree has a budget (superseded by 37) | Execution |
 | 21 | Factories are the unit of extension | Factories |
@@ -1448,6 +1448,7 @@ Forty records cover every choice that is expensive to reverse. Each states the d
 | 38 | A consult holds the call open until it answers, under a ceiling | Execution |
 | 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
 | 40 | Delivery states whether the remote enforces the gate | Factories |
+| 41 | Claude Code is the only agent until the operator adds another | Execution |
 
 ## Platform and runtime
 
@@ -1558,6 +1559,8 @@ Forty records cover every choice that is expensive to reverse. Each states the d
 **Why.** Untrusted binaries, computer use and hardware need stronger isolation than trusted code; naming the ladder now keeps the kernel unchanged when it is climbed. **Rejected:** microVM isolation in the MVP (cost with no MVP user); per-factory isolation schemes (inconsistent guarantees).
 
 #### ADR-18 — Agents in order: Claude Code, then Codex
+
+**Status.** Amended by ADR-41 (Codex deferred).
 
 **Decision.** Agents are added in a fixed order, all through ACP behind the same host: Claude Code (M1), Codex (M3); pi and other model APIs after the MVP (R2). Claude runs on the operator's own subscription for the operator's own work only, guarded at start-up against every credential source that would outrank it and checked by a self-test; an API key is a configuration-only fallback. Repository files that could configure a session (hooks, settings, MCP servers) are kept out of it. Grindstone never offers Claude login to anyone else. A capability's agent is configuration: switching provider changes no code.
 
@@ -1705,6 +1708,12 @@ Forty records cover every choice that is expensive to reverse. Each states the d
 
 **Why.** One operator on a free plan with private repositories is a core user, and Grindstone's own repository is one. Refusing to deliver there fails the product goal; silently promising a guarantee the remote does not give fails it worse. Grindstone-performed merges plus bypass detection keep evidence integrity measurable and every bypass visible. **Consequences.** In unenforced mode Grindstone detects bypass but cannot prevent it, and says so. The App needs no permission beyond contents write, already granted. SPK-4 settles how the mode is detected. **Rejected:** refusing unenforced targets (excludes the operator's own repository); treating every target as enforced (a false guarantee); requiring a paid plan (a cost the product should not impose on its first user).
 
+#### ADR-41 — Claude Code is the only agent until the operator adds another
+
+**Decision.** Amends ADR-18. Claude Code on the operator's subscription is the only real agent in the MVP. Codex moves from M3 to whenever the operator adds a second provider, joining pi and other model APIs (R2). The abstraction stays whole: every agent runs through ACP behind the same host, a capability's agent is configuration, and the scripted agent (ADR-19) is a second ACP implementation exercised on every commit, so no Claude-specific path may enter the host or the kernel. Reviewer independence in the SDLC factory becomes a different model from the author or implementer, in a fresh read-only session that shares none of their context; it returns to a different model family, by configuration only, once a second agent exists. Make and prove (I-15) is unchanged: provers are still different capabilities, and mechanical proof still runs on the check station.
+
+**Why.** The operator has a Claude subscription and no other provider; paying for a second only to meet a default is cost without a user. Make and prove does not depend on model family; family diversity reduces correlated blind spots, which a different model and a fresh, context-free review partly recover. **Consequences.** SPK-3 is deferred, with Q-3 and Q-4; M0-03 no longer waits on it; M3-06 is restated; SPEC-18 drops its Codex variants. Author and reviewer errors are more likely to be correlated; the mechanical provers (CI suite, tests on the check station) and the test reviewer's criterion-by-criterion verdicts carry more of the weight, and the risk is revisited when a provider is added. All agent work now depends on one vendor's terms; switching to an API key stays configuration only (ADR-18). **Rejected:** keeping Codex at M3 (a cost the operator declined); building on the Claude Agent SDK directly instead of ACP (locks the host to one vendor, as ADR-15 and ADR-18 already rejected); dropping the reviewer-independence policy (loses the protection a different model and fresh context still give).
+
 
 # Roadmap
 
@@ -1734,7 +1743,7 @@ Repository, CI and four empty services running; the unknowns that could change t
 
 - [ ] M0-01: `docker compose up` brings `grindstone`, `agent-host`, `runner` and `postgres` to healthy with the `blobs`, `repos`, `workspaces` and `runs` volumes mounted only where ADR-01 allows, every image pinned by digest.
 - [ ] M0-02: CI runs lint, type checks, tests and the M0 fitness functions — import boundaries (FF-01), generated-contract drift (FF-02), pins (FF-04) and traceability over `docs/` including this foundation (FF-13); fixtures prove that a floating tag, a kernel-to-factory import and a dangling ID each fail the build.
-- [ ] M0-03: SPK-1 to SPK-5 reports are filed; Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
+- [ ] M0-03: SPK-1, SPK-2, SPK-4 and SPK-5 reports are filed (SPK-3 is deferred by ADR-41); Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
 - [ ] M0-04: The GitHub test repository with its ruleset and a GitHub App installation, the runner toolchain image, a fixture project with tagged tests and the benchmark project exist and are wired into CI.
 
 ### M1 — Walking skeleton
@@ -1770,7 +1779,7 @@ Discoveries and decisions flow back into intent through reviewed ChangeSets, and
 - [ ] M3-03: Two ChangeSets on the same item apply one after the other with nothing lost; a re-walk whose review set differs from the approved one asks again; a revert applies the inverse, and a revert over a later change raises a `revert_conflict` decision (S4).
 - [ ] M3-04: Batched decisions show on one card; an answer to a superseded decision is refused; only permission requests expire, and they deny; a `scope_expansion` or `untrusted` ChangeSet waits for a person at every level.
 - [ ] M3-05: `ask` returns a structured consult answer, and an identical ask hits the cache until an input changes; `delegate` creates a child with its own checks whose approved, pinned output resumes the parent; `load_skill` is recorded on the run; depth and live-children overflow return structured errors (property tests on delegation trees). A delegating parent frees its writing lane while its child runs on it. A consult longer than the agent's default tool timeout answers in the open call; a session dropped mid-consult re-asks and receives the same answer with no second run; a consult past its ceiling suspends the caller and raises an escalation. A run with no activity for the liveness timeout fails `stalled`, while a run waiting in an open `ask` does not. With the project cap enabled, reaching it stops new runs and raises an escalation flagged `cap_reached`. Live run: S5.
-- [ ] M3-06: Live run: the auditor and code reviewer run on Codex by configuration only; the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
+- [ ] M3-06: Live run: the auditor and code reviewer run on a different Claude model from the author and implementer, chosen by configuration only (ADR-41); the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
 - [ ] M3-07: A fresh install from `compose.yaml` and the documented secrets runs M1-01 and M3-01 within the install target (QS-12); the success measures have a recorded baseline (Q-8).
 
 ### M4 — Discovery and planning
@@ -1805,9 +1814,9 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | --- | --- | --- |
 | SPK-1 Host, Claude and VS Code | 2 days | A host on `@ahpd/sdk` with the vendored ACP plugin runs a Claude Code session in a given workspace, as a different user from the host, on the subscription token; the session calls a stub kernel MCP server (FastMCP in FastAPI) with its own per-task token; a permission request is answered through the control API and refused from a browser client; VS Code attaches; the credential self-test, disabling repository settings, and behaviour on a host restart mid-turn are recorded (Q-1, Q-2, Q-6). Fallback: M1 drives the Claude ACP adapter through a minimal host behind the same control API and events; live sessions in the browser move to M4 |
 | SPK-2 DBOS in FastAPI | 2 days | DBOS in the FastAPI lifespan survives a kill during a step, a message wait, a child workflow and a scheduled run with no duplicate effects; idempotent messages; a concurrency-1 queue serializes work across projects; a parked workflow resumes exactly once after an application-version bump; a parent on the writing lane waiting on a child on the read-only lane does not deadlock |
-| SPK-3 Codex and pi | 1 day | Codex through its ACP adapter with an API key reaches an HTTP MCP server and runs read-only and workspace-write sandboxes; pi through its ACP adapter reaches the kernel MCP with a per-task token and reports on every turn; whether Codex's subscription login works headless in a container; how each discovers skills natively from a session configuration directory (Q-3, Q-4, Q-5) |
+| SPK-3 Codex and pi | 1 day | **Deferred until a second provider is added (ADR-41).** Codex through its ACP adapter with an API key reaches an HTTP MCP server and runs read-only and workspace-write sandboxes; pi through its ACP adapter reaches the kernel MCP with a per-task token and reports on every turn; whether Codex's subscription login works headless in a container; how each discovers skills natively from a session configuration directory (Q-3, Q-4, Q-5) |
 | SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7); the delivery mode is detectable through the API on the public testbed (enforced) and on a private repository (unenforced); a merge with an expected head SHA fails after a concurrent push |
-| SPK-5 Cooperation mechanics | 2 days | With Claude Code and Codex: an MCP tool call held open with progress keepalives while a child task runs for 2, 10, 30 and 120 minutes — the client, server and model timeouts and how each is raised by configuration (Q-9); a session dropped mid-wait re-asking and joining the in-flight consult; the ceiling suspend; `load_skill` returning instructions inline and adding tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: for an agent whose call cannot be held open, consults park and resume |
+| SPK-5 Cooperation mechanics | 2 days | With Claude Code (and each further agent when added): an MCP tool call held open with progress keepalives while a child task runs for 2, 10, 30 and 120 minutes — the client, server and model timeouts and how each is raised by configuration (Q-9); a session dropped mid-wait re-asking and joining the in-flight consult; the ceiling suspend; `load_skill` returning instructions inline and adding tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: for an agent whose call cannot be held open, consults park and resume |
 
 **Open questions.** The operator answered every open question at the M0 kickoff (17 October 2026). Answers marked *confirm* stand unless the named spike contradicts them; a contradiction is answered by a superseding record, defaulting to the recorded fallback.
 
@@ -1815,8 +1824,8 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | --- | --- | --- | --- |
 | Q-1 | Can the stock ACP agent plugin, or a community fork, pass a per-session MCP server with its own token? | Keep the vendored, patched plugin | Decided; SPK-1 confirms the patch |
 | Q-2 | Which AHP protocol line does `@ahpd/sdk` implement, and how does current VS Code attach to it? | AHP 1.0, accepting 0.9 clients; VS Code attaches as a remote agent host with the token | Decided; SPK-1 confirms |
-| Q-3 | Does Codex's subscription login work headless in a container? | Use subscription login if SPK-3 shows it works headless; an API key is the configuration-only fallback, as for Claude | Decided; SPK-3 settles which applies |
-| Q-4 | How does the Codex ACP adapter receive Codex's sandbox mode? | Codex's own configuration file, supplied by the capability | Decided; SPK-3 confirms |
+| Q-3 | Does Codex's subscription login work headless in a container? | Use subscription login if SPK-3 shows it works headless; an API key is the configuration-only fallback, as for Claude | Deferred with SPK-3 (ADR-41) |
+| Q-4 | How does the Codex ACP adapter receive Codex's sandbox mode? | Codex's own configuration file, supplied by the capability | Deferred with SPK-3 (ADR-41) |
 | Q-5 | Does pi's ACP adapter pass per-session environment, and how do agents load skills? | Start skills materialized per session outside the workspace; `load_skill` returns bodies inline (ADR-39). pi's environment handling waits for R2 | Decided (ADR-39); SPK-1 and SPK-3 confirm native discovery |
 | Q-6 | Does FastMCP run on the current official MCP SDK, mount in FastAPI and verify a bearer token per request? | FastMCP mounted in FastAPI; otherwise the official SDK's server directly | Decided; SPK-1 confirms |
 | Q-7 | How do auto-merge, a strict required status and branch updates interact for an App-set status? | Auto-merge waits for the update and a fresh status at the new head | Decided; SPK-4 confirms |
@@ -1851,7 +1860,7 @@ Twenty-seven specifications deliver the MVP. Each is either a **kernel** specifi
 | SPEC-15 | Decision service | Kernel | `decisions` | M3-02, M3-04 | ADR-28, ADR-30; I-07, I-11 |
 | SPEC-16 | Change pipeline | Kernel | `change` | M3-01, M3-02, M3-03 | ADR-10; I-13 |
 | SPEC-17 | Cooperation, matching and limits | Kernel | `work` | M3-05 | ADR-24, ADR-37, ADR-38, ADR-39; I-10, I-16, I-17, I-19 |
-| SPEC-18 | SDLC reviewers and Codex | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, Codex variants | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23; I-15 |
+| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41; I-15 |
 | **M4** |  |  |  |  |  |
 | SPEC-19 | Template and capability engine | Kernel | `work` | M4-04 | ADR-22, ADR-23, ADR-24; I-14 |
 | SPEC-20 | SDLC discovery, planning and patch | Factory | `factories/sdlc`: `/init`, `/discover`, `/plan` break-down, `/patch` | M4-01, M4-02, M4-06, M4-07 | ADR-33; I-07 |
@@ -1937,6 +1946,7 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | Prompt injection through external signals or analysed content | Fixed-code mapping with no agent reading first; untrusted content reaches only drafting capabilities; everything derived stays `untrusted` and needs a person | M5-03 |
 | The policy answers wrongly at higher autonomy | L1 by default; eligibility classes; always-asked flags; every answer revertible; the tripwire; L3 deferred | M5-04 |
 | On free plans the remote does not enforce the merge gate on private repositories | Delivery modes: Grindstone merges itself and reports every bypass as a finding; the mode is visible on every delivery (ADR-40) | M1-02 |
+| With one agent family, author and reviewer share blind spots | Reviewers on a different model in a fresh read-only session; mechanical provers and the test reviewer carry the gate; revisit when a second provider is added (ADR-41) | M3-06 |
 | Dogfooding couples Grindstone's development to its own bugs | A manual path stays open (plain pull requests that touch no published file); the scripted agent and test repository are independent of Grindstone's own repository; a stable instance orchestrates | M1-08 |
 | The implementer weakens the tests it writes | Test reviewer as a required prover; protected and reviewed copy-back tiers; operator reviews pull requests below L3 | M1-05, M1-07 |
 | Ceremony drives the operator around the system, and intent rots | `/patch` for small changes; scope decisions instead of refused copy-backs; mentions notify; group verdicts; governed share is a success measure | M4-06, M3-01 |
@@ -2089,6 +2099,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
 | 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
 | 4.2 | 17 October 2026 | M0 kickoff: open questions Q-1 to Q-11 answered by the operator; ADR-37 replaces budgets with limits (supersedes ADR-20), ADR-38 holds consults open until they answer under a ceiling, ADR-39 materializes start skills per session and returns `load_skill` bodies inline; QS-15 added; the task lifecycle table restated in text, since the diagram that held it was not reproduced; diagram placeholders replaced by captions; the export's duplicate title removed. This repository copy is the maintained source from this version on. |
 | 4.1 | 17 October 2026 | From an external review: delegating and asking the operator end the turn and free the lane (no writing-lane deadlock); the workspace provider returns a collect outcome with extra checks and permission requests, so path policy stays in the factory; budgets split into run limits and a per-unit tree budget, replacing a fixed fraction of the parent; blobs are rooted from the moment they are written; any kind may have a lifecycle and lifecycle state is never hashed; compact walking-skeleton specifications for M1. |

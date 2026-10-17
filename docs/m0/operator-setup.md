@@ -46,7 +46,7 @@ On a host, only the `grindstone` container will ever mount them (I-08, I-09). Fo
 ## 4. Agent credentials (needed by SPK-1, SPK-3, SPK-5)
 
 - **Claude Code on your subscription** (ADR-18). Create a long-lived token for headless use with the Claude Code CLI, following the current Claude Code documentation; SPK-1 records the exact command and the full list of credential sources that would outrank it. Do not also provide `ANTHROPIC_API_KEY` to the same environment: an API key outranks the subscription.
-- **Codex** (Q-3). SPK-3 first tries subscription login headless. Have an OpenAI API key ready as the fallback, with a monthly spend limit set in the OpenAI dashboard.
+- **No second provider for now** (ADR-41): Codex and SPK-3 are deferred until you add one.
 - Set provider-side spend limits wherever an API key is used. With per-task budgets removed (ADR-37), the provider limit and the optional project cap are the spend ceilings.
 
 ## 5. Cloud environment (the spike host)
@@ -58,9 +58,8 @@ In the environment's settings (the cloud environment menu in the session's title
 | Setting | Value | Needed by |
 | --- | --- | --- |
 | Environment variable `GRINDSTONE_CLAUDE_OAUTH_TOKEN` | The subscription token from step 4 | SPK-1, SPK-5 |
-| Environment variable `GRINDSTONE_OPENAI_API_KEY` | The fallback key from step 4 | SPK-3, SPK-5 |
 | Environment variables `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY_B64` | From step 3; the key is the `.pem` file base64-encoded on one line (`base64 -w0 key.pem` on Linux, `base64 -i key.pem` on macOS), because multi-line values do not survive every settings form | SPK-4 |
-| Network access | Allow `api.openai.com`, `auth.openai.com` and `chatgpt.com` (Codex), `github.com` and `api.github.com`, `ghcr.io`, `mirror.gcr.io`, `nodejs.org` | SPK-3, SPK-4, the hook |
+| Network access | Allow `github.com` and `api.github.com`, `ghcr.io`, `mirror.gcr.io`, `nodejs.org` | SPK-4, the hook |
 
 The names are prefixed so the tools themselves never pick them up implicitly; spike code passes each one explicitly to the one process that needs it, mirroring how the containers scope secrets.
 
