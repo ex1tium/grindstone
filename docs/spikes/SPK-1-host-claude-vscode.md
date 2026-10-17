@@ -1,6 +1,6 @@
 # SPK-1 — Host, Claude and VS Code
 
-Status: planned · Box: 2 days · Settles: Q-1, Q-2, Q-6; the Claude credential-precedence list (M0-03); the assumption that an AHP host on `@ahpd/sdk` can run Claude Code sessions with a per-session MCP server (Architecture, "Constraints, assumptions and capacity")
+Status: in progress · Box: 2 days · Settles: Q-1, Q-2, Q-6; the Claude credential-precedence list (M0-03); the assumption that an AHP host on `@ahpd/sdk` can run Claude Code sessions with a per-session MCP server (Architecture, "Constraints, assumptions and capacity")
 
 ## Why
 
@@ -34,3 +34,44 @@ Versions of `@ahpd/sdk`, `@ahpd/agent-acp`, `@agentclientprotocol/claude-agent-a
 ## Fallback
 
 If experiments 1, 2 or 6 cannot pass within the box: M1 drives the Claude ACP adapter through a minimal host of our own behind the same control API and events, and live sessions in the browser move to M4 (SPK-1 fallback in the Roadmap). Any change to ADR-15 is a superseding record.
+
+## Report (partial, 17 October 2026)
+
+Run in a Claude Code cloud session on Node 24.22.0, with `@ahpd/sdk` 0.12.0, `@ahpd/agent-acp` 0.12.0, `@agentclientprotocol/claude-agent-acp` 0.93.0 (Claude Agent SDK 0.3.300), `@agentclientprotocol/sdk` 1.9.0 and `@microsoft/agent-host-protocol` 1.0.0; Claude Code 2.1.302 is current on npm. The spike code is in `spk1/` on branch `claude/youthful-franklin-oq4j5j` of `ex1tium/grindstone-testbed` (never merged). It is paused because the operator's subscription reached its session limit at 16:28 UTC (`You've hit your session limit`): every live call draws on that subscription.
+
+### Claude Code runs here on the subscription token
+
+`claude-agent-acp` started by a raw ACP client over stdio, with a clean environment (a fresh `HOME`, a private `CLAUDE_CONFIG_DIR`, and only `CLAUDE_CODE_OAUTH_TOKEN` set from `GRINDSTONE_CLAUDE_OAUTH_TOKEN`): `initialize` → `session/new` in 1.0 s; a turn that wrote a file in the workspace ended `end_turn` after 2.3 s. The adapter offers no ACP `authMethods`, so the environment variable is the only sign-in.
+
+### What the packages allow (read from the 0.12.0 and 0.93.0 sources)
+
+- **Per-session MCP (Q-1).** `@ahpd/sdk` gives each session `Start.mcpServers`: the host-wide `mcpServers` merged with what the session's client plugins add. No option takes a server per session from the control side. `@ahpd/agent-acp` passes `Start.mcpServers` to ACP's `session/new`, including HTTP servers with `headers`, which is where a bearer token goes. So the per-session server and token need no patch: Grindstone's backend can be a small `Agent` wrapper that, in `create(start)`, adds `{ grindstone: { type: 'http', url, headers: { Authorization: 'Bearer …' } } }` to `start.mcpServers` before handing the session to `acpAgent(...)`. The token comes from the control API's own table, keyed by the session URI, so it never sits in session configuration that AHP clients can read. To be confirmed in experiment 2.
+- **Claude Code options per session.** `claude-agent-acp` reads `_meta.claudeCode.options` on `session/new` (and load, resume and fork) and spreads it over its defaults, which include `settingSources: ["user", "project", "local"]`. So a client can set `settingSources`, `env`, `tools`, `mcpServers` and the like per session. `@ahpd/agent-acp` sends no `_meta`. The vendored ACP agent plugin of ADR-15 is therefore a **launcher**: `claude-agent-acp` behind a stdio proxy that merges Grindstone's options into every `session/new`, load, resume and fork (`spk1/src/launcher.mjs`, 30 lines), and runs the credential self-test before starting. No package is patched.
+- **FastAPI-side note for SPEC-05:** `@ahpd/agent-acp` spawns one ACP process per host session, and its `env` option is per agent registration; the wrapper creates one registration per session, so each session's process can get its own environment.
+
+### Experiment 4 — Subscription credential and its precedence: pass
+
+From the Claude Code documentation read on 17 October 2026 (`code.claude.com/docs/en/authentication`, "Authentication precedence", with the variable names from `/env-vars` and the paths from `/managed-settings`), Claude Code chooses:
+
+1. Cloud provider credentials when `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX` or `CLAUDE_CODE_USE_FOUNDRY` is set (the variable reference adds `CLAUDE_CODE_USE_ANTHROPIC_AWS` and `CLAUDE_CODE_USE_MANTLE`);
+2. `ANTHROPIC_AUTH_TOKEN`;
+3. `ANTHROPIC_API_KEY`;
+4. `apiKeyHelper` output (a settings key);
+5. **`CLAUDE_CODE_OAUTH_TOKEN`**, the long-lived token from `claude setup-token`, which Grindstone uses;
+6. Anthropic profile and federation credentials (`ANTHROPIC_PROFILE`, `ANTHROPIC_FEDERATION_RULE_ID` with `ANTHROPIC_ORGANIZATION_ID`, or an active profile);
+7. subscription OAuth from `/login`.
+
+A signed-in Claude apps gateway session sits above the whole list, and managed settings can force it (`forceLoginMethod: "gateway"`, `forceLoginGatewayUrl`). Managed settings (`/etc/claude-code/managed-settings.json`, `managed-settings.d/`, `managed-mcp.json` on Linux) **apply to Agent SDK sessions even when `settingSources` excludes every source**, and a settings file's `env` block can set any of the variables above. Bare mode does not read `CLAUDE_CODE_OAUTH_TOKEN`, so Grindstone must never pass `--bare`.
+
+The start-up self-test (`spk1/src/selftest.mjs`) refuses to start the session if any of the following holds:
+- `CLAUDE_CODE_OAUTH_TOKEN` is missing;
+- any of 27 provider, credential, route or gateway variables is set: tiers 1–3, the other providers' keys and base URLs, `CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST`, the `CLAUDE_CODE_SKIP_*_AUTH` switches, profiles and federation, and `CLAUDE_CODE_OAUTH_REFRESH_TOKEN`;
+- any managed-settings file or directory exists;
+- `CLAUDE_CONFIG_DIR` is unset;
+- the private configuration directory holds a stored login, or a `settings.json` that sets `apiKeyHelper`, `env`, or a `forceLogin*` or `allowedProviders` key.
+
+**Result:** with each of 36 sources set in turn, the self-test fails; with none, it passes. Two of the sources, set for real alongside the token, change what Claude Code does, which confirms the precedence: a bogus `ANTHROPIC_API_KEY` makes the session fail with `Authentication required` (the key outranks the token), and an unreachable `ANTHROPIC_BASE_URL` reroutes it until it times out. With neither, the same call answered `OK` (`spk1/results/exp4.json`).
+
+### Still to run
+
+Experiment 5 (written, `spk1/src/exp5.mjs`; interrupted by the limit), then 2, 3, 1, 6, 7, 8 and 9. Experiments 3 and 9 and the Unix-user half of 1 need no model calls; the rest each need a few short turns.
