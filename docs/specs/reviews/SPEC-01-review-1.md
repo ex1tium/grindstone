@@ -71,3 +71,21 @@ Reviewer: a session that did not write SPEC-01 (17 October 2026). Reviewed again
 ## Next
 
 The author's revision addresses F1, F2 and F4–F9 in the specification, and cites ADR-44. Then the operator decides ADR-44 with ADR-42 and ADR-43, and approves SPEC-01.
+
+## Revision 1 (17 October 2026)
+
+By the operator's instruction, the reviewing session also made the revision; the playbook's separation of author and reviewer is therefore not met for these changes, and the M0 review session confirms that each finding is closed before the operator approves SPEC-01.
+
+| Finding | Change in SPEC-01 |
+| --- | --- |
+| F1 | REQ-0109 restated: one base grammar `^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$` admitting `PRD`, `M1`, `M1-01`, `N-3`, `AC-0101-1`; each kind declares an anchored pattern with example IDs when it registers (SPEC-03); typed IDs validate the base grammar, then the kind's pattern. AC-0109-1 rewritten to match. |
+| F2 | REQ-0106 refuses `set` and `frozenset` in semantic content at class definition; the design explains why and points to sorted tuples. AC-0106-2 (refusal) and AC-0106-3 (hash identical across `PYTHONHASHSEED` values in subprocesses) added. |
+| F3 | Accepted as ADR-44; section 3 cites ADR-08 as amended by ADR-44; section 6 records the acceptance; TKT-0103 no longer waits on it. |
+| F4 | REQ-0105 refuses keys that collide after NFC; canonical-form step 4 says so; AC-0105-2 added. |
+| F5 | `BlobRef.sha256` is written `sha256:<hex>`; a `blob_set`'s version is the semantic hash of its sorted `members` tuple; REQ-0115 and AC-0115-1 added. |
+| F6 | `git_commit` accepts 40 or 64 lowercase hex (REQ-0115, AC-0115-1). |
+| F7 | AC-0109-1 uses neutral examples and the `notes` factory's `N-` IDs instead of SDLC prefixes. |
+| F8 | ADR-11 added to section 3. |
+| F9 | Section 5 states that the serialized form always carries every field and only the canonical form for hashing omits defaults. |
+
+The golden vectors also gain every control character U+0000–U+001F, which OQ-0101 already named as its default.
