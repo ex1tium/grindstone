@@ -109,7 +109,7 @@ REQ-0817: Observe polls every delivered, unaccepted delivery on a schedule witho
 - `VerificationState`: `state` (`success`, `pending`, `failure`), `description` (≤ 140 characters), `evidence_hash`.
 - `Observation`: `kind` (`head`, `accepted`, `closed`, `bypass`), `by_port` (bool), `data`, `external_id`.
 
-Error codes registered here:
+Kernel error codes declared here (in `grindstone.contracts.errors`, SPEC-01):
 - rule: `maker_cannot_prove`, `gate_not_passed`;
 - transient: `check_station_unavailable`;
 - validation: `resolver_missing`.

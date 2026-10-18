@@ -1,5 +1,5 @@
 # SPEC-10 — Operator surface, first cut
-Status: draft · Milestone: M1
+Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-10-review-1.md`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.surface` (REST and events): the REST API under `/api/v1` and its OpenAPI document; the per-project and instance event streams; operator login and sessions; idempotency on client keys; the generated TypeScript REST client.
 - `web/`: the web shell.
@@ -61,7 +61,7 @@ Depends on:
 - **SPEC-02:** the unit of work.
 - **SPEC-03:** projects and configuration, registries, `events_after`.
 - **SPEC-04:** items, ChangeSets and decisions.
-- **SPEC-05:** the operator listener, `session_key` and `operator_password_hash`.
+- **SPEC-05:** the operator listener, `session_key`, `operator_password_hash` with its Argon2id parameters, and the `argon2-cffi` pin.
 - **SPEC-06:** templates, tasks, runs and transcripts.
 - **SPEC-08:** evidence summaries, freshness and deliveries.
 
@@ -72,7 +72,7 @@ Scenarios: K1 step 7 (the operator approves the `approval` decision). The operat
 REQ-1001: Every route except `POST /api/v1/session` and the health endpoints requires a valid operator session, and every request that changes state also requires the header `X-Grindstone-CSRF: 1`; the API sends no CORS headers.
 REQ-1002: Login checks the password against the Argon2id hash in the `operator_password_hash` secret, creates a server-side session whose identifier is stored only as an HMAC under `session_key`, and sets an `HttpOnly`, `SameSite=Strict` cookie that expires after 12 hours idle or 7 days; more than five failures a minute are refused with 429 until the minute passes.
 REQ-1003: `POST /api/v1/projects/{p}/imports` accepts an item bundle and returns the ChangeSet and its `approval` decision, or every item's errors.
-REQ-1004: The decision endpoints list open decisions with their kind, flags, recommendation and payload, and accept an answer with the context hash the client saw; the answer records the channel (`ui` from the web shell, otherwise `api`) and the operator.
+REQ-1004: The decision endpoints list open decisions with their kind, flags, recommendation and payload, and accept an answer with the context hash the client saw; the answer records the channel (`ui` when the request carries `X-Grindstone-Client: web`, which the generated client sends from the web shell, otherwise `api`) and the operator. The header is the operator's own claim, which is acceptable because every request is the operator's.
 REQ-1005: `GET /api/v1/projects/{p}/templates/{t}/plan` shows a command's steps, needs, matched capabilities and checks for given arguments before it runs, and `POST /api/v1/projects/{p}/commands` starts it.
 REQ-1006: The task endpoints return a task with its state, runs and their manifests, turns, check results with freshness and the stale reasons named, and its delivery with mode and verification state; a run's transcript is served from its blob.
 REQ-1007: Every command endpoint is idempotent on the `Idempotency-Key` header: the same key with the same body returns the original response, and with a different body is refused with `idempotency_key_reused`.
@@ -111,14 +111,14 @@ The routes call module services only (Components, "Module map": `surface` may us
 | Validation | 422 |
 | Rule | 409 |
 | Authority | 403, or 409 for `context_changed`, `decision_superseded` and `decision_closed` |
-| Limit | 429 |
+| Limit | 409, with `retryable` from the envelope; only the login rate limit is 429, because only it means "too many requests" |
 | Transient | 503, with `Retry-After` |
 | Internal | 500, with no detail |
 
 An unauthenticated request gets 401 with code `login_required`.
 
 **Login (REQ-1002).**
-- **Hashing:** `argon2-cffi==25.1.0` (PyPI, released 3 June 2025, the latest; its bindings 26.1.0 ship abi3 wheels for CPython 3.14). Argon2id with RFC 9106's second recommended parameters (64 MiB, 3 passes, 4 lanes), which `make secrets` also uses (SPEC-05). The hash is read once at start.
+- **Hashing:** verified with `argon2-cffi`, pinned by SPEC-05, which owns the Argon2id parameters and writes the hash with `make secrets`. Verification reads the parameters from the hash itself. The hash is read once at start.
 - **Sessions:** in `surface.sessions (id_hmac, created_at, last_seen, expires_at, user_agent)`. A 256-bit random ID goes in the cookie `gs_session`.
 - **Cookie:** `Secure` when `[surface].cookie_secure` is true, for operators behind a TLS proxy. Browsers treat `http://127.0.0.1` as a secure context, so loopback works without it.
 - **Rate limit:** failures are counted in memory per minute. One operator needs no per-address table.
@@ -151,17 +151,17 @@ An unauthenticated request gets 401 with code `login_required`.
 | Task | State timeline, runs with manifests, turns, checks with freshness and stale reasons, delivery with mode and status, transcript | tasks, events |
 
 The decision card renders each kind:
-- **`approval`:** revisions with field diffs; reached items, each with a verdict input (`unaffected` and a reason) required before approve.
+- **`approval`:** revisions with field diffs against their current base; reached items, each with a verdict input (`unaffected` and a reason) required before approve, beside the note "if an item is affected, reject and draft a larger change" (the M1 thinning of SPEC-04's DEC-0402).
 - **`question`:** a form from the answer schema for strings, enums and booleans, otherwise a JSON editor validated against the schema.
 - **`permission`:** the action, the reason and the three answers.
-- **`delivery`:** the evidence table with freshness, and the mode shown prominently, since ADR-40 requires it.
+- **`delivery`:** the evidence table with freshness, and the mode shown prominently, since ADR-40 requires it; in unenforced mode, the note that outside merges are detected only while a delivery is open (SPEC-08).
 - **`escalation`:** the cause and the offered answers.
 
 The card sends the context hash it rendered, so an answer to a changed decision is refused (SPEC-04) and the card reloads.
 
 Package pins, each the latest on the npm registry on 17 October 2026: `@sveltejs/kit` 3.1.0, `svelte` 5.57.2, `@sveltejs/adapter-static` 4.0.0, `@sveltejs/vite-plugin-svelte` 7.3.1, `vite` 8.3.4, `svelte-check` 4.7.7, `@playwright/test` 1.64.1. `web/` pins `typescript` 6.0.3 (DEC-1003). The UI's graph component (`@xyflow/svelte`) arrives with SPEC-22.
 
-**State and ownership.** Schema `surface`: `sessions`, `idempotency`. The `operators` table of the data model is not needed while there is exactly one operator whose credential is a secret file. SPEC-22 adds client tokens.
+**State and ownership.** Schema `surface`: `sessions`, `idempotency`. The `operators` table of the data model is not needed while there is exactly one operator whose credential is a secret file; SPEC-22 or SPEC-26 adds it if a second kind of credential needs one. SPEC-22 adds client tokens.
 
 **Configuration** (`[surface]`, owned here): `cookie_secure` (false), `session_idle` (12 h), `session_max` (7 days), `login_failures_per_minute` (5), `sse_heartbeat` (15 s). The listeners themselves are SPEC-05's.
 
@@ -181,19 +181,19 @@ Package pins, each the latest on the npm registry on 17 October 2026: `@sveltejs
 
 DEC-1001: Server-side sessions with an HMAC-stored identifier, not signed stateless cookies · Logout and expiry take effect at once, and a database dump yields no usable session · Rejected: signed cookies (no revocation without a deny list); bearer tokens in browser storage (readable by any script that runs in the page).
 DEC-1002: A small generator writes the TypeScript REST client from the OpenAPI document onto the types already generated from the contracts · One source of types, no new dependency · Rejected: `openapi-typescript` 7.13.0 with `openapi-fetch` (their peer range is TypeScript 5, while the repository and SvelteKit are on 6 and 7).
-DEC-1003: `web/` pins TypeScript 6.0.3 while the rest of the repository stays on 7.0.2 · `@sveltejs/kit` 3.1.0 and `svelte-check` 4.7.7 declare peer ranges that stop at TypeScript 6, the check `docs/m0/versions.md` asked SPEC-10 to make · Rejected: holding the repository at TypeScript 6 (gives up the native compiler elsewhere for one package); ignoring the peer range (an unsupported pair for the type checker the UI's CI relies on).
+DEC-1003: `web/` pins TypeScript 6.0.3 while the rest of the repository stays on 7.0.2 · `@sveltejs/kit` 3.1.0 and `svelte-check` 4.7.7 declare peer ranges that stop at TypeScript 6, the check `docs/m0/versions.md` asked SPEC-10 to make · Rejected: holding the repository at TypeScript 6 (gives up the native compiler elsewhere for one package); ignoring the peer range (an unsupported pair for the type checker the UI's CI relies on). ADR-46 allows the exception; `docs/m0/versions.md` records its constraint, and it is re-checked at every upgrade.
 DEC-1004: The web shell is tested end to end with Playwright against the built stack · The cards are where the operator's authority is exercised, so they are tested as the operator uses them · Rejected: component tests only (would not catch a card answering the wrong decision or losing its context hash).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-1001: Login, sessions, CSRF, rate limit, error mapping, idempotency · implements REQ-1001, REQ-1002, REQ-1007, REQ-1008 · depends on TKT-0501, TKT-0201 · paths `packages/grindstone/src/grindstone/surface/`, `packages/grindstone/tests/surface/`, `pyproject.toml` (argon2-cffi).
+TKT-1001: Login, sessions, CSRF, rate limit, error mapping, idempotency · implements REQ-1001, REQ-1002, REQ-1007, REQ-1008 · depends on TKT-0501, TKT-0201 · paths `packages/grindstone/src/grindstone/surface/`, `packages/grindstone/tests/surface/`.
 TKT-1002: REST routes for projects, imports, items, ChangeSets, decisions, templates, commands, tasks, deliveries · implements REQ-1003 to REQ-1006 · depends on TKT-1001, TKT-0403, TKT-0601, TKT-0804 · surface paths plus `packages/grindstone/src/grindstone/contracts/api.py`.
 TKT-1003: Event streams · implements REQ-1009 · depends on TKT-0304 · surface paths.
 TKT-1004: OpenAPI document, drift and compatibility checks, generated client · implements REQ-1010 · depends on TKT-1002 · paths `scripts/`, `packages/grindstone/openapi.json`, `packages/contracts-ts/src/api.ts`, `tests/fitness/`.
 TKT-1005: Web shell and its end-to-end tests · implements REQ-1011, REQ-1012 · depends on TKT-1004, TKT-1003 · paths `web/`, `pnpm-workspace.yaml`, `docker/grindstone.Dockerfile`.
 
 AC-1001-1: Every route but login and health returns 401 without a session; a state-changing request with a session but without the CSRF header returns 403; no response carries an `Access-Control-Allow-Origin` header · verifies REQ-1001 · security · `test_routes_require_session_and_csrf`.
-AC-1002-1: A correct password creates a session whose stored row holds no raw identifier; the cookie is `HttpOnly` and `SameSite=Strict`; an idle session expires; the sixth failure within a minute returns 429 even with the right password · verifies REQ-1002 · security · `test_login_sessions_and_rate_limit`.
+AC-1002-1: A hash written by `make secrets` (SPEC-05) verifies; a correct password creates a session whose stored row holds no raw identifier; the cookie is `HttpOnly` and `SameSite=Strict`; an idle session expires; the sixth failure within a minute returns 429 even with the right password · verifies REQ-1002 · security · `test_login_sessions_and_rate_limit`.
 AC-1003-1: Importing a valid fixture bundle returns the ChangeSet and an open `approval` decision; an invalid one returns 422 with every item's errors · verifies REQ-1003 · integration · `test_import_endpoint`.
 AC-1004-1: Answering an `approval` through the API with verdicts applies the ChangeSet and records channel `api` and the operator; answering with a stale context hash returns 409 `context_changed` · verifies REQ-1004 · integration · `test_answer_decision_endpoint`.
 AC-1005-1: The plan preview for a fixture template lists its steps, needs, matched capabilities and checks without creating a task; starting the command creates the template run · verifies REQ-1005 · integration · `test_plan_preview_then_start`.

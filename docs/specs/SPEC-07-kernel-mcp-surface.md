@@ -95,7 +95,7 @@ Notes:
 - `report` with `files` lists the paths it produced; SPEC-06's collect checks them against the output contract.
 - `propose` stores the items on the run; they become one ChangeDraft at collect (SPEC-06).
 
-**Errors.** Registered here:
+**Errors.** Kernel error codes declared here (in `grindstone.contracts.errors`, SPEC-01):
 - validation: `not_pinned`, `kind_not_produced`, `blob_too_large`, `tool_not_in_mode`;
 - limit: `not_available`.
 

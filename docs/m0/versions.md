@@ -72,7 +72,7 @@ Checked on 17 October 2026 against the PyPI JSON API and the npm registry while 
 | sqlalchemy | 2.1.5 | 2026-10-16 | SPEC-02 | Already in the lockfile through DBOS; pinned directly for DBOS datasource transactions |
 | pyyaml | 6.0.3 | 2025-09-25 | SPEC-03 | Safe loader only; CPython 3.14 wheels |
 | packaging | 26.3 | 2026-08-04 | SPEC-03 | SDK range checks; already in the lockfile |
-| argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-10 | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels |
+| argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-05 (written by `make secrets`), SPEC-10 (verified) | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels |
 | pyjwt | 2.15.1 | 2026-09-28 | SPEC-09 | The GitHub App's RS256 JWT, as SPK-4 used it |
 | cryptography | 50.0.2 | 2026-09-30 | SPEC-09 | RS256 for PyJWT |
 | fastmcp, mcp | 4.1.0, 2.3.0 | 2026-10-08, 2026-10-02 | SPEC-07 | As SPK-1 ran them |
@@ -85,7 +85,7 @@ Checked on 17 October 2026 against the PyPI JSON API and the npm registry while 
 | `@sveltejs/adapter-static` | 4.0.0 | 2026-10-01 | SPEC-10 | — |
 | `@sveltejs/vite-plugin-svelte` | 7.3.1 | 2026-09-23 | SPEC-10 | — |
 | vite | 8.3.4 | 2026-10-08 | SPEC-10 | — |
-| svelte-check | 4.7.7 | 2026-10-16 | SPEC-10 | Peer range `typescript ^5.0.0 \|\| ^6.0.0`: the check this file asked SPEC-10 to make. **TypeScript 7 is not supported**, so `web/` pins TypeScript 6.0.3 (2026-04-16) and the rest of the repository stays on 7.0.2 (SPEC-10, DEC-1003) |
+| svelte-check | 4.7.7 | 2026-10-16 | SPEC-10 | Peer range `typescript ^5.0.0 \|\| ^6.0.0`: the check this file asked SPEC-10 to make. **TypeScript 7 is not supported**, so `web/` pins TypeScript 6.0.3 (2026-04-16) and the rest of the repository stays on 7.0.2 (SPEC-10, DEC-1003). An exception under ADR-46: it ends when SvelteKit and svelte-check accept TypeScript 7, re-checked at every upgrade |
 | `@playwright/test` | 1.64.1 | 2026-10-14 | SPEC-10 | End-to-end tests of the web shell |
 | openapi-typescript | 7.13.0 | 2026-02-11 | SPEC-10 | Not used: peer range TypeScript 5 (SPEC-10, DEC-1002) |
 

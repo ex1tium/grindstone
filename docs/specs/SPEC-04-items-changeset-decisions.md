@@ -121,7 +121,7 @@ REQ-0419: Only the module that raised a decision supersedes it, naming the repla
 
 Flags are the closed set of Concepts, "Decision". They are set only by kernel code that raises the decision, and never accepted from a payload.
 
-Error codes registered here:
+Kernel error codes declared here (in `grindstone.contracts.errors`, SPEC-01):
 - validation: `reference_unresolved`, `kind_not_enabled`, `id_invalid`, `id_taken`, `answer_invalid`, `recommendation_missing`;
 - rule: `transition_illegal`, `verdict_missing`;
 - authority: `decision_superseded`, `context_changed`, `decision_closed`.
