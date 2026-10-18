@@ -1,6 +1,6 @@
-# Project Grindstone — Foundation v4.5
+# Project Grindstone — Foundation v4.6
 
-17 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
+18 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
 Grindstone is a self-hosted orchestrator that makes agent work trustworthy enough to delegate: intent is typed and versioned, every result is proven by someone other than its maker against the exact intent it claims to satisfy, and a person decides only what a person should.
 
@@ -265,7 +265,7 @@ Generality ranks last on purpose: when making the kernel more general would make
 | Agents run behind an AHP host over ACP and reach Grindstone only through MCP; Claude Code is the only real agent until the operator adds another | ADR-15, ADR-16, ADR-18, ADR-41 |
 | The UI is a static SvelteKit app; VS Code and the operator plugin use the same API | ADR-06 |
 | GitHub is the only git host and the SDLC factory's only delivery target | ADR-27 |
-| Every dependency is the latest stable release, pinned exactly; images by digest; upgrades are deliberate commits that pass CI; versions are resolved at M0 from primary sources | ADR-01 |
+| Every dependency is the latest stable release compatible with the other pins, pinned exactly, with each exception's constraint recorded; images by digest; upgrades are deliberate commits that pass CI; versions are resolved at M0 from primary sources | ADR-01, ADR-46 |
 
 **Assumptions.** Each is checked at a named point; if one fails, the named fallback applies.
 
@@ -550,8 +550,8 @@ An item is the unit of intent and knowledge: a requirement, a design decision, a
 
 | Aspect | Rule |
 | --- | --- |
-| **Kind** | A namespaced name, `namespace.name` (`core.principle`, `sdlc.requirement`, `re.claim`). Each kind is a flat Pydantic model registered by the kernel or by one factory, declaring its fields, its references with cardinality, its ID prefix and the edge types it takes part in. No inheritance between kinds |
-| **Identity** | A stable ID, `PREFIX-n`, unique within a project and typed per kind (`ReqId`, `ClaimId`). IDs never change and are never reused; titles may change |
+| **Kind** | A namespaced name, `namespace.name` (`core.principle`, `sdlc.requirement`, `re.claim`). Each kind is a flat Pydantic model registered by the kernel or by one factory, declaring its fields, its references with cardinality, its ID pattern and the edge types it takes part in. No inheritance between kinds |
+| **Identity** | A stable ID matching the pattern its kind declares, most often `PREFIX-n` (`PRD` and `M1` are other forms), unique within a project and typed per kind (`ReqId`, `ClaimId`). IDs never change and are never reused; titles may change |
 | **Fields** | Semantic fields are hashed and drive freshness; presentation fields (display order, editorial notes) are not. A change to a presentation field never makes anything stale |
 | **Hash** | SHA-256 over the RFC 8785 canonical JSON of the semantic fields, with text normalised to NFC and LF line endings, so every implementation and every round trip agrees; a field at its declared default is left out, and the hash is written `sha256:<hex>` (ADR-44) |
 | **References** | Three sources, all derived from content and never edited separately: typed reference fields (a criterion *verifies* a requirement), mentions `[[ID]]` and embeds `![[ID]]`. A revision with an unresolved reference is refused. References may point at any kind whose factory is enabled in the project |
@@ -559,7 +559,7 @@ An item is the unit of intent and knowledge: a requirement, a design decision, a
 | **Blobs** | An item may reference blobs by hash, media type and size; the blob hash is part of the item's semantic fields |
 | **Revisions** | Immutable sets of (item, hash) pairs, created only by applying a ChangeSet, each recording its parent, the author kind (person, agent, policy, system), the ChangeSet, and the task, finding or decision behind it (I-02) |
 | **Artifacts** | A container kind with one header item for its own fields and a set of member kinds: an `sdlc.spec` holds requirements, criteria, design decisions, scenarios, non-goals and open questions. Artifacts are optional: standalone items such as tickets, ADRs and principles need no container and render on their own or in a generated list |
-| **Lifecycles** | Any kind — an artifact header or a single item — may declare a lifecycle: a transition table with one writer per transition. Lifecycle state is not a semantic field: it is stored beside the item and never hashed, so a transition such as approved → verified never makes evidence stale; the kernel enforces one transition function per lifecycle as the only writer, an enum constraint in the database, and illegal transitions as typed errors. States that can be derived are computed in views, never stored |
+| **Lifecycles** | Any kind — an artifact header or a single item — may declare a lifecycle: a transition table with one writer per transition. Lifecycle state is not a semantic field: it is stored beside the item and never hashed, so a transition such as approved → verified never makes evidence stale; the kernel enforces one transition function per lifecycle as the only writer, an enum or an equivalent constraint in the database, and illegal transitions as typed errors. States that can be derived are computed in views, never stored |
 | **Rendering** | Every artifact renders to Markdown from its items and embeds; the rendered file carries a header naming the ledger as the source of truth. Markdown round-trips: parsing the render yields the same semantic hashes |
 
 **Kernel kinds.** The kernel owns the kinds every factory needs:
@@ -655,7 +655,7 @@ A task is the one unit of work in Grindstone. Implementing a ticket, drafting a 
 | `verifying` | The maker reported `done`; required checks are running on the collected subject | `delivering`, `done`, `blocked`, `running` (a rework round) |
 | `delivering` | Every required check is fresh and passing; a `delivery` decision and the adapter are in progress | `done`, `blocked` |
 | `blocked` | Stopped on a typed failure cause, a denied permission or a failed delivery; an escalation is open | `queued`, `cancelled` |
-| `done` | Every required check had fresh passing evidence and any delivery completed (I-04) | `queued` (only a failing re-check reopens it) |
+| `done` | Every required check had fresh passing evidence and any delivery completed, that is, reached `delivered` in the delivery port (I-04) | `queued` (only a failing re-check reopens it) |
 | `cancelled` | Stopped for good, by the operator or because a pinned item was removed | — |
 
 A run parked on a provider limit stays `running`; parking is a run state, not a task state.
@@ -664,7 +664,7 @@ A run parked on a provider limit stays `running`; parking is a run state, not a 
 
 **Runs, sessions and turns.** Each attempt is a **task run** with a fresh workspace. A run is a series of agent sessions — a new session after a host restart, a parked wait or a provider limit continues from the workspace. Grindstone numbers its own turns. The operator may steer a running session from the UI or VS Code; steering turns are recorded but carry no Grindstone number and cannot end the run. Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it was given (I-06).
 
-**Reports.** One accepted report ends each turn, with outcome `done`, `blocked` or `failed`. The kernel validates it against the output contract and returns structured errors the agent fixes in the same turn; a turn without a report gets one corrective prompt, then the run fails `missing_report`. Proposed items become a ChangeDraft; declared output files are copied out of the workspace into the blob store; nothing an agent writes reaches intent or delivery any other way (I-03). Two tools end a turn by themselves: delegate, and ask addressed to the operator. Each records its request, counts as the turn's report with outcome waiting, closes the session and frees the lane; when the child finishes or the decision is answered, the run continues in a new session on the same workspace with the result in context. A consult that passes its ceiling (ADR-38) suspends the same way. No task ever holds a lane while it waits.
+**Reports.** One accepted report ends each turn, with outcome `done`, `blocked` or `failed`. The kernel validates it against the output contract and returns structured errors the agent fixes in the same turn; a turn without a report gets one corrective prompt, then the run fails `missing_report`. Proposed items become a ChangeDraft; declared output files are copied out of the workspace into the blob store; nothing an agent writes reaches intent or delivery any other way (I-03). Three tools end a turn by themselves: delegate, ask addressed to the operator, and a request for permission, which raises a `permission` decision. Each records its request, counts as the turn's report with outcome waiting, closes the session and frees the lane; when the child finishes or the decision is answered, the run continues in a new session on the same workspace with the result in context. A consult that passes its ceiling (ADR-38) suspends the same way. No task ever holds a lane while it waits.
 
 **Failure causes.** A run fails with one typed cause, each with its rule:
 
@@ -790,7 +790,7 @@ Four small services sit under the concepts. They let one kernel serve git reposi
 
 ### Blob store
 
-Every file a task produces or consumes that is not a git commit lives in the blob store (ADR-04): content-addressed by SHA-256, immutable, on the `blobs` volume, written only by the control plane. When a run ends, the kernel copies the files its output contract declares out of the workspace, hashes and records them; undeclared files are discarded with the workspace. Stations receive input blobs read-only. Every blob has at least one root from the moment it is written: putting a blob creates a lease root owned by the run or job that produced it, and the module that later references it — an item revision, an evidence record, a decision — adds its own root through the store's interface in the same transaction; a lease is released when its run is archived. Garbage collection deletes only blobs with no root that are older than a grace period, so the store never reads another module's tables and a live blob is never collected. Size limits per blob and per project are configured; exceeding one fails the run `budget_exhausted`.
+Every file a task produces or consumes that is not a git commit lives in the blob store (ADR-04): content-addressed by SHA-256, immutable, on the `blobs` volume, written only by the control plane. When a run ends, the kernel copies the files its output contract declares out of the workspace, hashes and records them; undeclared files are discarded with the workspace. Stations receive input blobs read-only. Every blob has at least one root from the moment it is written: putting a blob creates a lease root owned by the run or job that produced it, and the module that later references it — an item revision, an evidence record, a decision — adds its own root through the store's interface in the same transaction; a lease is released when its run is archived. Garbage collection deletes only blobs with no root that are older than a grace period, so the store never reads another module's tables and a live blob is never collected. Size limits per blob and per project are configured; exceeding one fails the run `storage_limit` (ADR-37).
 
 ### Subjects
 
@@ -808,7 +808,7 @@ A factory subject kind — `re.binary`, `pcb.board` — always resolves to a blo
 
 ### Delivery port
 
-Delivery is the only way verified output leaves Grindstone (I-08, ADR-26). The port has three operations: `prepare` (build the outgoing change from verified subjects, idempotent by delivery key), `deliver` (perform it after a `delivery` decision) and `observe` (report external state back: merged, closed, rejected, commented). The kernel owns the port, the decision and the idempotency ledger; factories ship adapters. The MVP has one adapter, `sdlc.github_pr` (ADR-27). Agents never hold delivery credentials.
+Delivery is the only way verified output leaves Grindstone (I-08, ADR-26, ADR-45). The port's operations are `observe_mode` (whether the remote enforces the gate, ADR-40), `prepare` (build the outgoing change from verified subjects, idempotent by delivery key), `deliver` (perform it after a `delivery` decision), `observe` (report external state back: accepted, closed, rejected, commented), and two optional ones with no-op defaults for remotes without a gate or an acceptance step: `publish_gate_state` (show the remote the current verification state) and `accept` (complete the delivery on the remote, used only in unenforced mode after the gate is re-checked). The kernel calls them in order, re-checks the gate and holds every idempotency key. The kernel owns the port, the decision and the idempotency ledger; factories ship adapters. The MVP has one adapter, `sdlc.github_pr` (ADR-27). Agents never hold delivery credentials.
 
 ### Interface items
 
@@ -978,7 +978,7 @@ One MCP server inside `grindstone` (FastMCP), mounted per task run and authentic
 | `load_skill(name)` | Loads a skill from the capability's library | All modes |
 | `request_permission(action, reason)` | Raises a `permission` decision | All modes |
 
-**Suspending tools.** `delegate` and `ask(need="operator")` end the turn: the tool result confirms the request, the kernel records it as the turn's report with outcome `waiting`, disposes the session and frees the lane. When the child finishes or the decision is answered, the run continues in a new session on the same workspace, with the result at the top of the next prompt. A specialist consult keeps the call open until it answers, with progress notifications as keepalives, up to the consult ceiling, and then suspends the same way (ADR-38). A parent never waits on a lane its child needs: delegation frees the lane, and consults run on the read-only lane. A caller in an open consult does hold its own lane; the operations view shows it.
+**Suspending tools.** `delegate`, `ask(need="operator")` and `request_permission` end the turn, because no task holds a lane while it waits on a person or a child: the tool result confirms the request, the kernel records it as the turn's report with outcome `waiting`, disposes the session and frees the lane. When the child finishes or the decision is answered, the run continues in a new session on the same workspace, with the result at the top of the next prompt. A specialist consult keeps the call open until it answers, with progress notifications as keepalives, up to the consult ceiling, and then suspends the same way (ADR-38). A parent never waits on a lane its child needs: delegation frees the lane, and consults run on the read-only lane. A caller in an open consult does hold its own lane; the operations view shows it.
 
 There are no tools to apply, transition, deliver, change configuration or reach another task (I-03, I-14, I-16). Factory domain tools (Ghidra, rea, CAD kernels) are separate tool servers in a capability's toolbox, local to the station, holding no secrets.
 
@@ -990,7 +990,7 @@ There are no tools to apply, transition, deliver, change configuration or reach 
 | --- | --- |
 | Types | Base classes for item kinds, report contracts, subject kinds, decision kinds; typed IDs; hashing helpers |
 | Registration | Decorators and manifest schema for kinds, edges, rules, methods, capabilities, templates, subjects, workspace providers, adapters, interface shapes |
-| Adapter ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`), `SubjectResolver`, `CheckMethod` (maps to an execution shape), `DeliveryAdapter` (`prepare`, `deliver`, `observe`) |
+| Adapter ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`), `SubjectResolver`, `CheckMethod` (maps to an execution shape), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `observe`, and the optional `publish_gate_state` and `accept`, ADR-45) |
 | Read services | Read items by pin, graph queries within the factory's kinds and interfaces, blob access |
 | Testing | An in-memory kernel and the conformance kit (pytest plugin) |
 
@@ -1026,7 +1026,7 @@ One PostgreSQL database (ADR-02). Each module owns one Postgres schema named aft
 **Rules that hold across schemas.**
 
 - Identifiers are typed in code and stored as text with a prefix (`REQ-0412`), or as UUIDv7 for records people never type.
-- Every lifecycle column has a database enum and is written by exactly one function (FF-08).
+- Every lifecycle column has a database enum or an equivalent constraint and is written by exactly one function (FF-08).
 - Nothing derivable is stored: readiness, freshness, coverage and staleness are views or functions (FF-09).
 - Cross-module references are by ID only, never by foreign key into another schema, so each module can migrate alone.
 - Events are written to the outbox in the same transaction as the state change, then published to the stream; consumers are idempotent by event ID.
@@ -1080,7 +1080,7 @@ Agents always receive errors as structured tool results they can act on; the RES
 | --- | --- | --- | --- |
 | Instance | `grindstone.toml` and secret files | Stations, allowed images, providers, limits, price table | Operator, restart of the affected container |
 | Factory | The factory package | Kinds, capabilities, templates, skills, rules, policy defaults | Installing a factory version |
-| Project | `.grindstone/` files, held by the control plane and exported read-only to the repository for review; agent edits to that folder are refused at copy-back | Enabled factories and versions, grants, pins, overrides, policy rules, budgets, path policies, autonomy ceiling | Operator edit, validated by `grindstone check`, applied as a recorded configuration change |
+| Project | `.grindstone/` files, held by the control plane and exported read-only to the repository for review; agent edits to that folder are refused at copy-back | Enabled factories and versions, grants, pins, overrides, policy rules, limits, path policies, autonomy ceiling | Operator edit, validated by `grindstone check`, applied as a recorded configuration change |
 
 `grindstone check` validates all three levels together and refuses to start a project whose configuration is invalid; the error names the file, the field and the rule.
 
@@ -1396,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty-four records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted** on 17 October 2026; ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026.
+Forty-six records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted**, on 17 October 2026 except ADR-45 and ADR-46 (18 October 2026); ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026. ADR-45 and ADR-46 come from the first review of the M1 specifications; the operator accepted both on 18 October 2026.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1408,7 +1408,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 | ADR | Title | Area |
 | --- | --- | --- |
-| 01 | A Python modular monolith with three supporting containers | Platform |
+| 01 | A Python modular monolith with three supporting containers (amended by 46) | Platform |
 | 02 | PostgreSQL is the only store of records | Platform |
 | 03 | DBOS runs every workflow; waits on people park | Platform |
 | 04 | A content-addressed blob store owned by the control plane | Platform |
@@ -1433,7 +1433,7 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 | 23 | Capabilities define specialists as data; skills load on demand | Factories |
 | 24 | Cooperation through three verbs and deterministic matching | Factories |
 | 25 | Factories integrate through interface items | Factories |
-| 26 | Delivery is a kernel port with factory adapters | Factories |
+| 26 | Delivery is a kernel port with factory adapters (amended by 45) | Factories |
 | 27 | The SDLC factory owns git workspaces, copy-back and GitHub delivery | Factories |
 | 28 | Every question to a person is one typed decision | People |
 | 29 | An advisor recommends; change classes have computed floors | People |
@@ -1449,10 +1449,17 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 | 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
 | 40 | Delivery states whether the remote enforces the gate | Factories |
 | 41 | Claude Code is the only agent until the operator adds another | Execution |
+| 42 | The agent host uses its packages unmodified, behind a launcher and a backend wrapper | Execution |
+| 43 | A skill's tools are listed from session start and refused until the skill is loaded | Execution |
+| 44 | Semantic hashes omit fields at their default | Kernel |
+| 45 | The delivery port reports the gate and completes deliveries through optional operations | Factories |
+| 46 | Dependencies are the latest stable release compatible with the other pins | Platform |
 
 ## Platform and runtime
 
 #### ADR-01 — A Python modular monolith with three supporting containers
+
+**Status.** Amended by ADR-46 (latest compatible release, exceptions recorded).
 
 **Decision.** Everything Grindstone owns is one Python process (`grindstone`) in one repository, deployed with Docker Compose next to three supporting containers: a thin TypeScript agent host (`agent-host`), a credential-less `runner` on the project's own toolchain image, and `postgres`. Four volumes: `blobs` and `repos` (control plane only), `workspaces` (control plane and agent host), `runs` (control plane and runner). Every dependency is the latest stable release, pinned exactly; images are pinned by digest; upgrades are deliberate commits that pass CI.
 
@@ -1618,6 +1625,8 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 
 #### ADR-26 — Delivery is a kernel port with factory adapters
 
+**Status.** Amended by ADR-45 (the port's operations).
+
 **Decision.** The kernel owns the delivery port (`prepare`, `deliver`, `observe`), its `delivery` decision and its idempotency ledger; factories ship adapters. Only verified subjects can be delivered; agents never hold delivery credentials.
 
 **Why.** Every domain ships somewhere different; the rules for shipping safely are the same. **Rejected:** delivery as factory code calling remotes from a template step (bypasses idempotency and decisions).
@@ -1744,6 +1753,22 @@ Forty-four records cover every choice that is expensive to reverse. Each states 
 **Decision.** Amends ADR-08 and the hashing contract. A semantic field whose value equals its declared default is omitted from the canonical form before hashing. Changing a semantic field's default is a breaking change under the schema compatibility check (FF-03), with a version bump and an upgrade note that says how stored hashes are treated. Semantic hashes are written with their algorithm, `sha256:<64 lowercase hex>`.
 
 **Why.** Read literally, the hash covers every semantic field, so adding an optional, defaulted field to a kind — a compatible change by ADR-05's rule — would add it to every item's canonical form, change every hash, and make all evidence in every project stale on an ordinary upgrade. Omitting defaults keeps compatible changes compatible for hashes too. The prefix lets a later algorithm coexist without a format migration. **Consequences.** The serialized form of a record still carries every field; only the canonical form for hashing omits defaults. **Rejected:** hashing every field and re-hashing all stored items on each compatible change (a mass staleness event per upgrade); bare hex hashes (an algorithm change would need a migration everywhere).
+
+#### ADR-45 — The delivery port reports the gate and completes deliveries through optional operations
+
+**Status.** Accepted on 18 October 2026, from the first review of the M1 specifications (SPEC-03 architecture review, A2).
+
+**Decision.** Amends ADR-26. The delivery port has six operations. `observe_mode` reports whether the remote enforces the gate (ADR-40). `prepare`, `deliver` and `observe` keep ADR-26's meaning. Two are optional, with no-op defaults, and an adapter declares which it supports: `publish_gate_state` shows the remote the delivery's current verification state, and `accept` completes the delivery on the remote and is called only in unenforced mode, after the kernel re-checks the gate, with the subject it verified. The contract uses these kernel-neutral names; each adapter documents what they mean for its remote (for GitHub, a commit status and a merge with the verified head SHA). The kernel calls the operations in order, re-checks the gate before `deliver` and before `accept`, and holds every idempotency key; adapters only perform.
+
+**Why.** ADR-40 made the enforcement mode and outside merges kernel facts, and the gate re-check before a Grindstone-performed merge must be the same for every adapter. Folding status and merge into `deliver` would make every adapter re-implement the re-check and the ledger; naming them after a git host would put git words in a kernel port that a report export or a fabrication package never needs. **Consequences.** SDK 0.1.0 ships the six operations. An adapter whose remote has no gate reports no mode, and both optional operations are skipped. **Rejected:** three operations with status and merge inside `deliver` (duplicated safety code per adapter); `publish_status` and `merge` as kernel names (git-host vocabulary in the kernel, FF-12).
+
+#### ADR-46 — Dependencies are the latest stable release compatible with the other pins
+
+**Status.** Accepted on 18 October 2026, from the first review of the M1 specifications (summary, question 1).
+
+**Decision.** Amends ADR-01 and the constraints table. Every dependency is the latest stable release that is compatible with the other pinned dependencies, pinned exactly. An exception, a dependency held below its latest release, names its constraint in `docs/m0/versions.md`: which dependency's declared range blocks the latest release, and what lifts it. Exceptions are re-checked at every upgrade and end as soon as the constraint lifts. Pinning, digests and deliberate upgrades are unchanged.
+
+**Why.** The first case is TypeScript: 7.0.2 is the latest, but SvelteKit 3.1.0 and svelte-check 4.7.7 declare peer ranges that stop at TypeScript 6, so the web UI cannot use 7 yet. Read literally, ADR-01 would force an unsupported pair. **Rejected:** holding the whole repository at the newest version every package supports (gives up current releases everywhere for one package); ignoring declared peer ranges (unsupported combinations in CI and production).
 
 # Roadmap
 
@@ -1911,15 +1936,17 @@ Vertical slices mean several things appear in thin form before their full form. 
 
 | Lifecycle or contract | Owner | Introduced by | Extended by |
 | --- | --- | --- | --- |
-| Contracts, typed IDs, hashing, revisions | `contracts`, `intent` | SPEC-01 | SPEC-11 |
+| Contracts, typed IDs, hashing | `contracts` | SPEC-01 | SPEC-11 |
+| Revisions | `intent` | SPEC-04 | SPEC-11 |
 | Event outbox and event union | `platform` | SPEC-03 | SPEC-10, SPEC-22 |
 | Registries and manifest schema | `platform` | SPEC-03 | SPEC-13, SPEC-19 |
-| Kernel SDK | `platform` | SPEC-03 | SPEC-13, SPEC-17, SPEC-19 |
+| Kernel SDK | `platform`, with port contracts from SPEC-06 and SPEC-08 in 0.1.0 | SPEC-03 | SPEC-13, SPEC-17, SPEC-19 |
 | Blob store and garbage collection | `store` | SPEC-02 | SPEC-27 |
-| Lanes and station registry | `store`, `stations` | SPEC-02 | SPEC-06, SPEC-17 |
+| Lanes | `store` | SPEC-02 | SPEC-17 |
+| Station registry | `stations` | SPEC-06 | SPEC-17 |
 | Item model, artifacts, references | `intent` | SPEC-04 | SPEC-11 |
 | ChangeSet lifecycle and apply | `change` | SPEC-04 | SPEC-12, SPEC-16 |
-| Impact walk and verdicts | `change` | SPEC-12 | SPEC-16 |
+| Impact walk and verdicts | `change` | SPEC-04 (one round, `unaffected` only) | SPEC-12, SPEC-16 |
 | Decision record, kinds, flags and continuations | `decisions` | SPEC-04 | SPEC-15, SPEC-25 |
 | Autonomy state, policy and tripwire | `decisions` | SPEC-15 | SPEC-25 |
 | Task lifecycle, runs, turns and reports | `work` | SPEC-06 | SPEC-17, SPEC-19 |
@@ -1994,9 +2021,9 @@ How planning agents turn this foundation into specs that fit together. It adds n
 3. **Know which side of the line you are on.** A kernel specification owns a module in `grindstone` and may not name a factory kind, capability, template, method or adapter — its examples use the `notes` factory. A factory specification owns part of a package in `factories/<ns>/` and may use only `grindstone.sdk`. A specification that needs both is two specifications.
 4. **Respect the module map.** A specification depends on specifications of its own or an earlier milestone, without cycles, and uses other modules only through their service interfaces, events and contracts — never their tables. Where a lower module must trigger a higher one, it uses a continuation or an event (Components tab).
 5. **Own state once.** Each specification lists the state, lifecycles, contracts and configuration keys it owns. Every lifecycle has exactly one owning specification, which alone defines and writes its transitions. The Roadmap's ownership table says which specification introduces each and which may extend it.
-6. **Decide in the right place.** A choice inside one module or one factory is the specification's to make, with its reason and rejected options. A choice that crosses a module or factory boundary, changes a contract others use, adds a component, a dependency, a kernel kind, a check shape, a step type, a decision class or a station tier, or contradicts a record is proposed as a new decision record and accepted before dependent work proceeds.
+6. **Decide in the right place.** A choice inside one module or one factory is the specification's to make, with its reason and rejected options. A choice that crosses a module or factory boundary, changes a contract others use, adds a component, adds a dependency that crosses a module or factory boundary or is exposed through a contract or the SDK, adds a kernel kind, a check shape, a step type, a decision class or a station tier, or contradicts a record is proposed as a new decision record and accepted before dependent work proceeds.
 7. **Never invent answers.** Anything undecided becomes an open item with a stated default and the step that resolves it: a time-boxed spike or the first implementation step.
-8. **Check current facts.** Versions, APIs, policies and limits are checked against primary sources when the specification is written, and cited; dependencies are the latest stable release, pinned exactly.
+8. **Check current facts.** Versions, APIs, policies and limits are checked against primary sources when the specification is written, and cited; dependencies are the latest stable release compatible with the other pins, pinned exactly (ADR-46).
 9. **Prefer less.** Each new component, dependency or abstraction states why configuration, an off-the-shelf part or existing glue would not do. In a factory, data beats code: a new adapter or check method states why a manifest entry could not do.
 10. **Write just in time.** Specifications for a milestone are written while the previous one closes, against the code that exists. When implementation shows a better design inside the specification's scope, the specification is revised in the same pull request; it never silently drifts from the code.
 11. **Scale evidence with change size.** A local change needs its impact and tests. A design change also needs a target design, a migration path and a staged plan. An architectural change — anything touching the concepts, an invariant, the module map or the SDK — also needs an independent review.
@@ -2129,6 +2156,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.6 | 18 October 2026 | From the first review of the M1 specifications, accepted by the operator: ADR-45 (the delivery port's operations: `observe_mode`, `prepare`, `deliver`, `observe`, and optional `publish_gate_state` and `accept`; amends ADR-26) and ADR-46 (dependencies are the latest stable release compatible with the other pins; amends ADR-01). The Concepts delivery port, the SDK's adapter ports and the constraints table follow. The ownership table splits revisions (SPEC-04) from contracts, lanes (SPEC-02) from the station registry (SPEC-06), has SPEC-04 introduce the one-round walk, and names SPEC-06 and SPEC-08 as contributors to SDK 0.1.0. Editorial: `storage_limit` replaces `budget_exhausted` in the blob store; limits replace budgets in project configuration; `request_permission` is a suspending tool; kinds declare an ID pattern; a delivery is complete when it reaches `delivered`; lifecycle columns have an enum or an equivalent constraint; the decision index lists ADR-42 to ADR-46. Playbook rule 6 names which dependencies need a record. |
 | 4.5 | 17 October 2026 | Accepted by the operator: ADR-44 (semantic hashes omit fields at their default, hashes written `sha256:<hex>`; amends ADR-08 and the hashing contract; from SPEC-01, carried by its first review); and, from the M0 spikes, ADR-42 (the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher; amends ADR-15; resolves Q-1) and ADR-43 (a skill's tools are listed from session start and refused until it is loaded; amends ADR-39). The agent-host component, the skills concept, the glossary's hash, the hashing contract, Q-1, Q-5 and the risk table follow. |
 | 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
 | 4.3 | 17 October 2026 | ADR-40: delivery observes whether the remote enforces the merge gate; in unenforced mode Grindstone merges itself and reports bypasses. I-08, M1-02, SPK-4, the threat model, the evidence-integrity measure and the risks updated; ADR-27 marked amended. |
