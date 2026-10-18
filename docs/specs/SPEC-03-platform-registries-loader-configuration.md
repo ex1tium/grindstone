@@ -1,5 +1,5 @@
 # SPEC-03 — Platform: registries, loader and configuration
-Status: draft · Milestone: M1
+Status: in review (revision 1 answers review 1 and architecture review 1, `docs/specs/reviews/SPEC-03-review-1.md`, `SPEC-03-architecture-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.platform` (registries, factory manifest schema and loader, kinds declared as data, instance and project configuration, `grindstone check`, the event outbox, event union and dispatcher, secret grants) and `grindstone.sdk` 0.1.0
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -58,8 +58,8 @@ Scenarios: K1 step 1 (a template step names a need, inputs and a check by anothe
 ## 4. Requirements
 
 REQ-0301: Registries hold every kind, edge type, need, capability, template, check method, subject kind, subject resolver, workspace provider, delivery adapter, decision kind, error code and event type by full namespaced name, and the kernel registers its `core` names before any factory loads.
-REQ-0302: The loader discovers factories through the entry-point group `grindstone.factories`, reads each factory's `manifest.yaml` from its package with a safe YAML loader, validates it against the manifest schema, and registers all of its names or none.
-REQ-0303: A manifest that registers a name outside its namespace, registers a name already registered, or declares a factory SDK range the running SDK does not satisfy is refused.
+REQ-0302: The loader discovers factories through the entry-point group `grindstone.factories`, reads each factory's `manifest.yaml` from its distribution's files with a safe YAML loader and without importing the package, validates it against the manifest schema, and registers all of its names or none.
+REQ-0303: A manifest that registers a name outside its namespace, registers a name already registered, offers a need of another factory's namespace, or declares a factory SDK range the running SDK does not satisfy is refused.
 REQ-0304: A refused factory stays unloaded and is listed in the start-up report with the file, field and rule that failed; projects that enable it are paused; the kernel and every other factory still start.
 REQ-0305: Item kinds are declared as data: fields from a fixed type vocabulary, each semantic unless marked presentation, typed references with target kinds, cardinality and edge type, an ID pattern with example IDs, and optionally a lifecycle table. The loader compiles each kind into a `Contract` subclass whose hash follows SPEC-01.
 REQ-0306: A capability is validated at load: its prompt and skill files exist, its report schemas are valid JSON Schema, its offers name needs it may offer, and a capability with a writing workspace declares no check methods it may perform. Its hash is the semantic hash of its declaration together with the SHA-256 of every file it names.
@@ -71,9 +71,11 @@ REQ-0311: Project configuration is a TOML document stored by the control plane a
 REQ-0312: `grindstone check` validates instance, factory and project configuration together and exits non-zero naming the file, field and rule of every error; a project whose current configuration is invalid is paused.
 REQ-0313: A module records an event in the same unit of work as the change it describes, with a UUIDv7 event ID and a per-project sequence number that increases by one with no gaps; events are instances of one discriminated union of registered event models.
 REQ-0314: Each registered event consumer receives each event of its types exactly once, as a workflow whose ID is derived from the consumer and the event ID, and the dispatcher resumes from its cursor after a crash.
-REQ-0315: A factory reads a secret only through the SDK, by a name its manifest declares and its project grants; any other name is refused with `permission_required`.
-REQ-0316: `grindstone.sdk` 0.1.0 exposes only the declaration contracts, the adapter ports and their contracts, the read services and the secret accessor listed in section 5, and FF-01 refuses any other import from `grindstone` in a factory.
+REQ-0315: A factory reads a secret only through the context the kernel hands its adapter, by a name its manifest declares and its project grants; any other name is refused with `secret_not_granted`, and no decision is raised.
+REQ-0316: `grindstone.sdk` 0.1.0 exports exactly the names in section 5's export table, imports only `contracts` and `platform`, and gives factories services only through context objects that kernel code constructs; FF-01 refuses any other import from `grindstone` in a factory.
 REQ-0317: The registries answer, for any loaded name, its factory, factory version, manifest hash and, for a capability, its hash; the instance and project configuration hashes are readable for any project.
+REQ-0318: Cross-factory load rules (make and prove, offered needs, references to other kinds) are evaluated over the union of the factories accepted alone, repeated until no further factory is refused, so the result never depends on the factories' names or load order.
+REQ-0319: Event consumers are order-independent: each reads current state through its owner's interface rather than relying on the order in which events of different sequence numbers reach it.
 
 ## 5. Design
 
@@ -89,23 +91,30 @@ REQ-0317: The registries answer, for any loaded name, its factory, factory versi
 | `TemplateDecl` | `name`, `command`, `args` (JSON Schema), `steps`: `task` (`name`, `need`, `mode`, `inputs`, `output`, `checks` of `method`, `by`, `required`, `targets`, `limits`) or `deliver` (`name`, `adapter`, `from` a task step) |
 | `CheckMethodDecl` | `name`, `shape`, `env_relevant` (bool), `config_schema` |
 | `InstanceConfig` | Sections contributed by their owners: `[store]` (SPEC-02); `[stations]`, `[agents]`, `[limits]`, `[host]` (SPEC-06); `[checks]`, `[delivery]` (SPEC-08); `[surface]`, whose `mcp_*` keys are SPEC-07's and the rest SPEC-10's; and this specification's `[platform]` (`factories_allowed`), `[images]` (name → digest-pinned reference) and `[secrets]` (name → file path) |
-| `ProjectConfig` | `[project]` (`name`), `[factories]` (namespace → exact version), `[grants]` (`tiers`, `secrets`), `[checks]` (`image`, a name from `[images]`), `[capabilities."<id>"]` (overrides: `model`, `effort`, `limits`, `extra_prompt`), and `[factories.<ns>]` sections validated by that factory's schema |
+| `ProjectConfig` | `[project]` (`name`), `[factories]` (namespace → exact version), `[grants]` (`tiers`, `secrets`), `[checks]` (`image`, a name from `[images]`), `[capabilities."<id>"]` (overrides: `model`, a model slot name as in `CapabilityDecl`, never a model; `effort`, `limits`, `extra_prompt`), and `[factories.<ns>]` sections validated by that factory's schema |
 | `EventEnvelope` | `event_id` (UUIDv7), `project` (a project ID, or the instance stream's nil ID), `seq`, `type`, `occurred_at`, `payload` |
 
 Each registered event model has a literal `type` and a schema version. The union of all kernel event models is assembled in `grindstone.contracts.events` and generated for TypeScript like every other contract (FF-02). This specification adds `factory.loaded`, `factory.refused`, `project.configured` and `config.invalid`.
 
-Error codes registered here: `manifest_invalid` (validation), `config_invalid` (validation), `name_conflict` (validation) and `factory_unavailable` (transient).
+Kernel error codes declared here, in `grindstone.contracts.errors` (SPEC-01): `manifest_invalid`, `config_invalid`, `name_conflict` and `secret_not_granted` (validation), and `factory_unavailable` (transient). The registry's `core` names copy the whole kernel list; the registry itself is how factories add codes.
+
+**Modes.** A task's mode and an offer's mode map one to one: a `work` task matches offers serving `delegate`, `consult` matches `consult`, and `check` matches `check`. `CapabilityDecl` documents the mapping; SPEC-06's matching and the make-and-prove rule below both use it.
+
+**Needs.** A factory registers needs only in its own namespace, by offering them, and may also offer `core` needs (`core.review.impact`, `core.advise`). Offering another factory's need is refused (`manifest_invalid`); requesting one, in a template or a `delegate` call, stays allowed, which is all that S6 and K3 need.
+
+**Events from factories.** In SDK 0.1.0 factories register no event types; the union is kernel-only, so it can be generated at build time. Factory events, if a later factory needs them, arrive as an envelope with a factory-owned payload schema in a minor SDK version.
 
 **Registries.**
-- In memory, built at start-up: `core` first, then each loaded factory in name order, then frozen. A factory version change takes effect only on restart.
+- In memory, built at start-up in two phases (REQ-0318), then frozen. A factory version change takes effect only on restart.
 - `platform.factories` records each load: `name`, `version`, `manifest_hash`, `status` (loaded or refused), `report`, `loaded_at`. The table is history, insert-only, and the registries are rebuilt from the packages at each start.
 - The `core` names: the five kernel kinds and their fields (as declared by SPEC-04), the needs `core.review.impact`, `core.advise` and `operator`, the six check shapes, the subject kinds `git_commit`, `blob`, `blob_set` and `item_revision`, the kernel decision kinds (SPEC-04), and every kernel error code and event type.
 
 **Loader.**
-1. Discover entry points in group `grindstone.factories`. Each entry point's value is a module; the loader reads `manifest.yaml` beside it with `importlib.resources`, so a code-free factory's module is an empty `__init__.py`.
+1. Discover entry points in group `grindstone.factories`. For each, read `manifest.yaml` and the files it names from the distribution's file list through `importlib.metadata`, which imports nothing, so no factory code runs before its manifest is validated. A code-free factory's module is an empty `__init__.py`.
 2. Parse with `yaml.safe_load` (DEC-0302) and validate into `FactoryManifest`.
-3. Check the rules below, collecting every error.
-4. Only if there are none, compile kinds, read capability files, import the `code` module if declared, and register everything in one step.
+3. **Phase 1, each factory alone:** schema, namespaces, SDK range, kinds, edges, lifecycles, capability files, check-method shapes, collecting every error. A factory with any error is refused.
+4. **Phase 2, across factories:** over the union of the factories phase 1 accepted and the `core` names, check cross-namespace references, offered needs and make and prove. Refuse every factory with an error, then repeat phase 2 over the remaining union until a pass refuses nothing. Because each pass checks the same set, the outcome does not depend on names or order (REQ-0318).
+5. Only then import each accepted factory's `code` module if it declares one, check that every adapter, provider and method it names implements its SDK port, compile kinds, and register everything in one step.
 
 Rules, each failing with `manifest_invalid` and the path of the offending field:
 - Every name starts with `<namespace>.`. Edge names, needs, kinds, capabilities, templates, methods, providers, adapters, decision kinds and secrets are all namespaced; only `core` registers `core.*`.
@@ -116,7 +125,7 @@ Rules, each failing with `manifest_invalid` and the path of the offending field:
 - Each lifecycle has its `initial` among its `states`, and each transition names states of the table and exactly one writer. SPEC-04 defines the writers.
 - Capabilities and check methods as REQ-0306 and REQ-0309.
 - Templates as REQ-0307 and REQ-0308.
-- Every adapter, provider and method a manifest names exists in `ADAPTERS` and implements its SDK port.
+- Every adapter, provider and method a manifest names exists in `ADAPTERS` and implements its SDK port (step 5).
 
 **Make and prove at load (REQ-0307).** For each `task` step with maker need `N` and each check with a prover need `P`:
 - `makers(N)` is the set of loaded capabilities that offer `N` with mode `delegate` or `consult`.
@@ -124,7 +133,7 @@ Rules, each failing with `manifest_invalid` and the path of the offending field:
 - The step is refused if the two sets intersect, or if any capability in `provers(P)` has a writing workspace.
 - Mechanical checks, whose `by` is a check station, cannot be makers by construction.
 
-The check is over every loaded factory, because matching (SPEC-06, SPEC-17) can pick any enabled capability. A refused template refuses its whole factory, so a factory never runs half-checked. SPEC-08 repeats the guard when a task's check plan is built, against the actual maker (I-15).
+The check is over every factory accepted by phase 1, because matching (SPEC-06, SPEC-17) can pick any enabled capability. A refused template refuses its whole factory, so a factory never runs half-checked. SPEC-08 repeats the guard when a task's check plan is built, against the actual maker (I-15).
 
 **Kinds as data.** `KindDecl` compiles with `pydantic.create_model` into a `Contract` subclass named after the kind:
 - the type vocabulary maps to SPEC-01's admitted types (no floats; lists are ordered tuples);
@@ -151,31 +160,42 @@ Kinds are data only in M1 (DEC-0301). SPEC-04 owns what the fields mean at revis
 
 **`grindstone check`.** A CLI subcommand of the control-plane image. It loads factories exactly as start-up does, validates `grindstone.toml`, and, against the database if one is reachable or against files given with `--project FILE`, every project configuration. It prints one line per error, `file:field: rule`, and exits 1 if any. Start-up runs the same checks: an invalid instance configuration stops the process, and an invalid project configuration pauses that project (`config.invalid`).
 
-**Secrets (REQ-0315).** `[secrets]` maps namespaced names (for example `notes.archive_token`) to files. A factory reads one through `sdk.secrets.read(ctx, name)`. Platform checks that the calling adapter's factory declares the name and that the project in `ctx` grants it, and only then reads the file. Values are never logged, emitted in events or written to the database.
+**Secrets (REQ-0315).** `[secrets]` maps names to files: unprefixed for the kernel's own secrets (SPEC-05), namespaced for factory secrets (for example `notes.archive_token`). A factory reads one through `ctx.secrets.read(name)`. The context's factory and project were bound by the kernel when it built the context, so platform checks that this factory declares the name and this project grants it, and only then reads the file. A refusal is `secret_not_granted`: a configuration error, with no decision raised. Values are never logged, emitted in events or written to the database.
 
 **Event outbox.**
 - `platform.events (project, seq, event_id, type, schema_version, payload JSONB, occurred_at)`, primary key `(project, seq)`, with `event_id` unique.
 - `platform.event_seq (project, last_seq)`: `emit(uow, event)` runs `UPDATE … SET last_seq = last_seq + 1 RETURNING` in the caller's unit of work, so sequence numbers are gapless per project and serialized with the change they describe.
 - After commit, `NOTIFY platform_events` wakes the dispatcher and the SSE stream.
 
-**Dispatcher (REQ-0314).** Modules register consumers at the composition root (`platform.consume(name, types, workflow)`), which keeps lower modules from importing higher ones. A task in the lifespan reads events after each consumer's cursor in `platform.event_cursors (consumer, project, seq)`. For each event it starts `evt-<consumer>-<event_id>` through `store.start`, then advances the cursor. A crash between start and cursor update repeats a start, which DBOS ignores for an existing ID (SPEC-02). Consumers are workflows and follow SPEC-02's rules for their own effects.
+**Dispatcher (REQ-0314, REQ-0319).** Modules register consumers at the composition root (`platform.consume(name, types, workflow)`), which keeps lower modules from importing higher ones. A task in the lifespan reads events after each consumer's cursor in `platform.event_cursors (consumer, project, seq)`. For each event it starts `evt-<consumer>-<event_id>` through `store.start`, then advances the cursor. A crash between start and cursor update repeats a start, which DBOS ignores for an existing ID (SPEC-02). Consumers are workflows and follow SPEC-02's rules for their own effects. Two events for one consumer can run concurrently, so delivery is exactly once but not ordered: a consumer reads current state through its owner's interface (for example a task's current state, not the state named in the event) and does nothing when the state has moved on (REQ-0319).
 
-**Kernel SDK 0.1.0** (`grindstone.sdk`, re-exports only):
+**Kernel SDK 0.1.0** (`grindstone.sdk`, `__version__ = "0.1.0"`). The SDK holds no logic of its own: it re-exports contracts from `grindstone.contracts`, the protocols below, and the platform registration helpers. It imports only `contracts` and `platform` (FF-01).
 
-| Area | Contents |
+**Contexts (architecture review, A1).** Every port method takes a context, and factories never build one. `Context` is a protocol in `grindstone.sdk` with:
+- `project` and `factory`, bound by the kernel;
+- `items`: read a revision by `ItemRef`, rendered and typed (`intent.read_pinned`);
+- `blobs`: open a blob by hash (`store.open_blob`);
+- `storage`: the factory's storage directory for this project (DEC-0306);
+- `secrets`: read a granted secret (REQ-0315).
+
+The implementation lives in the composition root (`grindstone.app`), which alone may import `intent` and `store` together with `platform`. It registers a context builder with `platform` at start-up, and the module that calls an adapter (`stations`, `evidence` or `delivery`) asks `platform.context_for(project, factory)` for one. So no SDK import grows, and the factory identity a secret check reads is one the kernel bound. Contexts specific to one port extend `Context` in the specification that owns the port: `RunContext` (SPEC-06 part 1), `CheckContext` and `DeliveryContext` (SPEC-08).
+
+**Exports (architecture review, A4).** Every name in SDK 0.1.0, with its owner:
+
+| Names | Owner |
 | --- | --- |
-| Declarations | `FactoryManifest`, `KindDecl`, `FieldDecl`, `EdgeDecl`, `CapabilityDecl`, `TemplateDecl`, `CheckMethodDecl`, and the reference contracts of SPEC-01 |
-| Ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`; SPEC-06 defines its contexts and `CollectOutcome`), `SubjectResolver` (`materialize`, `read_file`; SPEC-08), `CheckMethod` (`build_job`, `environment`, `interpret`; SPEC-08), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `publish_status`, `merge`, `observe`; SPEC-08) |
-| Read services | `items.read(ctx, ref)` by pin, `blobs.open(ctx, hash)`, `storage.dir(ctx)` (a directory on `repos` private to the factory and project), `secrets.read(ctx, name)` |
-| Errors | `ErrorEnvelope` and the factory-registrable error codes |
+| `ItemRef`, `BlobRef`, `SubjectRef`, `SemanticHash`, `ErrorEnvelope`, `item_id_type`, `semantic_hash` | SPEC-01 |
+| `FactoryManifest`, `KindDecl`, `FieldDecl`, `EdgeDecl`, `CapabilityDecl`, `TemplateDecl`, `CheckMethodDecl`, `Context`, `ItemReader`, `BlobReader`, `FactoryStorage`, `SecretReader`, `register_error_code` | SPEC-03 |
+| `WorkspaceProvider` (`prepare`, `collect`, `discard`), `SubjectResolver` (`materialize`, `read_file`), `RunContext`, `Materialization`, `CollectOutcome` | SPEC-06 part 1 |
+| `CheckMethod` (`build_job`, `environment`, `interpret`), `CheckContext`, `CheckSpec`, `JobPayload`, `TestOutcome`, `TargetResult`, `ReviewVerdict`, `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `observe`, and the optional `publish_gate_state` and `accept`, ADR-45), `DeliveryContext`, `PreparedDelivery`, `ModeObservation`, `VerificationState`, `Observation` | SPEC-08 |
 
-The port signatures belong to the specifications named in the table, which are written against this SDK version. A port added or changed after acceptance is an SDK change under ADR-05's versioning rule: minor for additive, major for breaking. Testing helpers (the in-memory kernel and the conformance kit) arrive with SPEC-13.
+The port signatures belong to the specifications named, which are written against this SDK version. A name added after acceptance is a minor SDK version; a name changed or removed is a major one (ADR-05). Testing helpers (the in-memory kernel and the conformance kit) arrive with SPEC-13.
 
 **State and ownership.** Schema `platform`: `factories`, `projects`, `project_configs`, `events`, `event_seq`, `event_cursors`. No lifecycle columns; project pause is derived from the latest configuration's validity and the factory load status, never stored (FF-09).
 
 **Behaviour.** Loading and configuration are start-up and request-time code with no external effects. The dispatcher's only effect is starting workflows, which is idempotent by ID.
 
-**Interfaces.** Python: `registries` (read-only lookups), `load_factories()`, `check()`, `set_project_config(uow, project, toml, provenance)`, `project_config(project)`, `emit(uow, event)`, `consume(...)`, `events_after(project, seq)`. CLI: `grindstone check`.
+**Interfaces.** Python: `registries` (read-only lookups), `load_factories()`, `check()`, `context_for(project, factory)`, `project_status(project)` (configuration validity and factory load status, from which paused is derived), `set_project_config(uow, project, toml, provenance)`, `project_config(project)`, `emit(uow, event)`, `consume(...)`, `events_after(project, seq)`. CLI: `grindstone check`.
 
 **Security.**
 - Factories are operator-installed code, trusted like a dependency but bounded at B5. They are pinned in `uv.lock`, never fetched at run time, and validated before use.
@@ -196,19 +216,21 @@ DEC-0302: YAML manifests parsed with PyYAML's safe loader, `pyyaml==6.0.3` (PyPI
 DEC-0303: SDK ranges are PEP 440 specifier sets checked with `packaging==26.3` (PyPI, released 4 August 2026, the latest; already in the lockfile as a test dependency) · Semantic versions such as `0.1.0` are valid PEP 440 versions, and the comparison is the one Python packaging already trusts · Rejected: a hand-written semver range parser (custom code for a solved problem).
 DEC-0304: The registries are rebuilt from packages at every start and frozen; `platform.factories` is a history of loads, not a source · Factories are code pinned in the lockfile, so the package is the truth · Rejected: storing manifests in the database (two sources that can disagree).
 DEC-0305: Events reach module consumers as workflows whose IDs are derived from consumer and event · Exactly-once delivery comes from SPEC-02's deterministic IDs with no consumer-side deduplication table · Rejected: per-consumer processed-event tables (duplicated idempotency code in every module).
+DEC-0306: Each factory gets a storage directory per project, on the `repos` volume, through `ctx.storage` · A factory whose subjects live in a remote needs local mirrors and private working copies, which the foundation puts on `repos`, and a factory must not choose paths itself. The directory is disposable: a factory must be able to rebuild it from its remote, nothing in it is a record, it is excluded from backups (Operations, "Backup"), and it is removed when the project is deleted · Rejected: a version-control service in the kernel (domain knowledge in the kernel); letting factories pick paths on `repos` (one factory could write another's).
+DEC-0307: Phase 2 of loading runs over the union of factories accepted alone, to a fixed point · A rule that reads "every loaded factory" while factories load one by one gives answers that depend on names · Rejected: name order (non-deterministic as factories are added); validating each factory against the kernel only (misses a maker in another factory, I-15).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0301: Registries, `core` names, manifest contracts, SDK 0.1.0 surface · implements REQ-0301, REQ-0316, REQ-0317 · depends on TKT-0101 · paths `packages/grindstone/src/grindstone/platform/`, `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/contracts/platform.py`, `packages/grindstone/tests/platform/`.
-TKT-0302: Loader, kinds as data, capability hashing, load-time rules including make and prove · implements REQ-0302 to REQ-0309 · depends on TKT-0301 · same paths plus `pyproject.toml` (pyyaml, packaging) and `packages/grindstone/tests/fixtures/factories/`.
+TKT-0301: Registries, `core` names, manifest contracts, SDK 0.1.0 surface and contexts · implements REQ-0301, REQ-0316, REQ-0317 · depends on TKT-0101 · paths `packages/grindstone/src/grindstone/platform/`, `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/contracts/platform.py`, `packages/grindstone/tests/platform/`.
+TKT-0302: Loader in two phases, kinds as data, capability hashing, load-time rules including make and prove · implements REQ-0302 to REQ-0309, REQ-0318 · depends on TKT-0301 · same paths plus `pyproject.toml` (pyyaml, packaging) and `packages/grindstone/tests/fixtures/factories/`.
 TKT-0303: Instance and project configuration, secrets, `grindstone check` · implements REQ-0310 to REQ-0312, REQ-0315 · depends on TKT-0302, TKT-0201 · platform paths plus `packages/grindstone/src/grindstone/__main__.py`.
-TKT-0304: Event outbox, union, dispatcher · implements REQ-0313, REQ-0314 · depends on TKT-0202 · platform and contracts paths.
+TKT-0304: Event outbox, union, dispatcher · implements REQ-0313, REQ-0314, REQ-0319 · depends on TKT-0202 · platform and contracts paths.
 
 AC-0301-1: After start-up with no factories, the registries hold the five `core` kinds, the `core` needs, the six check shapes, the four kernel subject kinds and the kernel decision kinds, and registering a `core.*` name from a fixture factory fails `manifest_invalid` · verifies REQ-0301 · unit · `test_core_names_registered_first`.
-AC-0302-1: A fixture factory in the `notes` style, with an empty module and a `manifest.yaml`, is discovered through its entry point and loaded; a manifest with a YAML tag that would construct an object is refused · verifies REQ-0302 · unit · `test_loader_discovers_and_parses_safely`.
+AC-0302-1: A fixture factory in the `notes` style, with an empty module and a `manifest.yaml`, is discovered through its entry point and loaded; a manifest with a YAML tag that would construct an object is refused; a fixture package whose `__init__` would write a marker file is not imported until its manifest passes, and not at all when it fails · verifies REQ-0302 · unit · `test_loader_discovers_and_parses_safely`.
 AC-0302-2: A manifest with one invalid template registers none of its kinds, capabilities or templates · verifies REQ-0302 · unit · `test_loader_registers_all_or_nothing`.
-AC-0303-1: Each of: a kind named outside the namespace, a capability whose name collides with another factory's, and an SDK range of `>=0.2.0` — is refused with the offending field named · verifies REQ-0303 · unit · `test_namespace_and_sdk_range_rules`.
-AC-0304-1: With one valid and one refused fixture factory, the process starts, the start-up report names the refused factory's file, field and rule, and a project enabling it is paused while a project enabling the other runs · verifies REQ-0304 · integration · `test_refused_factory_does_not_stop_kernel`.
+AC-0303-1: Each of: a kind named outside the namespace, a capability whose name collides with another factory's, an offer of another factory's need, and an SDK range of `>=0.2.0` — is refused with the offending field named · verifies REQ-0303 · unit · `test_namespace_and_sdk_range_rules`.
+AC-0304-1: With one valid and one refused fixture factory, the process starts, the start-up report names the refused factory's file, field and rule, and `project_status` reports a project enabling it as paused while a project enabling the other runs · verifies REQ-0304 · integration · `test_refused_factory_does_not_stop_kernel`.
 AC-0305-1: A kind declared with a presentation field, a `ref` field and an ID pattern compiles to a contract whose hash ignores the presentation field, whose `ref` field refuses an ID not matching the target kind's pattern, and a float field type is refused at load · verifies REQ-0305 · unit · `test_kinds_compile_to_contracts`.
 AC-0306-1: Changing one byte of a capability's prompt file changes its hash; a capability with a writing workspace and a non-empty `may_check` is refused; a report schema that is not valid JSON Schema is refused · verifies REQ-0306 · unit · `test_capability_validation_and_hash`.
 AC-0307-1: A fixture template whose `task` step needs `notes.write` and whose check is by need `notes.review`, where one capability offers both, is refused at load with `manifest_invalid` naming the step and the capability · verifies REQ-0307 · unit · `test_load_refuses_maker_as_prover`.
@@ -220,13 +242,15 @@ AC-0311-1: Setting a project configuration twice creates versions 1 and 2 with d
 AC-0312-1: `grindstone check` on an invalid instance file and an invalid project file exits 1 and prints one `file:field: rule` line per error; on valid files it exits 0 · verifies REQ-0312 · unit · `test_grindstone_check_cli`.
 AC-0313-1: Two concurrent units of work emitting events for one project produce sequence numbers with no gap or duplicate, and an event written in a rolled-back unit of work does not appear · verifies REQ-0313 · property · `test_event_sequence_gapless`.
 AC-0314-1: The dispatcher killed between starting a consumer workflow and advancing its cursor delivers that event to that consumer exactly once after restart · verifies REQ-0314 · crash-and-resume · `test_event_dispatch_once`.
-AC-0315-1: An adapter reading a secret its factory declares but the project does not grant, or one its factory does not declare, is refused with `permission_required`; a granted one is returned and never appears in logs · verifies REQ-0315 · unit · `test_secret_grants`.
+AC-0315-1: An adapter reading a secret its factory declares but the project does not grant, or one its factory does not declare, is refused with `secret_not_granted` and raises no decision; a granted one is returned and never appears in logs; an adapter has no way to build a context naming another factory · verifies REQ-0315 · unit · `test_secret_grants`.
 AC-0316-1: A fixture factory importing `grindstone.platform` fails FF-01; one importing `grindstone.sdk` passes · verifies REQ-0316 · contract · `test_ff01_factories_use_sdk_only`.
+AC-0318-1: Two fixture factories, where the second's capability would make the first's template violate make and prove, give the same result (both evaluated, the first refused) whichever is named first; and a factory whose need's only offer is in a refused factory is refused in the next pass · verifies REQ-0318 · unit · `test_load_rules_independent_of_order`.
+AC-0319-1: A fixture consumer given two events for one task in reverse order ends in the same state as in order · verifies REQ-0319 · unit · `test_consumer_order_independent`.
 AC-0317-1: For a loaded capability the registries return its factory, factory version, manifest hash and capability hash, and these equal the values recorded in `platform.factories` for that start · verifies REQ-0317 · unit · `test_registry_provenance_lookups`.
 
 ## 8. Test plan
 
-- Unit, with fixture factories in the `notes` style under `packages/grindstone/tests/fixtures/factories/`: AC-0301-1, AC-0302-1, AC-0302-2, AC-0303-1, AC-0305-1, AC-0306-1, AC-0307-1, AC-0307-2, AC-0308-1, AC-0309-1, AC-0310-1, AC-0312-1, AC-0315-1, AC-0317-1.
+- Unit, with fixture factories in the `notes` style under `packages/grindstone/tests/fixtures/factories/`: AC-0301-1, AC-0302-1, AC-0302-2, AC-0303-1, AC-0305-1, AC-0306-1, AC-0307-1, AC-0307-2, AC-0308-1, AC-0309-1, AC-0310-1, AC-0312-1, AC-0315-1, AC-0317-1, AC-0318-1, AC-0319-1.
 - Integration, on real Postgres: AC-0304-1, AC-0311-1.
 - Property: AC-0313-1.
 - Crash-and-resume: AC-0314-1.
@@ -234,7 +258,8 @@ AC-0317-1: For a loaded capability the registries return its factory, factory ve
 
 ## 9. Open items and risks
 
-OQ-0301: How is a factory enabled on a project in M1? · Default: by the operator's authenticated configuration command (SPEC-10), recorded as a configuration version with provenance; the `scope` decision the foundation names arrives with SPEC-15, and SPEC-15 converts configuration changes that enable a factory into that decision · Resolved by SPEC-15.
+OQ-0301: How are a factory enabled on a project, and its grants of tiers, egress and secrets, approved in M1? · Default: by the operator's authenticated configuration command (SPEC-10), recorded as a configuration version whose provenance has `author_kind: person`; no agent-facing or policy path writes project configuration (REQ-0311); the `scope` decision the Factories tab names for both arrives with SPEC-15, which converts such configuration changes into that decision · Resolved by SPEC-15.
+OQ-0303: When may a project override a capability's extra skills (Concepts, "Where capabilities come from")? · Default: not in M1, where no capability has skills; the override arrives with skills in SPEC-17 · Resolved by SPEC-17.
 OQ-0302: Does every factory need its own project-configuration schema? · Default: optional; a factory without one accepts no section · Resolved by TKT-0303.
 
 Risks mitigated: factories weakening invariants (load-time namespace and make-and-prove rules); configuration drift between runs (hashes recorded per run); lost or duplicated events (outbox in the same transaction, idempotent dispatch).
