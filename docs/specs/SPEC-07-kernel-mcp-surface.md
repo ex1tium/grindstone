@@ -1,5 +1,5 @@
 # SPEC-07 — Kernel MCP surface, first cut
-Status: draft · Milestone: M1
+Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-07-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.surface.mcp` (the kernel MCP server, per-task tokens, the M1 tool set and its schemas, the tool wrapper that counts open calls and sends keepalives)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -48,17 +48,17 @@ Depends on:
 - **SPEC-03:** registries (capabilities' modes and produced kinds), error codes.
 - **SPEC-04:** `intent.read_pinned`, `render`, `allocate`, kind validation.
 - **SPEC-05:** the station listener and the `mcp_token_key` secret.
-- **SPEC-06:** `work.context_for(run)` (task, mode, pins, capability, current turn), `work.submit_report`, `work.suspend`, `work.add_proposals`, and the open-call registry in `stations`.
+- **SPEC-06** (part 2 for `work`, part 1 for `stations`): `work.context_for(run)` (task, mode, pins, capability, current turn and its state), `work.submit_report`, `work.suspend`, `work.add_proposals`, and the open-call registry in `stations`.
 
 Scenarios: K1 step 4 (the agent reads N-3 through MCP and submits a report with a proposed revision and a declared file).
 
 ## 4. Requirements
 
 REQ-0701: The kernel MCP server is served only on the station listener at `/kernel/mcp`, over MCP's streamable HTTP transport, by FastMCP mounted in the control plane's FastAPI application.
-REQ-0702: Every request carries a bearer token that names project, task, run, turn and capability and is signed with the MCP token key; the server verifies the signature and that the run is active at that turn on every request, and refuses anything else with HTTP 401 before any tool runs.
+REQ-0702: Every request carries a bearer token that names project, task, run, turn and capability and is signed with the MCP token key; the server verifies the signature and that the token's turn is the run's current turn and is open, neither ended nor suspended, on every request, and refuses anything else with HTTP 401 before any tool runs.
 REQ-0703: `read_item`, `read_items` and `read_blob` return only revisions and blobs pinned in the run's inputs, rendered as SPEC-04 renders them with the typed fields alongside, and refuse anything else with `not_pinned`.
 REQ-0704: `report` submits the turn's report to `work`; an invalid report returns an error result whose structured content lists every violation with a JSON pointer, a rule and a message, and a second report after one was accepted returns `report_already_accepted`.
-REQ-0705: `propose` accepts item revisions only in `work` mode and only of kinds the capability may produce, validates each against its kind contract and references, allocates IDs for kinds that allocate them, and adds them to the run's proposals; it never writes intent.
+REQ-0705: `propose` accepts item revisions only in `work` mode and only of kinds the capability may produce, validates each against its kind contract, accepts references only to the run's pinned items and to items created in the same proposals, allocates IDs for kinds that allocate them, and adds them to the run's proposals; it never writes intent.
 REQ-0706: `ask` with need `operator` requires a question, an answer schema and a recommended answer with its reason, and suspends the turn through `work`; with any other need it returns `not_available`.
 REQ-0707: `request_permission` requires an action and a reason, and suspends the turn through `work` with a `permission` decision.
 REQ-0708: The tool list is fixed for the M1 tool set `grindstone/1` and depends only on the task's mode; no tool applies, transitions, delivers, reads configuration or names another task.
@@ -74,8 +74,8 @@ REQ-0711: Every refusal is a tool error result carrying an `ErrorEnvelope`; no t
 - **Minting:** `mint(task, run, turn, capability, project)` returns `base64url(claims) + "." + base64url(HMAC-SHA256(mcp_token_key, claims))`, where `claims` is the RFC 8785 canonical JSON of `{v: 1, project, task, run, turn, capability, iat}`. `work` mints one per turn (SPEC-06) through this function, which the composition root registers with `work`, because `work` may not import `surface`.
 - **Verification**, on every request:
   1. decode the token and check the signature in constant time;
-  2. call `work.context_for(run)` to check that the run is `active` and its current turn equals `turn`.
-- **Lifetime:** a token dies with its turn, so a session disposed after a suspension, or an orphaned agent process, can do nothing with an old token.
+  2. call `work.context_for(run)` to check that the run is `active`, its current turn equals `turn`, and that turn is `open` (SPEC-06 part 2, REQ-0627).
+- **Lifetime:** a token dies when its turn ends or suspends, so a session disposed after a suspension, or an orphaned agent process, can do nothing with an old token.
 - **Revocation:** there is no list. A run or turn that ends is revoked by state.
 
 **Tools** (tool set `grindstone/1`, advertised as the server's version and in its instructions):
@@ -85,7 +85,7 @@ REQ-0711: Every refusal is a tool error result carrying an `ErrorEnvelope`; no t
 | `read_item` | all | `id` | `{id, kind, title, hash, fields, markdown}` of the pinned revision |
 | `read_items` | all | `ids` (≤ 100) | A list as above; per-ID errors inline |
 | `read_blob` | all | `hash` | Media type, size and content (text, or base64 for binary), ≤ 8 MiB; larger blobs return `blob_too_large` |
-| `report` | all | `outcome` (`done`, `blocked`, `failed`), `summary` (≤ 8 KiB), `data` (the capability's report schema), `files` (paths) | `accepted`, or an error result listing violations |
+| `report` | all | `outcome` (`done`, `blocked`, `failed`), `summary` (≤ 8 KiB), `data` (the capability's report schema), `files` (relative paths: no absolute path, `..` segment or NUL byte, each ≤ 1,024 bytes, refused by the contract) | `accepted`, or an error result listing violations |
 | `propose` | `work` | `items`: kind, ID or none (to allocate), title, fields, base hash for a revision | Each item's ID and status, or its errors |
 | `ask` | `work` | `need`, `question` (≤ 8 KiB), `refs` (pinned IDs), `answer_schema` (JSON Schema), `recommendation` (`answer`, `reason`) | For `operator`: the decision ID and "your turn is suspended; end it now" |
 | `request_permission` | all | `action`, `reason`, `recommendation` | The decision ID and "your turn is suspended; end it now" |
@@ -143,6 +143,8 @@ The open-call registry lives in `stations`, in process memory. It needs no persi
 DEC-0701: Tokens are HMAC-signed claims checked against live run state on every request · The claims name the task, run, turn and capability as ADR-16 requires, and revocation needs no table because an ended turn is a dead token · Rejected: opaque random tokens in a table (a lookup per request and a second source of truth for run state); tokens per run rather than per turn (a disposed session's process could keep acting until the run ends).
 DEC-0702: `ask` to the operator returns at once and suspends; it never holds the call open · A person may answer in days. ADR-14 frees the lane, and SPK-5 showed that a held call needs keepalives the agent cannot outlast · Rejected: holding the call open for the operator (a lane held for days).
 DEC-0703: Error results carry the envelope as structured content and its message as text · Agents differ in which they read; both carry the same code · Rejected: protocol-level JSON-RPC errors (agents treat them as failures of the server, not as results to act on).
+DEC-0704: `request_permission` suspends the turn like `ask` to the operator · A person may take days to answer a permission too, and the lane rule DEC-0702 applies is the same; foundation v4.6 lists it among the suspending tools · Rejected: holding the call open for the decision (a lane held while a person decides).
+DEC-0705: References in proposals are limited to pinned items and items created in the same proposals · Otherwise `reference_unresolved` would tell an agent whether an unpinned ID exists, a probe outside its task's scope · Rejected: resolving against the whole project (the probe); hiding the code (a valid reference outside the pins would look like a typo).
 
 ## 7. Tickets and acceptance criteria
 
@@ -151,10 +153,10 @@ TKT-0702: The M1 tools and their contracts · implements REQ-0703 to REQ-0708 ·
 TKT-0703: Generated tool schemas, FF-02 and FF-03 extensions · implements REQ-0709 · depends on TKT-0702 · paths `scripts/`, `packages/grindstone/mcp-tools.json`, `tests/fitness/`.
 
 AC-0701-1: `/kernel/mcp` answers on the station listener and returns 404 on the operator listener · verifies REQ-0701 · integration · `test_mcp_served_on_station_listener_only`.
-AC-0702-1: In memory: a call with no token, a forged signature, another run's token, or a token for a turn that has ended is refused with 401 before any tool code runs; a valid token works; a token minted for task A cannot read task B's pins · verifies REQ-0702 · in-memory tool · `test_per_task_token_scope`.
+AC-0702-1: In memory: a call with no token, a forged signature, another run's token, a token for a turn that has ended, or a token whose turn suspended, is refused with 401 before any tool code runs; a valid token works; a token minted for task A cannot read task B's pins · verifies REQ-0702 · in-memory tool · `test_per_task_token_scope`.
 AC-0703-1: `read_item` returns the pinned revision of a pinned fixture item even after a later revision is applied, and refuses an unpinned ID with `not_pinned`; `read_blob` refuses an unpinned hash and a blob over the limit · verifies REQ-0703 · in-memory tool · `test_reads_are_scoped_to_pins`.
-AC-0704-1: `report` with a missing required field and a wrong type returns an error result whose envelope lists both violations with JSON pointers; after an accepted report, another returns `report_already_accepted` · verifies REQ-0704 · in-memory tool · `test_invalid_report_structured_errors`.
-AC-0705-1: In a `check`-mode task `propose` returns `tool_not_in_mode`; in `work` mode, a kind the capability does not produce returns `kind_not_produced`; a valid proposal of an allocating kind gets an allocated ID; no revision exists in `intent` afterwards · verifies REQ-0705 · in-memory tool · `test_propose_never_writes_intent`.
+AC-0704-1: `report` with a missing required field and a wrong type returns an error result whose envelope lists both violations with JSON pointers; `files` with `../x`, `/etc/x` or a NUL byte is refused by the contract; after an accepted report, another returns `report_already_accepted` · verifies REQ-0704 · in-memory tool · `test_invalid_report_structured_errors`.
+AC-0705-1: In a `check`-mode task `propose` returns `tool_not_in_mode`; in `work` mode, a kind the capability does not produce returns `kind_not_produced`; a valid proposal of an allocating kind gets an allocated ID; a reference to an existing but unpinned ID is refused like a missing one; no revision exists in `intent` afterwards · verifies REQ-0705 · in-memory tool · `test_propose_never_writes_intent`.
 AC-0706-1: `ask` with need `operator` and no recommendation is refused with `recommendation_missing`; with one, it returns a decision ID and the turn is suspended; with need `notes.style` it returns `not_available` · verifies REQ-0706 · in-memory tool · `test_ask_operator_only_in_m1`.
 AC-0707-1: `request_permission` without a reason is refused; with one it raises a `permission` decision and suspends the turn · verifies REQ-0707 · in-memory tool · `test_request_permission_suspends`.
 AC-0708-1: The tool list for each mode equals the table's, and no listed tool's name or schema offers apply, transition, deliver, configuration or another task's ID · verifies REQ-0708 · in-memory tool · `test_tool_list_is_the_m1_set`.
