@@ -1,6 +1,6 @@
 # SPEC-02 — Store, runtime, lanes and blob store
-Status: draft · Milestone: M1
-Kind: kernel · Owns: `grindstone.store` (database access, schema migrations, unit of work, DBOS setup and workflow version, external-step idempotency helper, lanes as queues, blob store and its roots, crash harness)
+Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-02-review-1.md`) · Milestone: M1
+Kind: kernel · Owns: `grindstone.store` (database access, schema migrations, unit of work, DBOS setup and workflow version, external-step idempotency helper, lanes as queues, blob store and its roots, crash harness, FF-07 table ownership, FF-09 no stored derivations)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
 
@@ -54,7 +54,7 @@ Scenarios: K1 step 5 (blob write keyed by content hash) and "killed at any step,
 REQ-0201: The control plane launches DBOS inside the FastAPI lifespan with an explicit application version, its system tables in schema `dbos` of the same database, and only DBOS's asynchronous calls while the event loop runs.
 REQ-0202: Each kernel module's tables live in a schema named after the module and are created and changed only by numbered SQL migrations the module ships; at start-up the store applies pending migrations in module-map order, in one transaction per migration, before DBOS launches.
 REQ-0203: A unit of work is one SERIALIZABLE transaction, retried on serialization failure; inside a workflow it is a DBOS datasource transaction, so its writes and the step's checkpoint commit together or not at all.
-REQ-0204: Every workflow step with an effect outside the database passes an idempotency key derived from its workflow ID and step name to the effect, and the effect's target finds the earlier result by that key or creates it.
+REQ-0204: Every workflow step with an effect outside the database passes its effect an idempotency key derived from the ID of the record that caused the workflow, carried as a workflow input, and the step name; the effect's target finds the earlier result by that key, or by a lookup on the causing record that the target documents, before creating it, so a re-executed or forked workflow causes each effect once.
 REQ-0205: Every workflow started for a record has an ID derived from that record, so starting it twice runs it once.
 REQ-0206: Each station lane is a DBOS queue named `lane.<station>.<lane>` with the global concurrency its configuration gives; lanes are registered at start-up from the lane list the composition root passes in.
 REQ-0207: At start-up, if workflows of another application version are pending, the control plane recovers its own, starts no new dispatch, and reports each stranded workflow with its ID, name and version.
@@ -65,6 +65,8 @@ REQ-0211: A blob over the per-blob limit, or one that would take its project ove
 REQ-0212: Opening a blob returns exactly the bytes stored under its hash; a stored file whose content does not match its hash is never served and is reported as `invariant_violated`.
 REQ-0213: A crash harness kills the control plane with SIGKILL at a named kill point and restarts it; every external step is registered with its kill points, and FF-10 fails while a registered step has no idempotency key or no crash-and-resume test.
 REQ-0214: Every scheduled workflow states whether missed periods are backfilled; the default is to skip them.
+REQ-0215: SQL in a kernel module, in its code and its migrations, names only tables in its own schema, schema-qualified; FF-07 fails the build otherwise, exempting only DBOS's outputs table in schema `store` and DBOS's own schema `dbos`, which DBOS writes.
+REQ-0216: No migration creates a column whose name says it stores a value the foundation defines as computed (freshness, staleness, readiness, coverage, a gate or verification state, a total); FF-09 fails the build otherwise.
 
 ## 5. Design
 
@@ -76,11 +78,15 @@ REQ-0214: Every scheduled workflow states whether missed periods are backfilled;
 | `StoreSettings` | `database: DatabaseSettings` (the M0 dataclass becomes this contract), `blobs_dir: str`, `max_blob_bytes: int` (seed 2 GiB), `max_project_bytes: int` (seed 20 GiB) |
 | `BlobRoot` | `blob: BlobRef`, `project: ProjectId`, `owner_module: str`, `owner_kind: str`, `owner_id: str`, `lease: bool` |
 
-The kernel error codes `storage_limit` (limit class), `database_unavailable` (transient), `workflow_version_mismatch` (internal) and `migration_failed` (internal) are registered here.
+The kernel error codes `storage_limit` (limit class), `database_unavailable` (transient), `workflow_version_mismatch` (internal) and `migration_failed` (internal) are declared here, in `grindstone.contracts.errors` (SPEC-01), which `store` can import.
 
 **Database access.** SQLAlchemy Core over psycopg 3 (`postgresql+psycopg://`), with one engine and pool for the process. Modules write SQL text through the unit of work; nothing uses the ORM. SQLAlchemy is already in the lockfile because DBOS depends on it; this specification pins it directly (DEC-0201).
 
-**Migrations.** Each module ships `migrations/NNNN_<slug>.sql` inside its package. The store's runner reads `store.migrations (module, number, sha256, applied_at)` and applies pending files in module-map order (`store`, `platform`, `intent`, `evidence`, `decisions`, `memory`, `stations`, `change`, `work`, `delivery`, `surface`), each in its own transaction with `SET LOCAL lock_timeout`. An applied file whose hash later changes fails start-up with `migration_failed`, because migrations are append-only. Cross-schema foreign keys are refused by a lint in FF-07, which this specification extends to read migration files: a statement in module A's migration that names schema B fails the build.
+**Table ownership (REQ-0215, FF-07).** Every kernel SQL statement names its tables schema-qualified (`intent.items`, never `items`). `scripts/ff/table_ownership.py` reads every string literal that holds SQL in each module's code and every statement in its migrations, and fails on a schema other than the module's own, or on an unqualified table name. Exempt: DBOS's outputs table in schema `store`, which every module's datasource transactions write through DBOS, and schema `dbos`. Cross-schema foreign keys are refused the same way.
+
+**No stored derivations (REQ-0216, FF-09).** `scripts/ff/no_stored_derivations.py` reads every migration and fails on a column whose name matches a deny-list owned here: `fresh`, `stale`, `freshness`, `ready`, `readiness`, `coverage`, `covered`, `gate`, `verified_state`, `verification_state`, `total`, `usage`. Lifecycle state columns are not derivations and are FF-08's (SPEC-04). A fixture migration with each denied name fails it. The deny-list grows with the specifications that define new computed values.
+
+**Migrations.** Each module ships `migrations/NNNN_<slug>.sql` inside its package. The store's runner reads `store.migrations (module, number, sha256, applied_at)` and applies pending files in module-map order (`store`, `platform`, `intent`, `evidence`, `decisions`, `memory`, `stations`, `change`, `work`, `delivery`, `surface`), each in its own transaction with `SET LOCAL lock_timeout`. An applied file whose hash later changes fails start-up with `migration_failed`, because migrations are append-only. A statement in module A's migration that names schema B fails FF-07 (above).
 
 **Unit of work.**
 - Inside workflows: a DBOS `SQLAlchemyDatasource` on the same database, with its outputs table in schema `store`. Steps that only write to the database are `@store.transaction` functions, which wrap `datasource.transaction()` at SERIALIZABLE isolation. DBOS records each one's result in the same transaction as its writes, so a step that committed never runs again (DEC-0202).
@@ -101,8 +107,8 @@ Both give the caller one object (`Uow`) with `execute`, `fetch_one` and `fetch_a
 **Workflow-version check (REQ-0208).** Workflows register through `@store.workflow(name)`, a thin wrapper over `DBOS.workflow` that adds the function to a registry. `scripts/ff/workflow_versions.py` hashes each registered workflow's source (its body and the steps it calls by name) into `packages/grindstone/workflow-versions.json`. CI fails when a hash changes and neither `WORKFLOW_VERSION` rose nor `docs/upgrades.md` has an entry for that workflow saying the change is replay-compatible: steps only added after every existing step, none removed or reordered.
 
 **External steps (REQ-0204).** The pattern from SPK-2, experiment 1:
-- `@store.external_step(name, effect="…")` wraps `DBOS.step` and passes the step an `IdempotencyKey`, `<workflow ID>:<step name>[:<n>]`.
-- The step hands the key to its target, which finds by it or creates: the agent host by client key, the GitHub adapter by branch and pull-request lookup, the blob store by content hash.
+- Every workflow started for a record takes that record's ID as its first input (`store.start` checks it). `@store.external_step(name, effect="…")` wraps `DBOS.step` and passes the step an `IdempotencyKey`, `<causing record ID>:<step name>[:<n>]`. A fork (`fork_workflow`) copies the inputs, so a step re-executed under a forked workflow ID gets the same key, and its target finds the earlier effect (review 1, F1). The DBOS workflow ID is never part of a key.
+- The step hands the key to its target, which finds by it, or by a lookup on the causing record that the target documents, before it creates: the agent host by client key, a delivery adapter by its documented lookup, the blob store by content hash.
 - A step runs at least once; the key makes its effect happen once.
 - The registry of external steps (name, owning module, effect, kill points) is what FF-10 reads.
 
@@ -118,10 +124,10 @@ Both give the caller one object (`Uow`) with `execute`, `fetch_one` and `fetch_a
 | `blob_roots` | `id` (UUIDv7), `blob`, `project`, `owner_module`, `owner_kind`, `owner_id`, `lease`, `created_at`, `released_at` | Insert; `released_at` set once |
 
 How each operation works:
-- **Put.** Stream to a temporary file in `blobs/.tmp/`, hashing and counting as it goes; refuse at once on passing the per-blob limit. `fsync`, then `rename` to `blobs/<h0h1>/<h2h3>/<hex>`. Then, in one unit of work, insert the row (`ON CONFLICT DO NOTHING`) and the lease root, after checking the project's rooted total against its limit. A crash after the rename leaves a file with no row, which the next put of the same content reuses; garbage collection (SPEC-27) removes it otherwise.
+- **Put.** Stream to a temporary file in `blobs/.tmp/`, hashing and counting as it goes; refuse at once on passing the per-blob limit. `fsync`, then `rename` to `blobs/<h0h1>/<h2h3>/<hex>`. Then, in one unit of work, insert the row (`ON CONFLICT DO NOTHING`) and the lease root, after checking the project's rooted total against its limit. A lease root is unique per blob and owner while unreleased, so a put repeated by the same owner returns its existing root instead of adding a second one. A crash after the rename leaves a file with no row, which the next put of the same content reuses; garbage collection (SPEC-27) removes it otherwise.
 - **Roots.** `add_root(uow, blob, owner)` and `release_root(uow, root)` run inside the caller's unit of work, so a reference and its root commit together (ADR-04). `release_leases(uow, owner_kind, owner_id)` ends a run's or job's leases when it is archived.
 - **Open.** `open_blob(hash)` returns a reader that hashes as it streams and fails with `invariant_violated` at end of stream if the content does not match. A blob is not served from a file whose row is missing.
-- **Project totals** are a view: the sum of sizes of blobs with an unreleased root in the project. Nothing is stored (FF-09).
+- **Project totals** are a view: the sum of the sizes of the distinct blobs with at least one unreleased root in the project, each blob counted once however many roots it has there. Nothing is stored (FF-09).
 
 **State and ownership.** Schema `store`: `migrations`, `blobs`, `blob_roots`, DBOS's datasource outputs table. Schema `dbos`: managed by DBOS. No lifecycle columns.
 
@@ -149,8 +155,8 @@ How each operation works:
 
 **Fitness functions.**
 - FF-10 is added: every registered external step has an idempotency key and a crash-and-resume test that names it.
-- FF-07 is extended to migration files.
-- FF-09 covers `blob_roots`: no stored total.
+- FF-07 is added (REQ-0215), over code and migrations of every kernel module; the specifications that own schemas rely on it.
+- FF-09 is added (REQ-0216); `blob_roots` stores no total.
 - The workflow-version check (REQ-0208) runs with FF-10 in `make ff`.
 
 ## 6. Decisions
@@ -168,39 +174,44 @@ TKT-0202: DBOS in the lifespan, workflow registry and version check, start-up gu
 TKT-0203: External-step helper, kill points, crash harness, FF-10 · implements REQ-0204, REQ-0213 · depends on TKT-0202 · same paths plus `tests/crash/`, `scripts/ff/`, `tests/fitness/`.
 TKT-0204: Lanes · implements REQ-0206 · depends on TKT-0202 · store paths.
 TKT-0205: Blob store and roots · implements REQ-0209 to REQ-0212 · depends on TKT-0201 · store paths.
+TKT-0206: FF-07 table ownership and FF-09 no stored derivations, with fixtures · implements REQ-0215, REQ-0216 · depends on TKT-0201 · paths `scripts/ff/`, `tests/fitness/`, `Makefile`.
 
 AC-0201-1: The app starts against a fresh database with DBOS's tables in schema `dbos`, application version `WORKFLOW_VERSION`, and no synchronous DBOS call inside the lifespan · verifies REQ-0201 · integration · `test_lifespan_launches_dbos`.
 AC-0202-1: A fresh database migrates in module-map order; a second start applies nothing; changing an applied migration file fails start-up with `migration_failed` · verifies REQ-0202 · integration · `test_migrations_apply_once_in_order`.
 AC-0202-2: A migration of module A that names module B's schema fails FF-07 · verifies REQ-0202 · contract · `test_ff07_migrations_stay_in_their_schema`.
 AC-0203-1: A datasource transaction step killed after commit is not re-run on recovery, and one killed before commit leaves no rows and is re-run once · verifies REQ-0203 · crash-and-resume · `test_transaction_step_commits_with_checkpoint`.
 AC-0203-2: Two concurrent units of work that conflict both complete, one after a retried serialization failure · verifies REQ-0203 · integration · `test_unit_of_work_retries_serialization_failures`.
+AC-0203-3: A DBOS datasource transaction step runs at SERIALIZABLE, and when two such steps conflict, the one that fails serialization is retried and completes with one checkpoint · verifies REQ-0203 · integration · `test_datasource_transaction_isolation_and_retry`.
 AC-0204-1: An external step killed after its effect and before its checkpoint re-runs on restart with the same idempotency key, and the fake target records one effect · verifies REQ-0204 · crash-and-resume · `test_external_step_effect_once`.
 AC-0204-2: An external step registered without an idempotency key fails FF-10 · verifies REQ-0204 · contract · `test_ff10_requires_idempotency_key`.
+AC-0204-3: An external step killed after its effect and before its checkpoint, whose workflow is then forked from that step with `grindstone workflows fork`, passes the same key, and the fake target records one effect · verifies REQ-0204 · crash-and-resume · `test_forked_step_keeps_its_key`.
 AC-0205-1: Starting a workflow twice with the same record ID runs it once; starting one without an ID is refused; a child started inside a killed parent exists once after recovery · verifies REQ-0205 · crash-and-resume · `test_workflow_ids_are_deterministic`.
 AC-0206-1: With `writing` at concurrency 1, fifty workflows from two projects enqueued in parallel never run two at once, and the read-only lane never exceeds its concurrency · verifies REQ-0206 · integration · `test_lanes_bound_concurrency`.
 AC-0206-2: A writing parent that waits on a child on its own lane is still pending when the test's timeout ends, and one that ends its turn lets the child run · verifies REQ-0206 · integration · `test_writing_parent_must_not_wait_on_its_lane`.
 AC-0207-1: With a workflow pending under version `v1`, a start as `v2` dispatches nothing, reports the workflow, and `grindstone workflows fork` moves it so that it finishes once on `v2` · verifies REQ-0207 · integration · `test_stranded_workflows_block_dispatch`.
 AC-0208-1: Changing a registered workflow's body without raising `WORKFLOW_VERSION` or adding an upgrade note fails the check; adding the note passes · verifies REQ-0208 · contract · `test_workflow_change_needs_version_or_note`.
-AC-0209-1: Putting the same content twice stores one file and one row and two lease roots; the file sits at its fan-out path, and its bytes hash to its name · verifies REQ-0209 · unit · `test_put_blob_is_content_addressed`.
+AC-0209-1: Putting the same content for two owners stores one file, one row and two lease roots, and putting it again for the first owner adds no root; the file sits at its fan-out path, and its bytes hash to its name · verifies REQ-0209 · unit · `test_put_blob_is_content_addressed`.
 AC-0209-2: A put killed after the rename and before the commit leaves no row; repeating the put records the blob once · verifies REQ-0209 · crash-and-resume · `test_put_blob_crash_records_once`.
 AC-0210-1: For any sequence of puts, root additions and releases (property test), every blob row has at least one root at every commit, or had one at its own commit · verifies REQ-0210 · property · `test_every_blob_is_rooted`.
 AC-0211-1: A put over the per-blob limit, or over the project's remaining allowance, fails `storage_limit` and leaves no file, row or root · verifies REQ-0211 · unit · `test_storage_limits_refuse_cleanly`.
 AC-0212-1: A stored file altered on disk is refused when opened, with `invariant_violated` · verifies REQ-0212 · unit · `test_open_blob_detects_corruption`.
 AC-0213-1: The harness kills at `after:<step>` for a registered step and restarts; the matrix runner runs every registered kill point of every registered external step · verifies REQ-0213 · crash-and-resume · `test_crash_matrix_runs_every_registered_step`.
 AC-0213-2: Registering an external step with no crash-and-resume test naming it fails FF-10 · verifies REQ-0213 · contract · `test_ff10_requires_crash_test`.
+AC-0215-1: FF-07 passes on the kernel, and fixtures with a query on another module's table, an unqualified table name, a cross-schema foreign key in a migration and a write to DBOS's outputs table (exempt, so it passes) behave as stated · verifies REQ-0215 · contract · `test_ff07_table_ownership`.
+AC-0216-1: FF-09 passes on the kernel's migrations, and a fixture migration adding a column with each denied name fails it · verifies REQ-0216 · contract · `test_ff09_no_stored_derivations`.
 AC-0214-1: A schedule declared without a backfill choice skips missed periods; one declared with backfill runs them · verifies REQ-0214 · integration · `test_schedule_backfill_is_explicit`.
 
 ## 8. Test plan
 
 - Unit: AC-0209-1, AC-0211-1, AC-0212-1.
 - Property: AC-0210-1, on Hypothesis sequences of operations against a real database.
-- Integration, on real Postgres and DBOS: AC-0201-1, AC-0202-1, AC-0203-2, AC-0206-1, AC-0206-2, AC-0207-1, AC-0214-1.
-- Crash-and-resume, with the harness: AC-0203-1, AC-0204-1, AC-0205-1, AC-0209-2, AC-0213-1. Fast set on every commit; the full matrix nightly.
-- Contract, as fitness fixtures: AC-0202-2, AC-0204-2, AC-0208-1, AC-0213-2.
+- Integration, on real Postgres and DBOS: AC-0201-1, AC-0202-1, AC-0203-2, AC-0203-3, AC-0206-1, AC-0206-2, AC-0207-1, AC-0214-1.
+- Crash-and-resume, with the harness: AC-0203-1, AC-0204-1, AC-0204-3, AC-0205-1, AC-0209-2, AC-0213-1. Fast set on every commit; the full matrix nightly.
+- Contract, as fitness fixtures: AC-0202-2, AC-0204-2, AC-0208-1, AC-0213-2, AC-0215-1, AC-0216-1.
 
 ## 9. Open items and risks
 
-OQ-0201: Do DBOS 3.3.0's datasource transactions keep exactly-once commits across SIGKILL, as SPK-2 showed for steps? · Default: yes, per DBOS's design (the output row commits in the user's transaction) · Resolved by TKT-0201's AC-0203-1; on failure DEC-0202's fallback applies, with keyed upserts in every database step.
+OQ-0201: Do DBOS 3.3.0's datasource transactions keep exactly-once commits across SIGKILL, as SPK-2 showed for steps, run at SERIALIZABLE, and retry a serialization failure without a second checkpoint? · Default: yes, per DBOS's design (the output row commits in the user's transaction; the decorator defaults to SERIALIZABLE and retries serialization errors) · Resolved by TKT-0201's AC-0203-1 and AC-0203-3; on failure DEC-0202's fallback applies, with keyed upserts in every database step.
 OQ-0202: Should incompatible workflow changes use DBOS patching instead of drain-or-fork? · Default: drain or fork (DEC-0204) · Resolved by SPEC-27, which owns upgrades (M5-06).
 
 Risks mitigated: duplicate or lost side effects across crashes (external-step rule, FF-10); workflows silently stranded by an upgrade (explicit version, guard, CI check); a blob collected while referenced (roots from the first write); the writing-lane deadlock (lane test kept as a regression).
