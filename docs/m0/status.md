@@ -1,6 +1,6 @@
 # M0 status and handover
 
-Updated 17 October 2026. The living handover between sessions: update it when a step finishes.
+Updated 18 October 2026. The living handover between sessions: update it when a step finishes.
 
 ## Done
 - Foundation v4.4: Q-1 to Q-11 answered; ADR-37 limits instead of budgets, ADR-38 consults stay open under a ceiling, ADR-39 skills materialized per session, ADR-40 delivery modes for remotes that do not enforce rulesets, ADR-41 Claude Code is the only agent for now.
@@ -45,15 +45,13 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
     - SDK contexts, the delivery-port shape and order-dependent loading (architecture review).
   - Two records are proposed: delivery-port operations (amends ADR-26) and dependency currency (amends ADR-01, for TypeScript 6 in `web/`).
 
+- Foundation v4.6 (accepted by the operator, 18 October 2026): ADR-45, the delivery port's operations with optional `publish_gate_state` and `accept` under neutral names (amends ADR-26); ADR-46, dependencies are the latest release compatible with the other pins, exceptions recorded (amends ADR-01; covers TypeScript 6 in `web/`); the ownership table amended (X3); editorial alignments (X7); playbook rule 6 reworded for dependencies.
+- M1 specifications revised (18 October 2026) by their author, answering every finding of review 1: `docs/specs/reviews/M1-specifications-revision-1.md` maps each finding to its change. SPEC-06 is now two parts, `SPEC-06-1-stations-agent-host.md` and `SPEC-06-2-task-runs.md`, so the specification graph is acyclic. Three fixes differ from the reviewer's proposal, each with its reason in that file: drafts are requested through one event contract SPEC-04 owns (`change.draft_requested`); a run binds an agent user from a pool for its life while lanes stay queues; the runner has no network in M1.
+
 ## Next, in order
-1. **Revise SPEC-01 to SPEC-10** from the review files, blocking findings first. X1 and X2 touch several specifications at once. Split SPEC-06 into two parts, `stations` and the host core, then `work` (summary, question 3).
-2. **Operator decisions:**
-   - the two proposed records;
-   - the ownership-table amendments (X3);
-   - the editorial foundation alignments (X7);
-   - whether playbook rule 6 is reworded for dependencies (summary, question 1).
-3. **Confirmation pass** on the blocking findings, then **operator approval** of the ten. Then the tickets in each specification's section 7 are ready to break down.
-4. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+1. **Confirmation pass**, by a session that did not write the specifications, on the blocking findings listed at the end of `M1-specifications-revision-1.md`, including the three different fixes. The minor findings are covered by the author's checklist run.
+2. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
+3. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
 - **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
