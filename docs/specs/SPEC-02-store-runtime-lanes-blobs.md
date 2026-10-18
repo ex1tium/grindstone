@@ -1,5 +1,5 @@
 # SPEC-02 — Store, runtime, lanes and blob store
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-02-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-02-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.store` (database access, schema migrations, unit of work, DBOS setup and workflow version, external-step idempotency helper, lanes as queues, blob store and its roots, crash harness, FF-07 table ownership, FF-09 no stored derivations)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -56,7 +56,7 @@ REQ-0202: Each kernel module's tables live in a schema named after the module an
 REQ-0203: A unit of work is one SERIALIZABLE transaction, retried on serialization failure; inside a workflow it is a DBOS datasource transaction, so its writes and the step's checkpoint commit together or not at all.
 REQ-0204: Every workflow step with an effect outside the database passes its effect an idempotency key derived from the ID of the record that caused the workflow, carried as a workflow input, and the step name; the effect's target finds the earlier result by that key, or by a lookup on the causing record that the target documents, before creating it, so a re-executed or forked workflow causes each effect once.
 REQ-0205: Every workflow started for a record has an ID derived from that record, so starting it twice runs it once.
-REQ-0206: Each station lane is a DBOS queue named `lane.<station>.<lane>` with the global concurrency its configuration gives; lanes are registered at start-up from the lane list the composition root passes in.
+REQ-0206: Each station lane is a DBOS queue named `lane.<station>.<lane>` with the global concurrency its configuration gives; lanes are registered at start-up from the lane list the composition root passes in, together with any other named queue a module declares there with its concurrency (SPEC-08's `delivery.gate`, concurrency 1).
 REQ-0207: At start-up, if workflows of another application version are pending, the control plane recovers its own, starts no new dispatch, and reports each stranded workflow with its ID, name and version.
 REQ-0208: CI fails when the code of a registered workflow changes while `WORKFLOW_VERSION` stays the same, unless the change is recorded as compatible in `docs/upgrades.md`.
 REQ-0209: `put_blob` streams content to the `blobs` volume, verifies its SHA-256, stores it once under a two-level fan-out of its hash, and in the same transaction records the blob and a lease root owned by the producing run or job; putting existing content adds only the root.
@@ -97,7 +97,7 @@ Both give the caller one object (`Uow`) with `execute`, `fetch_one` and `fetch_a
 **DBOS setup.** In the lifespan, as SPK-2 ran it:
 1. `DBOS(config={...})` with `name="grindstone"`, the database URL, `dbos_system_schema="dbos"` and `application_version=WORKFLOW_VERSION`.
 2. `DBOS.launch()`.
-3. `await DBOS.register_queue_async(...)` for every lane.
+3. `await DBOS.register_queue_async(...)` for every lane and every declared module queue.
 4. `await DBOS.apply_schedules_async(...)` for every schedule.
 
 `WORKFLOW_VERSION` is a constant in `grindstone.store`, starting at `"1"`. DBOS recovers only workflows of its own version, and its default is a hash of the workflow source, which would strand every workflow in flight on any code change (SPK-2, experiment 8). So the version is explicit and changes only when workflow code changes incompatibly.

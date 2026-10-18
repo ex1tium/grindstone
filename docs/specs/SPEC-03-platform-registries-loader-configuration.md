@@ -1,5 +1,5 @@
 # SPEC-03 — Platform: registries, loader and configuration
-Status: in review (revision 1 answers review 1 and architecture review 1, `docs/specs/reviews/SPEC-03-review-1.md`, `SPEC-03-architecture-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1 and architecture review 1, `docs/specs/reviews/SPEC-03-review-1.md`, `SPEC-03-architecture-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.platform` (registries, factory manifest schema and loader, kinds declared as data, instance and project configuration, `grindstone check`, the event outbox, event union and dispatcher, secret grants) and `grindstone.sdk` 0.1.0
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -72,7 +72,7 @@ REQ-0312: `grindstone check` validates instance, factory and project configurati
 REQ-0313: A module records an event in the same unit of work as the change it describes, with a UUIDv7 event ID and a per-project sequence number that increases by one with no gaps; events are instances of one discriminated union of registered event models.
 REQ-0314: Each registered event consumer receives each event of its types exactly once, as a workflow whose ID is derived from the consumer and the event ID, and the dispatcher resumes from its cursor after a crash.
 REQ-0315: A factory reads a secret only through the context the kernel hands its adapter, by a name its manifest declares and its project grants; any other name is refused with `secret_not_granted`, and no decision is raised.
-REQ-0316: `grindstone.sdk` 0.1.0 exports exactly the names in section 5's export table, imports only `contracts` and `platform`, and gives factories services only through context objects that kernel code constructs; FF-01 refuses any other import from `grindstone` in a factory.
+REQ-0316: `grindstone.sdk` 0.1.0 exports exactly the names in section 5's export table, imports only `contracts` and `platform`, and gives factories services only through context objects that kernel code constructs; the context and port protocols are defined in `grindstone.contracts.ports`, so no kernel module that builds a context or calls a port imports the SDK; FF-01 refuses any other import from `grindstone` in a factory.
 REQ-0317: The registries answer, for any loaded name, its factory, factory version, manifest hash and, for a capability, its hash; the instance and project configuration hashes are readable for any project.
 REQ-0318: Cross-factory load rules (make and prove, offered needs, references to other kinds) are evaluated over the union of the factories accepted alone, repeated until no further factory is refused, so the result never depends on the factories' names or load order.
 REQ-0319: Event consumers are order-independent: each reads current state through its owner's interface rather than relying on the order in which events of different sequence numbers reach it.
@@ -113,7 +113,7 @@ Kernel error codes declared here, in `grindstone.contracts.errors` (SPEC-01): `m
 1. Discover entry points in group `grindstone.factories`. For each, read `manifest.yaml` and the files it names from the distribution's file list through `importlib.metadata`, which imports nothing, so no factory code runs before its manifest is validated. A code-free factory's module is an empty `__init__.py`.
 2. Parse with `yaml.safe_load` (DEC-0302) and validate into `FactoryManifest`.
 3. **Phase 1, each factory alone:** schema, namespaces, SDK range, kinds, edges, lifecycles, capability files, check-method shapes, collecting every error. A factory with any error is refused.
-4. **Phase 2, across factories:** over the union of the factories phase 1 accepted and the `core` names, check cross-namespace references, offered needs and make and prove. Refuse every factory with an error, then repeat phase 2 over the remaining union until a pass refuses nothing. Because each pass checks the same set, the outcome does not depend on names or order (REQ-0318).
+4. **Phase 2, across factories:** over the union of the factories phase 1 accepted and the `core` names, check cross-namespace references, offered needs and make and prove. Refuse every factory with an error, then repeat phase 2 over the remaining union until a pass refuses nothing. A factory refused in a pass is not reconsidered when a later refusal removes the capability that caused its error; this is deterministic and safe, and the start-up report names, for every refusal, the other factory's capability or need involved. Because each pass checks the same set, the outcome does not depend on names or order (REQ-0318).
 5. Only then import each accepted factory's `code` module if it declares one, check that every adapter, provider and method it names implements its SDK port, compile kinds, and register everything in one step.
 
 Rules, each failing with `manifest_invalid` and the path of the offending field:
@@ -169,9 +169,9 @@ Kinds are data only in M1 (DEC-0301). SPEC-04 owns what the fields mean at revis
 
 **Dispatcher (REQ-0314, REQ-0319).** Modules register consumers at the composition root (`platform.consume(name, types, workflow)`), which keeps lower modules from importing higher ones. A task in the lifespan reads events after each consumer's cursor in `platform.event_cursors (consumer, project, seq)`. For each event it starts `evt-<consumer>-<event_id>` through `store.start`, then advances the cursor. A crash between start and cursor update repeats a start, which DBOS ignores for an existing ID (SPEC-02). Consumers are workflows and follow SPEC-02's rules for their own effects. Two events for one consumer can run concurrently, so delivery is exactly once but not ordered: a consumer reads current state through its owner's interface (for example a task's current state, not the state named in the event) and does nothing when the state has moved on (REQ-0319).
 
-**Kernel SDK 0.1.0** (`grindstone.sdk`, `__version__ = "0.1.0"`). The SDK holds no logic of its own: it re-exports contracts from `grindstone.contracts`, the protocols below, and the platform registration helpers. It imports only `contracts` and `platform` (FF-01).
+**Kernel SDK 0.1.0** (`grindstone.sdk`, `__version__ = "0.1.0"`). The SDK holds no logic of its own: it re-exports contracts from `grindstone.contracts`, the context and port protocols (also in `grindstone.contracts`, below), and the platform registration helpers. It imports only `contracts` and `platform` (FF-01).
 
-**Contexts (architecture review, A1).** Every port method takes a context, and factories never build one. `Context` is a protocol in `grindstone.sdk` with:
+**Contexts (architecture review, A1).** Every port method takes a context, and factories never build one. `Context` is a protocol in `grindstone.contracts.ports`, re-exported by the SDK, with:
 - `project` and `factory`, bound by the kernel;
 - `items`: read a revision by `ItemRef`, rendered and typed (`intent.read_pinned`);
 - `blobs`: open a blob by hash (`store.open_blob`);
@@ -179,6 +179,8 @@ Kinds are data only in M1 (DEC-0301). SPEC-04 owns what the fields mean at revis
 - `secrets`: read a granted secret (REQ-0315).
 
 The implementation lives in the composition root (`grindstone.app`), which alone may import `intent` and `store` together with `platform`. It registers a context builder with `platform` at start-up, and the module that calls an adapter (`stations`, `evidence` or `delivery`) asks `platform.context_for(project, factory)` for one. So no SDK import grows, and the factory identity a secret check reads is one the kernel bound. Contexts specific to one port extend `Context` in the specification that owns the port: `RunContext` (SPEC-06 part 1), `CheckContext` and `DeliveryContext` (SPEC-08).
+
+**Where the protocols live (DEC-0308).** `Context`, its extensions, its service handles (`ItemReader`, `BlobReader`, `FactoryStorage`, `SecretReader`) and the four port protocols (`WorkspaceProvider`, `SubjectResolver`, `CheckMethod`, `DeliveryAdapter`) are `typing.Protocol` classes in `grindstone.contracts.ports`, beside the models the ports exchange. Every kernel module may import `contracts`, so `platform` (the loader's port check, `context_for`), `stations`, `evidence` and `delivery` type their calls under pyright strict without importing the SDK, which the module map forbids them. `grindstone.sdk` re-exports the same objects. Protocols are not models: the schema bundle and the TypeScript generation (FF-02) export only models listed in `EXPORTED`, which never lists a protocol.
 
 **Exports (architecture review, A4).** Every name in SDK 0.1.0, with its owner:
 
@@ -218,10 +220,11 @@ DEC-0304: The registries are rebuilt from packages at every start and frozen; `p
 DEC-0305: Events reach module consumers as workflows whose IDs are derived from consumer and event · Exactly-once delivery comes from SPEC-02's deterministic IDs with no consumer-side deduplication table · Rejected: per-consumer processed-event tables (duplicated idempotency code in every module).
 DEC-0306: Each factory gets a storage directory per project, on the `repos` volume, through `ctx.storage` · A factory whose subjects live in a remote needs local mirrors and private working copies, which the foundation puts on `repos`, and a factory must not choose paths itself. The directory is disposable: a factory must be able to rebuild it from its remote, nothing in it is a record, it is excluded from backups (Operations, "Backup"), and it is removed when the project is deleted · Rejected: a version-control service in the kernel (domain knowledge in the kernel); letting factories pick paths on `repos` (one factory could write another's).
 DEC-0307: Phase 2 of loading runs over the union of factories accepted alone, to a fixed point · A rule that reads "every loaded factory" while factories load one by one gives answers that depend on names · Rejected: name order (non-deterministic as factories are added); validating each factory against the kernel only (misses a maker in another factory, I-15).
+DEC-0308: The context and port protocols are defined in `grindstone.contracts.ports` and re-exported by the SDK · The kernel modules that build contexts or call ports may import `contracts` but not `sdk`, and the protocols carry no logic, so they belong with the contracts they exchange (confirmation 1, C2) · Rejected: protocols in `grindstone.sdk` (FF-01 refuses the kernel's imports of them); adding `sdk` to those modules' allowed imports (a module-map change, and the SDK would become a dependency of the kernel it fronts); untyped calls (`Any`, which pyright strict refuses and which hides port mismatches).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0301: Registries, `core` names, manifest contracts, SDK 0.1.0 surface and contexts · implements REQ-0301, REQ-0316, REQ-0317 · depends on TKT-0101 · paths `packages/grindstone/src/grindstone/platform/`, `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/contracts/platform.py`, `packages/grindstone/tests/platform/`.
+TKT-0301: Registries, `core` names, manifest contracts, SDK 0.1.0 surface and contexts · implements REQ-0301, REQ-0316, REQ-0317 · depends on TKT-0101 · paths `packages/grindstone/src/grindstone/platform/`, `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/contracts/platform.py`, `packages/grindstone/src/grindstone/contracts/ports.py`, `packages/grindstone/tests/platform/`.
 TKT-0302: Loader in two phases, kinds as data, capability hashing, load-time rules including make and prove · implements REQ-0302 to REQ-0309, REQ-0318 · depends on TKT-0301 · same paths plus `pyproject.toml` (pyyaml, packaging) and `packages/grindstone/tests/fixtures/factories/`.
 TKT-0303: Instance and project configuration, secrets, `grindstone check` · implements REQ-0310 to REQ-0312, REQ-0315 · depends on TKT-0302, TKT-0201 · platform paths plus `packages/grindstone/src/grindstone/__main__.py`.
 TKT-0304: Event outbox, union, dispatcher · implements REQ-0313, REQ-0314, REQ-0319 · depends on TKT-0202 · platform and contracts paths.
@@ -244,6 +247,7 @@ AC-0313-1: Two concurrent units of work emitting events for one project produce 
 AC-0314-1: The dispatcher killed between starting a consumer workflow and advancing its cursor delivers that event to that consumer exactly once after restart · verifies REQ-0314 · crash-and-resume · `test_event_dispatch_once`.
 AC-0315-1: An adapter reading a secret its factory declares but the project does not grant, or one its factory does not declare, is refused with `secret_not_granted` and raises no decision; a granted one is returned and never appears in logs; an adapter has no way to build a context naming another factory · verifies REQ-0315 · unit · `test_secret_grants`.
 AC-0316-1: A fixture factory importing `grindstone.platform` fails FF-01; one importing `grindstone.sdk` passes · verifies REQ-0316 · contract · `test_ff01_factories_use_sdk_only`.
+AC-0316-2: `grindstone.sdk.Context`, `WorkspaceProvider`, `SubjectResolver`, `CheckMethod` and `DeliveryAdapter` are the same objects as in `grindstone.contracts.ports`; FF-01 passes with `platform`, `stations`, `evidence` and `delivery` typed against `contracts.ports`, and a fixture kernel module importing `grindstone.sdk` fails it; the schema bundle contains no protocol · verifies REQ-0316 · contract · `test_port_protocols_live_in_contracts`.
 AC-0318-1: Two fixture factories, where the second's capability would make the first's template violate make and prove, give the same result (both evaluated, the first refused) whichever is named first; and a factory whose need's only offer is in a refused factory is refused in the next pass · verifies REQ-0318 · unit · `test_load_rules_independent_of_order`.
 AC-0319-1: A fixture consumer given two events for one task in reverse order ends in the same state as in order · verifies REQ-0319 · unit · `test_consumer_order_independent`.
 AC-0317-1: For a loaded capability the registries return its factory, factory version, manifest hash and capability hash, and these equal the values recorded in `platform.factories` for that start · verifies REQ-0317 · unit · `test_registry_provenance_lookups`.
@@ -254,7 +258,7 @@ AC-0317-1: For a loaded capability the registries return its factory, factory ve
 - Integration, on real Postgres: AC-0304-1, AC-0311-1.
 - Property: AC-0313-1.
 - Crash-and-resume: AC-0314-1.
-- Contract (FF-01 fixture): AC-0316-1.
+- Contract (FF-01 fixture): AC-0316-1, AC-0316-2.
 
 ## 9. Open items and risks
 

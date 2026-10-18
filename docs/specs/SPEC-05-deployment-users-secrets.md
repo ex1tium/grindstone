@@ -1,5 +1,5 @@
 # SPEC-05 — Deployment, users and secrets
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-05-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-05-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: the Compose deployment (`compose.yaml`, the four images and their entrypoints, `deploy/grindstone.toml`, secret provisioning), Unix users and file layout on the shared volumes, container capabilities, listeners and network rules, the Claude agent preset's launcher and credential self-test, and the agent host's people directory
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -101,7 +101,7 @@ REQ-0514: An entrypoint refuses to start when a mounted secret is readable by an
 | `…/agents/<agent>/` | `<agent>:gs-workspaces` | 2750 | Created by the agent-host entrypoint |
 | `…/agents/<agent>/<run>/` | `<agent>:gs-workspaces` | 2750 | The agent, through the host's helper (TKT-0502): the host, a member of `gs-workspaces`, reads the staging archive and streams it to an extractor running as the agent user, who cannot open the archive itself; written by the agent, read by the control plane, removed as the agent user |
 
-Run directories are named by run ID (UUIDv7) under the slot's subtree. The setgid bit keeps every file in group `gs-workspaces`, and umask 027 keeps it group-readable and closed to others. An agent that makes a file unreadable to the group only makes its own collect fail (SPEC-09).
+Run directories are named by run ID (UUIDv7) under the subtree of the agent user the run is bound to (`agents/<user>/<run>/`, SPEC-06 part 1, DEC-0606). The setgid bit keeps every file in group `gs-workspaces`, and umask 027 keeps it group-readable and closed to others. An agent that makes a file unreadable to the group only makes its own collect fail (SPEC-09).
 
 **`runs`.** `root:gs-runs` 2770. The control plane writes job directories (subject 0750 and read-only to the runner by mode; `out/` 2770). This follows the M0 runner image and M0-04's fixture check.
 
@@ -212,7 +212,7 @@ DEC-0505: The runner has no network in M1 · Checks must be repeatable from the 
 ## 7. Tickets and acceptance criteria
 
 TKT-0501: Images, users, entrypoints, compose (with the runner off every network), `make secrets` and `scripts/hash_password.py`, instance file · implements REQ-0501, REQ-0502, REQ-0504, REQ-0512 to REQ-0514 · depends on TKT-0303 · paths `compose.yaml`, `docker/`, `deploy/`, `scripts/make_secrets.sh`, `scripts/hash_password.py`, `pyproject.toml` (argon2-cffi), `Makefile`.
-TKT-0502: Workspace and session layout, and the host's helper that runs a command as an agent user (`spawnAsAgent` with umask 027 and a parent-death signal, archive extraction, removal, session directories), which SPEC-06 part 1's host core uses · implements REQ-0505 to REQ-0507, REQ-0510 · depends on TKT-0501 · paths `docker/entrypoints/`, `agent-host/src/helper/`.
+TKT-0502: Workspace and session layout, and the host's helper that runs a command as an agent user (`spawnAsAgent` with umask 027 and a parent-death signal, `stopAll(user)`, which runs `kill -KILL -1` as that user and waits until `/proc` lists none of its processes, archive extraction, removal, session directories), which SPEC-06 part 1's host core uses · implements REQ-0505 to REQ-0507, REQ-0510 · depends on TKT-0501 · paths `docker/entrypoints/`, `agent-host/src/helper/`.
 TKT-0503: Claude preset launcher, security floor and credential self-test · implements REQ-0508, REQ-0509 · depends on TKT-0501 · paths `agent-host/presets/claude/`, `agent-host/test/`, `agent-host/package.json`.
 TKT-0504: People directory and viewer grants, tested on `createHost` from `@ahpd/sdk` with a stub backend, so it does not wait for SPEC-06's host core · implements REQ-0511 · depends on TKT-0501 · paths `agent-host/src/people.ts`, `agent-host/test/`.
 TKT-0505: FF-05, FF-06 and the M1-05 security tests in `make smoke` · implements REQ-0501, REQ-0503, REQ-0510 · depends on TKT-0502, TKT-0503 · paths `scripts/ff/`, `scripts/compose_smoke.py`, `tests/fitness/`.

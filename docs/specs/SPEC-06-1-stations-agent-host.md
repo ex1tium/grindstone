@@ -1,5 +1,5 @@
 # SPEC-06 part 1 — Stations and the agent host
-Status: in review (revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.stations`: agent-user bindings, sessions, workspace lifecycle, the host adapter and its event intake, reconciliation, the activity registry, the runner job envelope and dispatch;
 - the SDK ports `WorkspaceProvider` and `SubjectResolver`, with `RunContext`, `Materialization` and `CollectOutcome`;
@@ -66,15 +66,16 @@ Scenarios: K1 step 3 (dispatch to a T1 station, session create keyed by run) and
 REQ-0606: Each run has a fresh workspace prepared by its capability's workspace provider (writing) or materialized from its subject by the subject's resolver (read-only), owned by the run's bound agent user, and never shared with another run.
 REQ-0609: Every call to the host carries an idempotency key derived from the run and turn; replaying a call returns the original result, and a session is never created twice for one key.
 REQ-0616: Host events are accepted only with a valid HMAC over their canonical JSON under the host event key; a duplicate event ID is acknowledged and ignored, and a forged, tampered or out-of-order event is refused and logged.
-REQ-0617: The host control API refuses any call without the host control key, and serves `create_session`, `prompt`, `answer_permission`, `cancel`, `dispose`, `list`, `prepare_workspace` and `discard_workspace`, each idempotent on its client key.
+REQ-0617: The host control API refuses any call without the host control key, and serves `create_session`, `prompt`, `answer_permission`, `cancel`, `dispose`, `list`, `prepare_workspace`, `discard_workspace` and `stop_user`, each idempotent on its client key.
 REQ-0618: The backend wrapper builds each agent's environment from scratch from its preset's allow-list, gives the session its kernel MCP server with the per-task bearer token in its headers, and reads both from the host's own session record, never from AHP session configuration.
 REQ-0619: After a host restart, `stations` reconciles from `list()` and from each event's host boot ID: any session it believes live that the host does not list is reported `host_lost` to the workflow waiting on it.
 REQ-0620: The scripted preset replays a fixture script of kernel tool calls, file writes, permission requests and turn ends through ACP and MCP, and is selectable for every capability by instance configuration only.
 REQ-0621: Runner jobs are written as job directories with a typed envelope, picked up only once complete, and a job with no result by its timeout is recorded as an `error` outcome.
 REQ-0623: A run is bound to one agent user from the station's pool when its workspace is prepared, every session of the run runs as that user, no two unfinished runs share a user, and the binding is released only when the run's workspace is discarded.
-REQ-0624: The SDK ports `WorkspaceProvider` (`prepare`, `collect`, `discard`) and `SubjectResolver` (`materialize`, `read_file`) take a kernel-built `RunContext` or `Context`, and `collect` returns a `CollectOutcome` with the subject, extra checks, permission requests and prover context, or a typed refusal.
+REQ-0624: The SDK ports, protocols in `grindstone.contracts.ports` (SPEC-03, DEC-0308), `WorkspaceProvider` (`prepare`, `collect`, `discard`) and `SubjectResolver` (`materialize`, `read_file`) take a kernel-built `RunContext` or `Context`, and `collect` returns a `CollectOutcome` with the subject, extra checks, permission requests and prover context, or a typed refusal.
 REQ-0625: The host delivers each session's events one at a time in sequence order and does not send the next until the current one is acknowledged, so a refused event never sits behind a later one.
 REQ-0626: Per-session options are agent-neutral (model, effort, permission categories, tool timeout, read-only); each preset maps them to its agent's own settings, and nothing in `stations` or the host core names an agent-specific setting.
+REQ-0629: Before a run's collect, and before its agent user is released, every process of that user is stopped and the host confirms that none remains; collect and release do not proceed until it has.
 
 ## 5. Design
 
@@ -98,7 +99,7 @@ SDK contracts (exported by SDK 0.1.0, SPEC-03):
   - or `refused`, with the refused paths and the cause.
 
 Kernel error codes declared here (in `grindstone.contracts.errors`):
-- transient: `host_unavailable`, `station_unavailable`;
+- transient: `host_unavailable`, `station_unavailable`, `agent_user_busy` (a stop that did not complete in its bound wait; the step retries, and collect never runs while it fails);
 - limit: `agent_user_unavailable`;
 - internal: `event_rejected`.
 
@@ -112,14 +113,14 @@ Events: `session.created`, `session.ended`, `workspace.prepared`, `workspace.dis
 Lanes are separate: they are DBOS queues (SPEC-02) that bound how many sessions run at once. A run suspended on a decision holds its user and its workspace, never a lane. With the seeds (one writing and four read-only lane slots), eight users leave room for three suspended runs before a new run waits for a user; the pool size is instance configuration.
 
 **Workspaces (REQ-0606).**
-1. `prepare_workspace(run)` (external step, key `<run>:prepare`):
+1. `prepare_workspace(run, task, mode, provider_or_subject)` (external step, key `<run>:prepare`). `stations` cannot read tasks, so `work` passes the task's ID, its mode, and the workspace provider with the base it starts from (writing) or the subject (read-only), from which the step builds the `RunContext`:
    - bind the agent user;
    - writing workspace: call `provider.prepare(ctx)`, which writes an archive into `workspaces/staging/<run>.tar` and returns the `Materialization` with its base;
    - read-only workspace: call the subject's resolver to `materialize` the subject into a staging directory, which `stations` archives the same way, so a prover's copy comes from the subject alone (I-15);
    - ask the host to create `agents/<user>/<run>/` and extract the archive into it as the bound user (SPEC-05's helper: the host reads the archive and streams it to an extractor running as the user);
    - delete the archive.
-2. `collect(run)` (external step, key `<run>:collect`): call `provider.collect(ctx)` and return its `CollectOutcome`. The kernel never reads the workspace itself.
-3. `discard_workspace(run)` (external steps): ask the host to remove the directory as the bound user, call `provider.discard(ctx)`, then release the user.
+2. `collect(run)` (external step, key `<run>:collect`): first ask the host to stop every process of the run's agent user and wait until none remains (REQ-0629), then call `provider.collect(ctx)` and return its `CollectOutcome`. The kernel never reads the workspace itself. With no process of that user alive, nothing can change the workspace while the provider reads it.
+3. `discard_workspace(run)` (external steps): ask the host to stop every process of the bound user (REQ-0629), remove the directory as that user, call `provider.discard(ctx)`, then release the user, so no process of one run survives into the next run bound to the same user.
 
 **Host client (REQ-0609, REQ-0617).** HTTP/JSON to `agent-host:8090` (SPEC-05), bearer `host_control_key`, header `Grindstone-Host-Protocol: 1`, errors as `ErrorEnvelope`.
 
@@ -127,6 +128,7 @@ Lanes are separate: they are DBOS queues (SPEC-02) that bound how many sessions 
 | --- | --- | --- |
 | `POST /v1/workspaces` | `key`, `run`, `user`, `archive` | Creates `agents/<user>/<run>/` and extracts the archive as that user; an existing one with the same key is a no-op |
 | `DELETE /v1/workspaces/<run>` | `key` | Removes it as its user |
+| `POST /v1/users/<user>/stop` | `key`, `run` | Kills every process of that agent user (SPEC-05's helper) and returns once `/proc` shows none, or fails `agent_user_busy` after a bound wait; refused unless the user is bound to `run` |
 | `POST /v1/sessions` | `key`, `run`, `turn`, `user`, `workspace`, `options` (`SessionOptions`), `mcp` (`url`, `token`), `notify` (the workflow to send its events to) | Creates the AHP session; returns its ID, or the existing one for the key |
 | `POST /v1/sessions/<id>/prompts` | `key`, `turn`, `text` | Dispatches a turn; idempotent by key |
 | `POST /v1/sessions/<id>/permissions/<request>` | `key`, `option` | Answers a pending permission request |
@@ -191,13 +193,14 @@ Liveness age is computed, never stored (FF-09).
 - B1: host events are signed with a key agents cannot read (SPEC-05), refused when forged, replayed or out of order. The control API is keyed.
 - The host never reads session configuration from AHP clients (REQ-0618).
 - A run's workspace is readable only by its own agent user, the host and the control plane (SPEC-05). No two unfinished runs share a user (REQ-0623).
+- An agent can leave processes behind that the session's end does not kill (a `setsid` or `nohup` child of its shell tool, which the parent-death signal does not reach). None survives collect or the release of its user (REQ-0629), so none can change a workspace while the control plane reads it, or reach the next run bound to the same user (confirmation 1, C4).
 - Read-only workspaces are fresh copies of the subject. Nothing in them is collected, and `read_only` makes the preset deny writing tools.
 
 **Make and prove.** No subjects are made here. A prover's workspace comes only from the subject's resolver, never from a maker's workspace (I-15).
 
 **Fitness functions.**
 - FF-08: `sessions.state` and `workspaces.state` registered with their transition functions (SPEC-04's single-writer check).
-- FF-10: workspace prepare, session create, prompt, permission answer, dispose, collect, discard and job dispatch are registered external steps with crash-and-resume tests.
+- FF-10: workspace prepare, session create, prompt, permission answer, dispose, user stop, collect, discard and job dispatch are registered external steps with crash-and-resume tests.
 - FF-07 covers `stations`; FF-09: no stored liveness.
 
 ## 6. Decisions
@@ -207,13 +210,14 @@ DEC-0604: A read-only workspace is a fresh copy owned by the reviewer's agent us
 DEC-0605: Host events are signed over RFC 8785 canonical JSON · Key order differs between Node and Python serializers; SPK-1, experiment 9, signed an encoding both sides happened to agree on · Rejected: signing the raw body bytes (forces both sides to keep the exact bytes through every proxy and parser).
 DEC-0606: A run is bound to one agent user for its life, from a pool larger than the lanes, and lanes stay DBOS queues · A suspended run keeps its workspace without holding a lane, and its next session runs as the user that owns the workspace (review 1, F1) · Rejected: binding a run to a lane slot for its life (a run waiting on a person would hold a lane, against ADR-14); moving the workspace to another user on resume (a copy per resume, and a window where two users hold it).
 DEC-0607: The host sends each session's events in order, one at a time · Refusing an out-of-order event is only safe if the sender cannot have a later event in flight · Rejected: parallel delivery with reordering at intake (a buffer of untrusted input in the control plane).
+DEC-0610: Stop every process of a run's agent user before collect and before release · Ending a session kills only the agent's own process tree, and a detached process can still write the workspace, so a reader in the control plane could be raced, and a later run bound to the same user would inherit it; the one-run-per-user binding (DEC-0606) makes killing every process of that user exact · Rejected: relying on the parent-death signal (it reaches only the direct child); a PID namespace per session (needs a capability the host does not hold, SPEC-05); defending the reader alone (the cross-run leak remains).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0602: Stations: agent-user bindings, sessions, workspaces, host client, host event intake, reconciliation, activity registry, runner job dispatch · implements REQ-0606, REQ-0609, REQ-0616, REQ-0619, REQ-0621, REQ-0623 · depends on TKT-0204, TKT-0205, TKT-0303 · paths `packages/grindstone/src/grindstone/stations/`, `packages/grindstone/src/grindstone/contracts/stations.py`, `packages/grindstone/tests/stations/`.
+TKT-0602: Stations: agent-user bindings, sessions, workspaces, host client, host event intake, reconciliation, activity registry, runner job dispatch · implements REQ-0606, REQ-0609, REQ-0616, REQ-0619, REQ-0621, REQ-0623, REQ-0629 · depends on TKT-0204, TKT-0205, TKT-0303 · paths `packages/grindstone/src/grindstone/stations/`, `packages/grindstone/src/grindstone/contracts/stations.py`, `packages/grindstone/tests/stations/`.
 TKT-0604: Scripted preset · implements REQ-0620 · depends on TKT-0605 · paths `agent-host/presets/scripted/`, `agent-host/test/`.
 TKT-0605: Agent host core: control API, backend wrapper, preset option mapping, ordered signed events · implements REQ-0617, REQ-0618, REQ-0625, REQ-0626 · depends on TKT-0502, TKT-0504 · paths `agent-host/src/`, `agent-host/package.json`, `packages/contracts-ts/`.
-TKT-0607: SDK ports `WorkspaceProvider` and `SubjectResolver`, their contracts and the kernel's `blob`, `blob_set` and `item_revision` resolvers · implements REQ-0624 · depends on TKT-0301 · paths `packages/grindstone/src/grindstone/contracts/stations.py`, `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/stations/`.
+TKT-0607: SDK ports `WorkspaceProvider` and `SubjectResolver`, their contracts and the kernel's `blob`, `blob_set` and `item_revision` resolvers · implements REQ-0624 · depends on TKT-0301 · paths `packages/grindstone/src/grindstone/contracts/ports.py` (the protocols), `packages/grindstone/src/grindstone/contracts/stations.py` (`RunContext`, `Materialization`, `CollectOutcome`), the SDK's export list in `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/stations/`.
 
 AC-0606-1: Two runs of one task get different workspaces under their users' subtrees, and a read-only run's workspace is materialized from its subject by the resolver, not from the maker's workspace · verifies REQ-0606 · integration · `test_fresh_workspace_per_run`.
 AC-0609-1: Killed after the host created a session and before the step's checkpoint, the run on restart gets the same session for the same key, and the fake host created one · verifies REQ-0609 · crash-and-resume · `test_session_create_once`.
@@ -227,6 +231,7 @@ AC-0623-1: Two read-only runs that each suspend and resume keep their own agent 
 AC-0624-1: A fixture provider and resolver in the `notes` style implement the ports from `grindstone.sdk` alone; a `CollectOutcome` with prover context and an extra check round-trips; a provider cannot obtain a context for another factory · verifies REQ-0624 · unit · `test_workspace_ports`.
 AC-0625-1: With intake refusing one event, the host does not send that session's next event until the first is accepted, while another session's events keep flowing · verifies REQ-0625 · integration · `test_host_events_in_order_per_session`.
 AC-0626-1: A grep of `packages/grindstone/src/grindstone/stations/` and `agent-host/src/` for the Claude preset's setting names finds none, and the Claude preset maps `tool_timeout_seconds` to its timeout variable · verifies REQ-0626 · contract · `test_no_agent_specific_settings_in_core`.
+AC-0629-1: With the real host, a scripted session that starts a detached process (`setsid sleep`) and ends: collect and discard each find no process of that user alive before the provider runs or the user is released, and the next run bound to the same user sees no process from the previous one · verifies REQ-0629 · security · `test_agent_user_processes_stopped_before_collect_and_release`.
 
 ## 8. Test plan
 
@@ -234,6 +239,7 @@ AC-0626-1: A grep of `packages/grindstone/src/grindstone/stations/` and `agent-h
 - **Integration**, on real Postgres and DBOS with a fake host speaking the control API, or the real host where named: AC-0606-1, AC-0618-1, AC-0619-1, AC-0623-1, AC-0625-1.
 - **Scripted agent**, through the real host in its container (ADR-19): AC-0620-1.
 - **Crash-and-resume:** AC-0609-1, AC-0616-1, AC-0621-1.
+- **Security**, with the real host in its container: AC-0629-1.
 - **Contract:** AC-0617-1 (both sides of the control API from the generated contracts), AC-0626-1.
 
 ## 9. Open items and risks

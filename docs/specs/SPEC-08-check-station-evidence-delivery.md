@@ -1,5 +1,5 @@
 # SPEC-08 — Check station, evidence and the delivery port
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-08-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-08-review-1.md`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.evidence`: check plans, each task's current subject, check runs, evidence records, the freshness function, the gate, mechanical check execution, the `CheckMethod` port, JUnit parsing.
 - `grindstone.delivery`: deliveries, the idempotency ledger, mode observations, verification state, gate-state posts, observe polling, bypass reporting, the `DeliveryAdapter` port with the operations of ADR-45.
@@ -65,7 +65,7 @@ Delivers:
 
 Depends on:
 - **SPEC-01:** `SubjectRef`, `ItemRef`, `BlobRef`, errors.
-- **SPEC-02:** workflows, external steps, blobs, the check lane, schedules.
+- **SPEC-02:** workflows, external steps, blobs, the check lane, a declared module queue (`delivery.gate`), schedules.
 - **SPEC-03:** registries (check methods and shapes, adapters, resolvers), the SDK, project configuration.
 - **SPEC-04:** current hashes, check-dependency edges, the `change.draft_requested` event for bypass reports, decisions and continuations.
 - **SPEC-06 part 1:** `stations.dispatch_job`, the runner envelope and the subject resolvers. Nothing from part 2: `delivery` learns that a task enters `delivering` from the `task.transitioned` event, whose contract is in `grindstone.contracts` and which `delivery` consumes (SPEC-03), and `evidence` keeps each task's current subject itself.
@@ -86,11 +86,12 @@ REQ-0809: The runner executes one job at a time as its own user, in the read-onl
 REQ-0810: JUnit XML results are parsed with entity expansion off and a size limit, and become test outcomes with name, class, file, status and duration; an unparseable file is an `error` result, never a pass.
 REQ-0811: `prepare` records a delivery once per delivery key, which its adapter derives from the task, target and subject, and raises a `delivery` decision with the fixed recommendation `deliver` only when the gate passes, its reason, the evidence with freshness and the mode just observed.
 REQ-0812: The port observes a target's mode when a project's configuration names it and before each delivery decision, and records each observation with its time; a change from enforced to unenforced since the last observation raises an escalation instead, and the delivery decision is raised only after that escalation is answered.
-REQ-0813: The `deliver` continuation re-checks the gate, then calls the adapter's `deliver` and, if supported, `publish_gate_state` as external steps keyed by delivery, and in unenforced mode re-checks the gate again and calls `accept` with the verified subject; a gate that no longer passes stops the delivery and returns the task to `blocked` with the reason.
-REQ-0814: The verification state of a delivery is `success` exactly when the gate passes for the delivery's subject and the target's head equals that subject, `failure` when the gate fails, and `pending` otherwise; the port posts it, through `publish_gate_state`, whenever it differs from the last state posted for that head.
-REQ-0815: The port re-evaluates every open delivery's verification state when a ChangeSet changes any of its evidence inputs, when evidence is recorded for it, and on every observation of a new head.
+REQ-0813: The `deliver` continuation re-checks the gate, then calls the adapter's `deliver` as an external step keyed by delivery and requests a gate-state pass (REQ-0818), and in unenforced mode re-checks the gate again and calls `accept` with the verified subject; a gate that no longer passes stops the delivery and returns the task to `blocked` with the reason.
+REQ-0814: The verification state of a delivery is `success` exactly when the gate passes for the delivery's subject and the target's head equals that subject, `failure` when the gate fails, and `pending` otherwise; the port posts it, through `publish_gate_state` and only from a gate-state pass (REQ-0818), whenever it differs from the last state posted for that head.
+REQ-0815: The port requests a gate-state pass for every open delivery when a ChangeSet changes any of its evidence inputs, when evidence is recorded for it, and on every observation of a new head.
 REQ-0816: For a delivery in unenforced mode, observing an acceptance of its change not performed by the port, or a change to a published path not made by a delivery, drafts one `untrusted` ChangeSet with a high-severity `core.finding` of type `delivery_bypass` about the delivery's task, whose approval is flagged `untrusted`.
 REQ-0817: Observe polls every delivered, unaccepted delivery on a schedule without backfill, and each adapter call is an external step whose repeated observation records nothing new; a delivery observed `closed` without acceptance after its task is `done` raises an escalation naming the task.
+REQ-0818: Gate-state passes run one at a time: each reads the current gate and head when it starts, and posts only if the result differs from the last post for that head; every event that can change a delivery's state requests a new pass after it, so the last post always matches the current state, whatever order the requests arrive or the posts complete in.
 
 ## 5. Design
 
@@ -116,7 +117,7 @@ Kernel error codes declared here (in `grindstone.contracts.errors`, SPEC-01):
 
 Events: `evidence.recorded`, `check.started`, `delivery.prepared`, `delivery.delivered`, `delivery.accepted`, `delivery.closed`, `delivery.failed`, `delivery.mode_observed`, `delivery.gate_posted`.
 
-**SDK ports** (part of SDK 0.1.0, SPEC-03):
+**SDK ports** (part of SDK 0.1.0, SPEC-03; protocols in `grindstone.contracts.ports`, DEC-0308, so `evidence` and `delivery` call them without importing the SDK):
 
 | Port | Methods |
 | --- | --- |
@@ -183,10 +184,10 @@ The heartbeat from M0 continues. A job left `STARTED` without `DONE` after a run
 
 | State | Leaves to (writer: `delivery.transition`) |
 | --- | --- |
-| `prepared` | `awaiting_decision` (decision raised), `awaiting_mode_review` (mode switched) |
-| `awaiting_mode_review` | `awaiting_decision` (escalation answered `retry`), `cancelled` |
-| `awaiting_decision` | `delivering` (`deliver`), `held` (`hold`), `cancelled` (`cancel`) |
-| `held` | `awaiting_decision` (the operator asks again, SPEC-10) |
+| `prepared` | `awaiting_decision` (decision raised), `awaiting_mode_review` (mode switched), `cancelled` (task cancelled) |
+| `awaiting_mode_review` | `awaiting_decision` (escalation answered `retry`), `cancelled` (escalation answered `cancel`, or task cancelled) |
+| `awaiting_decision` | `delivering` (`deliver`), `held` (`hold`), `cancelled` (`cancel`, or task cancelled) |
+| `held` | `awaiting_decision` (the operator asks again, SPEC-10), `cancelled` (task cancelled) |
 | `delivering` | `delivered`, `failed` |
 | `delivered` | `accepted` (observed, or accepted by the port in unenforced mode), `closed` (observed) |
 
@@ -195,15 +196,19 @@ The heartbeat from M0 continues. A job left `STARTED` without `DONE` after a run
 **A delivered task whose evidence goes stale** (M1). The verification state goes `pending` (REQ-0815) and the delivery card shows why. Nothing re-checks before SPEC-12's regression sweep; the operator's way out is to run the command again, which makes a new task and a new delivery.
 
 **Delivering (REQ-0811 to REQ-0813).**
-1. A consumer of `task.transitioned` to `delivering` (SPEC-06 part 2) reads the task's target and subject from the event and calls `prepare` (keyed by the event, so a repeated event prepares once). `work` never calls `delivery`.
+1. A consumer of `task.transitioned` to `delivering` (SPEC-06 part 2) reads the task's target and subject from the event and calls `prepare` (keyed by the event, so a repeated event prepares once). `work` never calls `delivery`. The same consumer handles `task.transitioned` to `cancelled`: a delivery not yet `delivering` is moved to `cancelled` and its open `delivery` decision superseded, so a cancelled task leaves no card to answer (REQ-0319: it acts on the event, which is the fact).
 2. The port observes the mode, then raises the decision (REQ-0811, REQ-0812). Its recommendation is fixed: `deliver`, "every required check is fresh and passing at this subject". Its payload holds the subject, the evidence table with freshness, and the mode, which is shown on the card (ADR-40).
 3. The answer's continuation runs `delivery-<id>`:
    - gate;
    - `adapter.deliver` (key `<delivery>:deliver`);
-   - `publish_gate_state` for the subject, if supported (key `<delivery>:gate:<head>:<post>`, where `post` is the sequence number of the `gate_posts` row recorded for this change of state, so a state that returns at the same head is a new post: review 1, F1);
+   - request a gate-state pass (below), which posts the state for the subject if the adapter supports it;
    - if unenforced: gate again, then `adapter.accept` (key `<delivery>:accept`) with the verified subject. A concurrent change makes the remote refuse it (SPK-4, experiment 10), and the delivery then reports `failed` with the cause.
 
-**Verification state (REQ-0814, REQ-0815).** `verification(delivery, head)` follows REQ-0814. Its description names the counts, for example "4/4 criteria fresh and passing" or "1 stale: AC changed". Re-evaluation runs in a consumer of `changeset.applied` (deliveries whose evidence inputs intersect the changed items), of `evidence.recorded`, and of `head` observations. `publish_gate_state` is called only when the state differs from the last post for that head (`gate_posts`, insert-only), and each call's key carries the new row's sequence number, so `success → pending → success` at one head posts three times and the remote shows the current state.
+**Verification state (REQ-0814, REQ-0815).** `verification(delivery, head)` follows REQ-0814. Its description names the counts, for example "4/4 criteria fresh and passing" or "1 stale: AC changed". Four things can change a delivery's state: `changeset.applied` (deliveries whose evidence inputs intersect the changed items), `evidence.recorded`, a `head` observation, and the `deliver` continuation. None of them posts. Each requests a **gate-state pass**: it enqueues `gate-<delivery>-<cause>` (the cause being the event ID, or `deliver`, so a repeated request enqueues once) on the queue `delivery.gate`, global concurrency 1 (REQ-0818, DEC-0806). A pass:
+1. reads the delivery's latest observed head and computes `verification(delivery, head)` from current state, in one unit of work that also inserts a `gate_posts` row if the result differs from the last row for that head;
+2. if it inserted one and the adapter supports `publish_gate_state`, posts it (key `<delivery>:gate:<head>:<post>`, where `post` is that row's sequence number, so a state that returns at the same head is a new post: review 1, F1).
+
+Because passes never overlap, a post cannot overtake a later one. Because each pass reads the state when it starts, and every change requests a pass after it, the last pass computes from the last change, so a stale `success` is never the last post (confirmation 1, C3). A pass killed between its row and its post resumes before the next pass starts, and its post is idempotent by key.
 
 **Observe (REQ-0816, REQ-0817).** A DBOS schedule, every 60 s with no backfill (SPEC-02), starts `observe-<delivery>-<tick>` for each delivered, unaccepted delivery. It calls `adapter.observe(…)` with the ETags it kept; SPK-4 measured an unchanged external change as free on GitHub. A consumer of `project.configured` observes the mode of each target the configuration names (ADR-40: "at project setup"), shown on the project. Then, by observation:
 - **New head:** re-evaluate, which posts `pending` at that head.
@@ -217,7 +222,8 @@ Observations are recorded with the adapter's external ID, unique per delivery an
 
 **State and ownership.**
 - Schema `evidence`: `checks`, `check_runs`, `evidence` (insert-only).
-- Schema `delivery`: `deliveries` (`state` by transition function), `delivery_keys`, `mode_observations`, `gate_posts`, `observations`, and in `evidence`, `task_subjects (task, subject, planned_at)`, insert-only, the latest row per task being current.
+- Schema `delivery`: `deliveries` (`state` by transition function), `delivery_keys`, `mode_observations`, `gate_posts`, `observations`.
+- Schema `evidence` also holds `task_subjects (task, subject, planned_at)`, insert-only, the latest row per task being current.
 
 Freshness, the gate and the verification state are never stored (FF-09). `gate_posts` records what was sent, not what is true.
 
@@ -247,7 +253,7 @@ Freshness, the gate and the verification state are never stored (FF-09). `gate_p
 **Fitness functions.**
 - FF-08: `evidence.evidence` has exactly two writers (the evidence doors), and `deliveries.state` one.
 - FF-09: no freshness, gate or verification column.
-- FF-10: the external steps are registered with crash-and-resume tests: job dispatch, adapter `deliver`, `publish_gate_state`, `accept`, `observe`.
+- FF-10: the external steps are registered with crash-and-resume tests: job dispatch, adapter `deliver`, `publish_gate_state` (inside a gate-state pass), `accept`, `observe`.
 - FF-07 covers both schemas.
 
 ## 6. Decisions
@@ -257,13 +263,14 @@ DEC-0802: Acknowledgement lists on checks, passed explicitly by the prover · A 
 DEC-0803: JUnit XML is the result format of shape `test` · It is what most test runners already write, so a project's toolchain needs no adapter of ours · Rejected: a Grindstone result format (every project would need a reporter); interpreting console output (fragile).
 DEC-0804: The port orchestrates deliver, gate-state posts and acceptance; adapters only perform them, under ADR-45's names · The freshness re-check right before merging, and the keys, stay in kernel code that every adapter shares · Rejected: one adapter call that does all three (each adapter would re-implement the re-check and the ledger).
 DEC-0805: A delivery ends its task at `delivered`; acceptance is observed afterwards · In enforced mode a person accepts the change on the remote at L0–L2, and foundation v4.6 defines a delivery as complete at `delivered`; the task's proof is complete when its verified change is delivered with a success state · Rejected: holding the task in `delivering` until merge (a task would stay open for as long as a pull request does).
+DEC-0806: Gate-state posts come only from passes on one queue of concurrency 1, each computing from current state · The callers that can change a delivery's state run concurrently (REQ-0319), and a post is an external step that completes after its row commits, so without ordering a pass that computed `success` before a ChangeSet can post after the pass that computed `pending` (confirmation 1, C3); one queue makes posts complete in pass order, and computing at pass start makes the last pass the truth · Rejected: SERIALIZABLE on the computation alone (it orders rows, not the posts that follow them); checking that the row is still the latest before posting (a check-then-act gap between check and post); a queue per delivery (DBOS queues are declared at start-up; M1's volume, a few posts a minute, does not need per-delivery parallelism, and OQ-0804 revisits it).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0801: Evidence: plans with the task's current subject, records, freshness, gate, review recording, the `CheckMethod` port · implements REQ-0801, REQ-0802, REQ-0804 to REQ-0808 · depends on TKT-0401, TKT-0302 · paths `packages/grindstone/src/grindstone/evidence/`, `packages/grindstone/src/grindstone/contracts/evidence.py`, `packages/grindstone/tests/evidence/`.
+TKT-0801: Evidence: plans with the task's current subject, records, freshness, gate, review recording, the `CheckMethod` port · implements REQ-0801, REQ-0802, REQ-0804 to REQ-0808 · depends on TKT-0401, TKT-0302 · paths `packages/grindstone/src/grindstone/evidence/`, `packages/grindstone/src/grindstone/contracts/evidence.py`, `packages/grindstone/src/grindstone/contracts/ports.py` (`CheckMethod`, `CheckContext`), `packages/grindstone/tests/evidence/`.
 TKT-0802: Mechanical checks: job building, dispatch, JUnit, interpretation · implements REQ-0803, REQ-0810 · depends on TKT-0801, TKT-0602 · `evidence` paths.
 TKT-0803: Runner executors · implements REQ-0809 · depends on TKT-0602 · paths `runner/src/grindstone_runner/`, `runner/tests/`.
-TKT-0804: Delivery port: prepare from events, decisions, modes at setup and before delivery, deliver, gate-state posts, accept, observe, bypass reporting · implements REQ-0811 to REQ-0817 · depends on TKT-0801, TKT-0403 · paths `packages/grindstone/src/grindstone/delivery/`, `packages/grindstone/src/grindstone/contracts/delivery.py`, `packages/grindstone/tests/delivery/`.
+TKT-0804: Delivery port: prepare from events, decisions, modes at setup and before delivery, deliver, gate-state passes and posts, accept, observe, bypass reporting · implements REQ-0811 to REQ-0818 · depends on TKT-0801, TKT-0403 · paths `packages/grindstone/src/grindstone/delivery/`, `packages/grindstone/src/grindstone/contracts/delivery.py`, `packages/grindstone/src/grindstone/contracts/ports.py` (`DeliveryAdapter`, `DeliveryContext`), `packages/grindstone/tests/delivery/`.
 
 AC-0801-1: A fixture plan whose review check's need resolves to the maker's capability fails `maker_cannot_prove`, and the task blocks with an escalation; with a separate reviewer it plans · verifies REQ-0801 · unit · `test_plan_refuses_maker_as_prover`.
 AC-0802-1: A check on a target with one check-dependency edge captures both hashes as inputs, and changing the referenced item makes the record stale · verifies REQ-0802 · unit · `test_inputs_include_check_dependencies`.
@@ -276,21 +283,22 @@ AC-0807-1: The gate passes only with every required target's latest fresh record
 AC-0808-1: A review report missing a target's verdict or an acknowledgement is refused with `report_invalid` listing it · verifies REQ-0808 · unit · `test_review_verdict_coverage`.
 AC-0809-1: In the runner image, a job's steps run as `gs-runner` in the read-only subject with only the declared environment, a write to the subject fails, a log over the limit is truncated, and the result lists each step's exit code · verifies REQ-0809 · integration · `test_runner_executes_job`.
 AC-0810-1: Valid JUnit becomes outcomes; a file with an entity-expansion bomb, an external entity or over the size limit gives an `error` result, never a pass · verifies REQ-0810 · security · `test_junit_parsing_is_safe`.
-AC-0811-1: Preparing a delivery twice for the same task, target and subject records one delivery and one open decision, whose payload shows the mode, the evidence with freshness and the fixed recommendation · verifies REQ-0811 · integration · `test_prepare_once_with_decision`.
+AC-0811-1: Preparing a delivery twice for the same task, target and subject records one delivery and one open decision, whose payload shows the mode, the evidence with freshness and the fixed recommendation; cancelling the task while its decision is open moves the delivery to `cancelled` and supersedes the decision · verifies REQ-0811 · integration · `test_prepare_once_with_decision`.
 AC-0812-1: With a fake adapter whose mode turns from enforced to unenforced, the next delivery raises an escalation and no delivery decision until it is answered · verifies REQ-0812 · integration · `test_mode_switch_escalates`.
 AC-0813-1: With a fake adapter, `deliver` then `publish_gate_state` run once each across a crash after either, and in unenforced mode `accept` is called with the verified subject; an adapter supporting neither optional operation completes the delivery with `deliver` alone; when evidence went stale between decision and delivery, nothing is delivered and the task is blocked with the reason · verifies REQ-0813 · crash-and-resume · `test_deliver_rechecks_gate_and_runs_once`.
 AC-0814-1: The verification state is `success` only with the gate passing and the head equal to the subject; after a new head is observed it is posted `pending` at that head · verifies REQ-0814 · integration · `test_verification_state_follows_head`.
 AC-0814-2: Posting the same state for the same head twice sends one post, and `success`, then `pending`, then `success` at one head sends three posts with three different keys, the remote ending at `success` · verifies REQ-0814 · unit · `test_gate_posts_follow_state_changes`.
-AC-0815-1: Approving a ChangeSet that changes a delivered task's criterion re-posts `pending` within one consumer run, with a description naming the stale criterion · verifies REQ-0815 · integration · `test_changed_criterion_sets_pending`.
+AC-0815-1: Approving a ChangeSet that changes a delivered task's criterion re-posts `pending` within one gate-state pass, with a description naming the stale criterion · verifies REQ-0815 · integration · `test_changed_criterion_sets_pending`.
 AC-0816-1: In unenforced mode, a fake adapter observing an acceptance not performed by the port leads to one `untrusted` ChangeSet with a high-severity `delivery_bypass` finding about the task, whose approval is flagged `untrusted`; the same observation repeated drafts nothing more; in enforced mode the same acceptance only moves the delivery to `accepted`; in both cases `delivery` emits a draft request and never calls `change` · verifies REQ-0816 · integration · `test_bypass_becomes_untrusted_finding`.
 AC-0817-1: The observe schedule polls only delivered, unaccepted deliveries; a delivery observed `closed` after its task is done raises an escalation naming the task; a missed period is skipped; an unchanged observation records nothing · verifies REQ-0817 · integration · `test_observe_schedule`.
+AC-0818-1: With a fake adapter that delays its first post: a pass requested by `evidence.recorded` computes `success`, a ChangeSet then changes a target criterion and its pass computes `pending`; the remote's last state is `pending`, the `success` post never lands after it, and killing the process between a pass's row and its post resumes that post before the next pass runs · verifies REQ-0818 · crash-and-resume · `test_gate_state_passes_never_post_stale_success`.
 
 ## 8. Test plan
 
 - **Unit:** AC-0801-1, AC-0802-1, AC-0808-1, AC-0814-2.
 - **Property:** AC-0806-1, AC-0807-1.
 - **Integration**, on real Postgres and DBOS with fake adapters and resolvers in the `notes` style and the real runner image: AC-0805-1, AC-0806-2, AC-0809-1, AC-0811-1, AC-0812-1, AC-0814-1, AC-0815-1, AC-0816-1, AC-0817-1.
-- **Crash-and-resume:** AC-0803-1, AC-0813-1.
+- **Crash-and-resume:** AC-0803-1, AC-0813-1, AC-0818-1.
 - **Scripted agent:** AC-0804-1.
 - **Security:** AC-0810-1.
 
@@ -300,6 +308,7 @@ SPEC-09 runs the same port against a fake GitHub and the real test repository.
 
 OQ-0801: Which items does `core.finding`'s `about` field need beyond the task's targets for a bypass? · Default: the delivery's task targets (criteria) by ID, with the delivery and external reference in the description · Resolved by TKT-0804.
 OQ-0803: Which specification watches a project's published paths continuously, outside open deliveries (ADR-40)? · Default: M1 detects bypass only while a delivery of the project is open, and says so on the card · Resolved by SPEC-24, which owns observe beyond bypass.
+OQ-0804: Will one gate-state queue of concurrency 1 keep up? · Default: yes at M1's volume (a pass is one gate read and at most one API call); if passes queue behind each other, partition the queue by delivery · Resolved at the M1 review from the queue's wait times.
 
 Risks mitigated: forged evidence (two doors, maker refused, check station credential-less); stale evidence counted (computed freshness, re-checked gate before delivering and merging); duplicate deliveries, statuses or merges (keys and lookups); bypass going unseen in unenforced mode (observe and findings).
 Risk added: polling every 60 s spends API calls on changed external deliveries. Mitigation: six calls per changed pull request on GitHub (SPK-4) and ETags for unchanged ones, against a limit of 5,000 an hour.

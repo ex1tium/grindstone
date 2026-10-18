@@ -1,5 +1,5 @@
 # SPEC-04 — Items, thin ChangeSet apply and decision records
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-04-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-04-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.intent` (items, revisions, edges from typed references, lifecycles, ID allocation, rendering, the item bundle import format, the `core` kinds), `grindstone.change` (ChangeDrafts, ChangeSets, the one-round walk, verdicts, apply), `grindstone.decisions` (decision records, kernel decision kinds, flags, answers, continuations)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -79,7 +79,7 @@ REQ-0411: The walk of a ChangeSet lists, for every semantically changed item, ev
 REQ-0412: A walked ChangeSet that passes the M1 rules raises one `approval` decision listing every proposed revision and every item the walk reached, flagged `untrusted` when its draft is untrusted.
 REQ-0413: An approval answer applies the ChangeSet only if it gives an `unaffected` verdict with a non-empty reason for every reached item; otherwise the answer is refused with `verdict_missing`, and `reject` ends the ChangeSet with nothing applied.
 REQ-0414: Apply is one transaction serialized per project: it checks every base hash against the current revision, then writes all revisions, edges, current pointers and initial lifecycle states, and emits `item.revised` for each item and `changeset.applied`, or writes nothing.
-REQ-0415: When a base hash no longer matches at apply, nothing is applied: the ChangeSet's approval is superseded, its revisions' diffs are recomputed against the new base, the ChangeSet is walked again, and a new approval is raised whose context hash covers the new base, so no revision is ever applied over a change its approver did not see.
+REQ-0415: When a base hash no longer matches at apply, nothing is applied: the ChangeSet's approval is superseded, its revisions' diffs are recomputed against the new base, the ChangeSet is walked again, and a new approval is raised whose context hash covers the new base, so no revision is ever applied over a change its approver did not see; the new bases are recorded on the new walk round, and from then on the rules, the approval's context hash and the apply check compare against the latest round's bases, so answering the new approval applies the ChangeSet unless the base moves again.
 REQ-0420: Every lifecycle column of the kernel (kind lifecycles in `intent`, and the ChangeSet, decision, task, run and delivery lifecycles) and every table declared single-writer is written only by the function registered for it; FF-08 fails the build otherwise.
 REQ-0421: `change` drafts and submits a ChangeSet for every `change.draft_requested` event, whose contract this specification owns and which any module may emit with the draft's source, trust, proposed revisions (as a blob), provenance and client key; so `work` (a task's proposals) and `delivery` (an outside merge) never import `change` (Components, "Module map"), and a request emitted twice drafts once.
 REQ-0416: Every decision has a registered kind, a scope, a context hash, a recommended answer with its reason and source, and kernel-set flags; raising one without a recommendation is refused.
@@ -102,7 +102,7 @@ REQ-0419: Only the module that raised a decision supersedes it, naming the repla
 
 `grindstone.contracts.change`:
 - `ChangeDraft`: `id`, `project`, `source`, `trust` (`trusted` or `untrusted`), `revisions: tuple[ProposedRevision, ...]` with `item`, `kind`, `base: SemanticHash | None`, `title`, `fields`, and `provenance`.
-- `WalkResult`: `round`, `changed: tuple[ItemId, ...]`, `reached: tuple[Reached, ...]` with `item`, `via_edge`, `to`.
+- `WalkResult`: `round`, `bases: tuple[ItemBase, ...]` with `item` and `base: SemanticHash | None` (the base each proposed revision is walked against in this round; round 1 copies the draft's), `changed: tuple[ItemId, ...]`, `reached: tuple[Reached, ...]` with `item`, `via_edge`, `to`.
 - `Verdict`: `item`, `verdict: unaffected`, `reason`.
 
 `grindstone.contracts.decisions`:
@@ -136,7 +136,7 @@ Events: `change.draft_requested` (emitted by other modules, consumed here), `ite
 | `intent` | `item_revisions`, `edges`, `lifecycle_transitions` | Insert only |
 | `intent` | `id_counters (project, prefix, next)` | Updated by allocation |
 | `intent` | `lifecycle_states (kind, state)` | Rewritten from the registries at start-up; `items` references it, so the database refuses an undeclared state. A factory version that removes a state items still hold is refused at start-up (`manifest_invalid`, naming the state and the count of items), which pauses its projects (SPEC-03); mapping states across versions is an upgrade step (SPEC-13) |
-| `change` | `change_drafts`, `changesets (id, project, draft, state, decision)`, `walk_rounds`, `verdicts` | Drafts, rounds and verdicts insert only; `state` by the ChangeSet transition function |
+| `change` | `change_drafts`, `changesets (id, project, draft, state, decision)`, `walk_rounds (changeset, round, bases, changed, reached)`, `verdicts` | Drafts, rounds and verdicts insert only; `state` by the ChangeSet transition function |
 | `decisions` | `decisions (…, state)`, `answers`, `continuations (decision, name, payload)` | `state` by the decision transition function; answers and continuations insert only |
 
 Kernel lifecycles, with PostgreSQL enums generated from their Python definitions by `make gen` (FF-08):
@@ -170,25 +170,26 @@ items:
 ```
 
 **Walk (REQ-0411).**
-- `changed` are the items whose proposed semantic hash differs from their base; creations count as changed.
+- `changed` are the items whose proposed semantic hash differs from their base in this round (`WalkResult.bases`); creations count as changed.
+- A ChangeSet's **effective bases** are those of its latest walk round. The draft's bases, which are insert-only, are only round 1's (DEC-0407).
 - For each, the walk queries current edges whose `target` is the item and whose edge type has impact `review`, and keeps sources that are not in the draft.
 - Edges of impact `notify` and `render` are listed for information and need no verdict (ADR-09).
 
-M1 runs exactly one round. Its verdicts can only be `unaffected`, so no verdict adds an amendment, and one round is a fixed point by definition. A reviewer who thinks an item is affected rejects the ChangeSet with notes and drafts a larger one (DEC-0402).
+Each walk in M1 runs exactly one round; a re-walk after a moved base (REQ-0415) is a new walk with its own round number. Its verdicts can only be `unaffected`, so no verdict adds an amendment, and one round is a fixed point by definition. A reviewer who thinks an item is affected rejects the ChangeSet with notes and drafts a larger one (DEC-0402).
 
 **Rules in M1**, checked at draft time and again before raising the approval:
 - references resolve (REQ-0404);
 - kinds belong to factories enabled in the project;
 - IDs match their kind's pattern and are not taken by an item of another kind;
-- each revision of an existing item has a base equal to the current hash.
+- each revision of an existing item has an effective base equal to the current hash.
 
 A failure refuses the draft with every error listed per item.
 
 **Approval and apply.**
-1. The walked ChangeSet raises `approval` with a context hash: the semantic hash of the ChangeSet ID, the draft's revisions with their bases, and the reached list. Its recommendation is `approve`, source `fixed`, reason "rules pass; every reached item needs your verdict", or "rules pass; nothing else is affected" when the reached list is empty. Its continuation is `change.apply`.
+1. The walked ChangeSet raises `approval` with a context hash: the semantic hash of the ChangeSet ID, the walk round, the draft's revisions with their effective bases, and the reached list. Its recommendation is `approve`, source `fixed`, reason "rules pass; every reached item needs your verdict", or "rules pass; nothing else is affected" when the reached list is empty. Its continuation is `change.apply`.
 2. The answer's continuation runs the workflow `decision-<id>` with one datasource transaction step:
    - take `uow.lock(("apply", project))`;
-   - re-check every base;
+   - re-check every effective base against the current hash;
    - insert revisions with provenance (`author_kind` from the source, the ChangeSet, the task or decision behind it, the reason);
    - derive and insert edges;
    - update current pointers;
@@ -196,7 +197,7 @@ A failure refuses the draft with every error listed per item.
    - set initial lifecycle states through the transition function;
    - emit events;
    - move the ChangeSet to `applied`.
-3. On a moved base the step applies nothing. In one unit of work it supersedes the approval, moves the ChangeSet back to `walked`, recomputes every revision's diff against its item's new current revision, and re-walks; a new approval follows, whose context hash covers the new bases (REQ-0415). The proposal still carries the fields drafted against the old base, so the card shows what applying it now would change, including any reversal of the change that moved the base. The foundation's "approval is asked again only if the review set changed" holds with the review set read as the proposed revisions' diffs plus the reached items: a moved base always changes the diffs. Merging fields over a moved base is SPEC-16's.
+3. On a moved base the step applies nothing. In one unit of work it supersedes the approval, moves the ChangeSet back to `walked`, and re-walks as a new round whose `bases` are the items' current hashes, against which every revision's diff is recomputed; a new approval follows, whose context hash covers the new round and its bases (REQ-0415). The M1 rules then pass on the effective bases, and the apply check of the new approval's answer compares against them. The proposal still carries the fields drafted against the old base, so the card shows what applying it now would change, including any reversal of the change that moved the base. The foundation's "approval is asked again only if the review set changed" holds with the review set read as the proposed revisions' diffs plus the reached items: a moved base always changes the diffs. Merging fields over a moved base is SPEC-16's.
 
 **Draft requests (REQ-0421).** `ChangeDraftRequested` (event `change.draft_requested`, in `grindstone.contracts.change`) carries `source`, `trust`, `revisions` (a `BlobRef` to the proposed revisions as JSON, so large proposals stay out of the event), `provenance` and `client_key`. Its consumer, registered at the composition root (SPEC-03), parses the blob, validates it like any draft and submits it; the client key is unique per project, so a request delivered or emitted twice drafts once. The contract lives here, below its emitters, so no specification cycle arises (DEC-0406). In M1 two modules emit it:
 - `work` at collect (SPEC-06 part 2): source `task output`, trust `trusted`, the run's proposals, client key `run:<run>`;
@@ -241,6 +242,7 @@ DEC-0403: Continuations start from the `decision.answered` event through SPEC-03
 DEC-0404: Every item has a presentation field `title` · Titles may change without staling anything (Concepts, "Identity"), and every page and prompt needs one · Rejected: per-kind title fields (each factory would pick its own).
 DEC-0405: Kind lifecycle states are constrained through a `lifecycle_states` table rewritten from the registries at start, and kernel lifecycles through generated PostgreSQL enums · Factory kinds are known only at load, so their states cannot be migration-time enums; the table gives the same database guarantee · Rejected: one text column without a constraint (FF-08 needs the database to refuse an undeclared state).
 DEC-0406: Other modules request drafts through one event contract owned here · `work` and `delivery` may not import `change`, and consuming their own events would make this specification depend on later ones · Rejected: widening the module map (a module-map change needs a record and an architecture review); one event type per emitter consumed here (a specification cycle).
+DEC-0407: The bases of a re-walked ChangeSet are recorded on its walk round, never on its draft · Drafts are insert-only and keep what was proposed against what, which provenance needs; the round is already the insert-only record of each walk, so the latest round's bases are what the approver saw · Rejected: a new draft superseding the old one (breaks the one-request, one-draft rule on client keys and the provenance link to the original request); updating the draft's bases in place (drafts would no longer record what was drafted).
 
 ## 7. Tickets and acceptance criteria
 
@@ -266,7 +268,7 @@ AC-0412-1: Importing a fixture bundle raises one open `approval` decision whose 
 AC-0413-1: An approve answer missing a verdict or a reason for a reached item is refused with `verdict_missing`; `reject` moves the ChangeSet to `rejected` and writes no revision · verifies REQ-0413 · unit · `test_approval_answers_need_verdicts`.
 AC-0414-1: Approving the imported bundle writes every revision, edge and initial state and emits `item.revised` per item and `changeset.applied` in one transaction; a fault injected before commit leaves no trace · verifies REQ-0414 · integration · `test_apply_is_atomic`.
 AC-0414-2: Two ChangeSets on the same item, approved concurrently, apply one after the other; the second, with a moved base, is re-walked · verifies REQ-0414 · integration · `test_apply_serialized_per_project`.
-AC-0415-1: A ChangeSet whose base moved is never applied on its old approval: the approval is superseded, the new one shows diffs against the new base (including the reversal of the other ChangeSet's change), and only its answer applies · verifies REQ-0415 · integration · `test_moved_base_asks_again`.
+AC-0415-1: A ChangeSet whose base moved is never applied on its old approval: the approval is superseded, the new one shows diffs against the new base (including the reversal of the other ChangeSet's change), and answering it applies the ChangeSet over the new base; the M1 rules and the apply check read the latest round's bases, and a base that moves again asks again · verifies REQ-0415 · integration · `test_moved_base_asks_again`.
 AC-0420-1: FF-08 passes on the kernel, and fixtures that update a guarded lifecycle column, or insert into a guarded table, outside the registered function fail it · verifies REQ-0420 · contract · `test_ff08_single_writer`.
 AC-0421-1: A `change.draft_requested` event from a task's collect drafts one ChangeSet with source `task output`; one from a bypass drafts one `untrusted` ChangeSet with a high-severity `delivery_bypass` finding whose approval is flagged `untrusted`; each, emitted twice with its client key, drafts once · verifies REQ-0421 · integration · `test_change_consumes_draft_requests`.
 AC-0416-1: Raising a decision without a recommendation, or with a flag in its payload instead of from the kernel, is refused · verifies REQ-0416 · unit · `test_decision_needs_recommendation`.

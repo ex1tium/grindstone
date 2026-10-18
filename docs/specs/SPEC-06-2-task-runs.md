@@ -1,5 +1,5 @@
 # SPEC-06 part 2 — Task runs
-Status: in review (revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.work`: tasks, runs, turns, reports, thin matching, thin template runs, context packs, run manifests, liveness, failure causes, the suspend-and-resume mechanism, collect into verifying
 
 Compact walking-skeleton specification (Planning playbook). Part 2 of SPEC-06; part 1 (`SPEC-06-1-stations-agent-host.md`) owns `stations` and the agent host. Review: by a session that did not write it, then the operator.
@@ -133,7 +133,7 @@ Exactly one remaining is the match. Otherwise the task is `blocked` with an `esc
 `task.transitioned` to `done`, `blocked` or `cancelled` advances or ends the template run through an event consumer, which reads the task's current state (SPEC-03, REQ-0319).
 
 **Runs.** The workflow `run-<task>-<n>`, started with the run ID as its first input (SPEC-02):
-1. **Prepare.** `stations.prepare_workspace(run)` binds an agent user and prepares the workspace (part 1). The base it returns is the run's subject version.
+1. **Prepare.** `stations.prepare_workspace(run, task, mode, provider_or_subject)` binds an agent user and prepares the workspace (part 1); `work` passes what part 1 cannot read from `work`. The base it returns is the run's subject version.
 2. **Record** (transaction). Assemble the context pack: the pinned items rendered (SPEC-04); the project's current `core.principle` items, pinned; the capability's start skills; and, for a check task, the prover context (REQ-0628). Write the pack and the initial prompt as blobs with lease roots. The prompt is the capability prompt, then the project's `extra_prompt`, then the pack, the goal, and the output contract with the kernel tools to use. Write the run and its `RunManifest` (REQ-0605): the configured model is the instance's model for the capability's model slot (`[agents.<preset>].models`), and the configuration hashes come from SPEC-03.
 3. **Turns.** Enqueue `turn-<run>-<k>` on `lane.<station>.writing` or `.readonly` and wait for it. The parent run waits off-lane, so it cannot deadlock (SPK-2, experiment 7).
 4. **Act on the turn's outcome** by cause (REQ-0613), or collect (REQ-0615) on `done`.
@@ -178,14 +178,14 @@ Escalations carry the cause, the run and the recommendation: `retry` for `host_l
 2. The output contract's declared files are read from the collected subject through its resolver (`read_file`), so checks and delivery see only what the subject holds, and stored as blobs with a lease root for the run.
 3. If the run has proposals, `work` writes them as a blob and emits `change.draft_requested` (SPEC-04) with source `task output`, trust `trusted`, the task in the provenance, and client key `run:<run>`. `work` never calls `change`.
 4. Each permission request raises a `permission` decision with the continuation `work.collect_answered`; the task is `waiting` until all are answered. Any `deny` fails the run `checks_failed`.
-5. The task moves to `verifying`: `evidence.plan_checks(task, subject, maker, specs + extra_checks)` (SPEC-08) records the task's current subject and the checks; each mechanical check is started with `evidence.start_mechanical`, and each review check becomes a `check`-mode task (REQ-0622) whose accepted report `work` hands to `evidence.record_review`.
+5. The task moves to `verifying`: `work` resolves each check's prover need with its matcher and calls `evidence.plan_checks(task, subject, maker, delegators, specs + extra_checks, resolved)` (SPEC-08, the one signature), which records the task's current subject and the checks; each mechanical check is started with `evidence.start_mechanical`, and each review check becomes a `check`-mode task (REQ-0622) whose accepted report `work` hands to `evidence.record_review`.
 6. The workspace is discarded through part 1 when the run ends, except while the task waits on a decision of this run.
 
 **Delivery hand-over.** On a passing gate for a task with a delivery target, `work` moves it to `delivering`; the `task.transitioned` event carries the target and subject, and SPEC-08's consumer prepares the delivery. `work` consumes `delivery.delivered` and `delivery.failed` and moves the task on, reading the task's current state first (REQ-0319).
 
 **State and ownership.** Schema `work`: `tasks` (`state` by transition function), `task_runs` (`state` by transition function; manifest JSONB), `turns` (`state` by transition function), `reports` (insert-only), `template_runs`, `context_packs`. Readiness and "waiting on" are computed (FF-09).
 
-**Interfaces.** `start_template`, `create_task`, `submit_report(run, turn, report) → errors | accepted`, `suspend`, `context_for(run)` (task, mode, pins, capability, current turn and its state, for SPEC-07), the continuations `resume_run` and `collect_answered`, the consumers of SPEC-08's evidence and delivery events, `set_token_minter`.
+**Interfaces.** `start_template`, `create_task`, `submit_report(run, turn, report) → errors | accepted`, `add_proposals(run, turn, items)` (SPEC-07's `propose`: stored on the run, insert-only, and read at collect step 3), `suspend`, `context_for(run)` (task, mode, pins, capability, current turn and its state, for SPEC-07), the continuations `resume_run` and `collect_answered`, the consumers of SPEC-08's evidence and delivery events, `set_token_minter`.
 
 **Configuration** (instance sections owned here): `[agents.<preset>]` (`models`: slot → model), `[agents].force_preset`; `[limits]` (`liveness_timeout`, `corrective_prompts` = 1, `park_backoff`).
 

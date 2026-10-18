@@ -49,10 +49,12 @@ Updated 18 October 2026. The living handover between sessions: update it when a 
 - M1 specifications revised (18 October 2026) by their author, answering every finding of review 1: `docs/specs/reviews/M1-specifications-revision-1.md` maps each finding to its change. SPEC-06 is now two parts, `SPEC-06-1-stations-agent-host.md` and `SPEC-06-2-task-runs.md`, so the specification graph is acyclic. Three fixes differ from the reviewer's proposal, each with its reason in that file: drafts are requested through one event contract SPEC-04 owns (`change.draft_requested`); a run binds an agent user from a pool for its life while lanes stay queues; the runner has no network in M1.
 - Confirmation pass (18 October 2026), by a session that wrote none of the specifications, reviews or revision: `docs/specs/reviews/M1-specifications-confirmation-1.md`. Every blocking finding of review 1 is closed, and the three different fixes are sound. Four items remain before approval: C1, where a moved-base ChangeSet records its new bases (SPEC-04); C2, the port and context protocols belong in `grindstone.contracts`, because `platform`, `stations`, `evidence` and `delivery` may not import the SDK (SPEC-03); C3, gate-state re-evaluation must be serialized per delivery, or a stale `success` can be posted last (SPEC-08, new); C4, collect must kill the run's agent-user processes and read through directory descriptors, or a symlink swapped mid-walk reads control-plane files (SPEC-09, new).
 
+- Revision 2 (18 October 2026) answers confirmation 1's C1 to C4 and its eight small inconsistencies: `docs/specs/reviews/M1-specifications-revision-2.md`. Two fixes differ from the confirmation's proposals: C3 posts gate states only from passes on one queue of concurrency 1, and C4 also stops leftover agent processes before the user is released. `make check` passes.
+
 ## Next, in order
-1. **The author answers C1 to C4** of `M1-specifications-confirmation-1.md` and its small alignments, then runs the checklist.
-2. **Re-check of C1 to C4 only**, by a session that did not write them.
-3. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
+1. **Re-check of C1 to C4 only**, by a session that wrote none of the specifications, reviews, revisions or confirmation (the revision 2 author also reviewed, so it cannot).
+2. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
+3. **Merge into `main`:** a pull request for this work; the `fixture` CI job runs only on pull requests and `main`. Re-import `.github/rulesets/grindstone-main.json` first.
 4. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10

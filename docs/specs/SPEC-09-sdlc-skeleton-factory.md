@@ -1,5 +1,5 @@
 # SPEC-09 — SDLC skeleton factory
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-09-review-1.md`) · Milestone: M1
+Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-09-review-1.md`) · Milestone: M1
 Kind: factory `sdlc` · Owns, in `factories/sdlc/`:
 - the kinds `sdlc.requirement`, `sdlc.criterion` and `sdlc.ticket` with their edges and lifecycles;
 - the capabilities `sdlc.implementer` and `sdlc.test_reviewer`;
@@ -76,7 +76,7 @@ REQ-0908: The CI suite runs the project's declared gate commands and test comman
 REQ-0909: The CI suite maps JUnit test outcomes to criteria through `@verifies <criterion ID>` annotations in the subject's test files; a target criterion passes only if it has at least one annotated test and every annotated test passed, and fails otherwise, naming why.
 REQ-0910: `prepare` builds a workspace archive of the target branch's head, fetched into the project's bare mirror, and records that commit as the run's base.
 REQ-0911: The control plane runs git only on repositories it created under `repos`, with a configuration it wrote: no system or global configuration, hooks pointed at an empty directory, no filter, fsmonitor or external diff, and the token only as an HTTP header in the environment.
-REQ-0912: `collect` never runs git or any other program in the workspace: it reads the workspace's files (ignoring `.git`), refuses device files, sockets and FIFOs, builds the commit from the changes without writing any path of a checkout (blobs by `git hash-object -w --stdin`, the tree by `git update-index --index-info` from the base tree in a private index, then `write-tree` and `commit-tree`), and sets branch `gs/<ticket>/<run>` to it with hooks disabled, once per run.
+REQ-0912: `collect` never runs git or any other program in the workspace: it reads the workspace's files (ignoring `.git`) only through directory file descriptors, opening each path component relative to its parent with `O_NOFOLLOW`, so no symlink anywhere in a path is followed, refuses device files, sockets and FIFOs, builds the commit from the changes without writing any path of a checkout (blobs by `git hash-object -w --stdin`, the tree by `git update-index --index-info` from the base tree in a private index, then `write-tree` and `commit-tree`), and sets branch `gs/<ticket>/<run>` to it with hooks disabled, once per run.
 REQ-0913: `collect` classifies each changed path. Paths within the ticket's declared paths are free. Tests, fixtures and docs, and any other path outside the declared paths, are reviewed. CI configuration, `.grindstone/`, lockfiles changed without their manifest, and project-protected globs are protected. It returns a permission request for each protected path, and an acknowledgement on the test reviewer's check for each reviewed path.
 REQ-0914: The `git_commit` resolver materializes a commit from the mirror with `git archive`, read-only, and reads a file with `git cat-file`, never with a text conversion.
 REQ-0915: The adapter authenticates as the GitHub App with a JWT signed by the granted key, uses installation tokens only in the control plane, and finds every pull request it may have created by its head branch, in every state, before creating one.
@@ -119,9 +119,9 @@ The repositories are ones the factory created under `storage.dir(ctx)` (SPEC-03)
   4. Tar both into the archive SPEC-06's host extracts.
 - **Collect** (key: the run):
   1. If branch `gs/<ticket>/<run>` exists in the mirror, return its commit.
-  2. Otherwise walk the workspace with `os.scandir`, without following symlinks and skipping `.git`.
+  2. Otherwise walk the workspace from a directory file descriptor of its root, with `os.scandir` on descriptors, without following symlinks and skipping `.git`. The kernel has already stopped every process of the run's agent user (SPEC-06 part 1, REQ-0629), so nothing changes the workspace while it is read.
   3. Compare against `git ls-tree -r base` to find added, modified and deleted paths.
-  4. Build the commit without a checkout (DEC-0906): for each added or modified regular file, `git hash-object -w --stdin` its bytes (read with `O_NOFOLLOW`); for a symlink, hash its target text as a link blob (mode 120000); a path whose type changed (a symlink replaced by a directory, a file by a symlink) is a deletion followed by additions. Load `base`'s tree into a private index file (`GIT_INDEX_FILE` under `work/<run>`, `git read-tree base`), apply every change with `git update-index --index-info` (and `--force-remove` for deletions), then `git write-tree`.
+  4. Build the commit without a checkout (DEC-0906): for each added or modified regular file, `git hash-object -w --stdin` its bytes, read by opening each directory component relative to its parent with `O_DIRECTORY | O_NOFOLLOW` and the file with `O_NOFOLLOW` (`os.open(..., dir_fd=...)`), so a component that is, or has become, a symlink fails the run with the path named instead of being followed (DEC-0908); for a symlink, hash its target text as a link blob (mode 120000); a path whose type changed (a symlink replaced by a directory, a file by a symlink) is a deletion followed by additions. Load `base`'s tree into a private index file (`GIT_INDEX_FILE` under `work/<run>`, `git read-tree base`), apply every change with `git update-index --index-info` (and `--force-remove` for deletions), then `git write-tree`.
   5. `git commit-tree` as the App's bot identity with the message `<ticket>: <title> (run <run>)`, parent `base`, then set the branch. No path of the repository is ever opened through the filesystem, so a symlink in the base cannot redirect a write.
   6. Write the diff of the new commit against `base` (`git diff --no-ext-diff --no-textconv base <commit>`, with renames off, truncated at `[factories.sdlc].diff_max_bytes`, default 1 MiB, stating any truncation) as a blob, returned as the outcome's prover context (REQ-0923).
 
@@ -166,7 +166,7 @@ Permission categories are agent-neutral. SPEC-06's preset options translate them
 
 The model slots `primary` and `secondary` name models in instance configuration (SPEC-06). Their values are the operator's to choose before M1-01's live run, as status.md records, and differ by default. Prompt content:
 - **The implementer's:** implement the ticket within its declared paths; annotate each test with `@verifies <criterion>`; run the tests (as working notes); call `report` once.
-- **The test reviewer's:** for each criterion, judge whether its annotated tests verify it, and, from the diff against the base it is given as prover context, whether any test or assertion was weakened or deleted; pass each listed path explicitly or fail it with a reason (QS-01).
+- **The test reviewer's:** for each criterion, judge whether its annotated tests verify it, and, from the diff against the base it is given as prover context, whether any test or assertion was weakened or deleted (a diff marked truncated cannot pass this judgment unless the reviewer acknowledges the truncation explicitly and explains why the unseen part cannot hide a weakened test; otherwise it fails with the reason "diff truncated"); pass each listed path explicitly or fail it with a reason (QS-01).
 
 **Template `sdlc.implement`** (command `/implement`, argument `ticket`):
 
@@ -224,6 +224,7 @@ The testbed's IDs belong to its own ledger, so its REQ-0101 is not this reposito
 **Security.**
 - B3: fetched repository content is untrusted. It is archived, read and committed as data; nothing from it is executed in the control plane (REQ-0911, REQ-0912).
 - B1: the agent gets a copy without credentials (SPEC-05).
+- The control plane reads the agent's workspace, and the agent controls every name in it, including symlinks. Collect therefore never follows one: it reads through directory descriptors with `O_NOFOLLOW` at every component, after the agent user's processes are stopped (REQ-0912, DEC-0908). A symlink to a control-plane path, such as `/run/gs`, can never make collect read a secret into the commit or the reviewer's diff.
 - The App key is read only through the SDK's granted secret. Tokens never appear in URLs, argv or logs.
 - Status descriptions and pull-request bodies are generated from ledger data, not from agent text. The body quotes item titles, and GitHub renders it as Markdown.
 
@@ -274,6 +275,7 @@ DEC-0904: In enforced mode the pull request is merged by a person on GitHub; Gri
 DEC-0905: PyJWT 2.15.1 over cryptography 50.0.2 for the App's JWT · RS256 needs an RSA implementation, so `cryptography` is unavoidable, and PyJWT is a small, standard wrapper over it · Rejected: a hand-built JWT over `cryptography` (custom code for a solved problem); a GitHub client library (a large dependency for six calls).
 DEC-0906: Collect builds trees with git's index commands instead of writing a checkout · Base content is untrusted (B3): a symlink in the base, such as `docs -> ../../..`, would redirect a file written into a checkout to anywhere on `repos` (review 1, F1); with blobs and an index no path is opened · Rejected: a checkout with `O_NOFOLLOW` at every component (correct, but every write path must be audited forever); refusing symlinks (legitimate repositories use them).
 DEC-0907: M1-02's "the ticket's current item hashes" means the ticket's requirements and criteria · A criterion's evidence depends on what it verifies (its check dependencies), and a ticket changes scope, not what a criterion means; an edit to the ticket's goal leaves the status as it is · Rejected: making `sdlc.implements` a check dependency (every ticket edit would stale every criterion's evidence).
+DEC-0908: Collect reads the workspace through directory descriptors, with `O_NOFOLLOW` at every path component · The workspace is the agent's, and `O_NOFOLLOW` on the final open guards only the last component; an intermediate directory swapped for a symlink to a control-plane path would make the reader in `grindstone` open that path, for example a secret copy under `/run/gs`, and put its bytes in the commit and the reviewer's diff (confirmation 1, C4). Stopping the agent user's processes first (SPEC-06 part 1, REQ-0629) removes the swap; component-wise opens make a swap that does happen fail closed · Rejected: `O_NOFOLLOW` on the last component only (the C4 gap); `openat2` with `RESOLVE_NO_SYMLINKS` (not exposed by Python's standard library; the descriptor walk is equivalent); copying the workspace first (the copy has the same race).
 
 ## 7. Tickets and acceptance criteria
 
@@ -298,6 +300,7 @@ AC-0910-1: `prepare` fetches the mirror, pins the target head as base, and produ
 AC-0911-1: With every hostile configuration in the testbed fixture (a hook in the mirror and the clone, `core.fsmonitor`, a filter in `.gitattributes`) planted, fetch, commit and push run none of them, and the token appears in no argv or URL (checked through `/proc` during the push) · verifies REQ-0911 · security · `test_git_runs_with_hygiene`.
 AC-0912-1: `collect` after a scripted session commits exactly the changed files on `gs/TKT-0001/<run>` at base, and a second `collect` for the run returns the same commit · verifies REQ-0912 · crash-and-resume · `test_collect_commits_once`.
 AC-0912-3: With a base commit holding `docs -> ../../..` and a workspace that replaces it with a directory `docs/` holding a file, `collect` commits `docs/x` as a regular file in the new tree and writes nothing outside `work/<run>`, checked by a sentinel file the escape would have reached · verifies REQ-0912 · security · `test_collect_symlink_in_base_cannot_escape`.
+AC-0912-4: A workspace with a real directory `a/` holding `a/secret`, where a fixture swaps `a` for a symlink to a sentinel directory outside the workspace after the walk lists `a/secret` and before it is read, fails the run naming `a/secret`; the sentinel's content appears in no blob, commit or diff · verifies REQ-0912 · security · `test_collect_never_follows_swapped_component`.
 AC-0923-1: The collect outcome's prover context is the diff of the commit against its base, truncated with a stated marker past the limit · verifies REQ-0923 · unit · `test_collect_returns_diff_as_prover_context`.
 AC-0904-2: `/implement` on a ticket with a `manual` criterion is refused, naming the criterion · verifies REQ-0904 · unit · `test_implement_refuses_uncheckable_criteria`.
 AC-0912-2: A workspace whose `.git/hooks/pre-commit`, `.git/config` `core.fsmonitor` and `core.hooksPath` would write a marker file leaves no marker after `collect`; a FIFO in the workspace fails the run naming it · verifies REQ-0912 · security · `test_collect_never_runs_workspace_git`.
@@ -317,7 +320,7 @@ AC-0922-1: Live run: the stable instance executes a Grindstone ticket for M2 on 
 - **Unit:** AC-0901-1, AC-0904-2, AC-0906-1, AC-0909-1, AC-0914-1, AC-0917-1, AC-0923-1.
 - **Integration**, the kernel with the factory, the runner image and a fake GitHub: AC-0902-1, AC-0903-1, AC-0904-1, AC-0905-1, AC-0908-1, AC-0910-1, AC-0913-1, AC-0916-1, AC-0918-1, AC-0919-1.
 - **Crash-and-resume:** AC-0912-1, AC-0915-1.
-- **Security:** AC-0911-1, AC-0912-2, AC-0912-3.
+- **Security:** AC-0911-1, AC-0912-2, AC-0912-3, AC-0912-4.
 - **Scripted agent**, full `/implement` with the scripted preset for both capabilities: AC-0907-1, AC-0907-2.
 - **Live runs**, at the M1 close, kept with their logs: AC-0920-1, AC-0921-1, AC-0922-1. They run on the operator's machine, because a cloud session cannot act as the App (SPK-4).
 
