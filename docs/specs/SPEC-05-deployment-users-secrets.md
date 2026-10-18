@@ -1,5 +1,5 @@
 # SPEC-05 — Deployment, users and secrets
-Status: draft · Milestone: M1
+Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-05-review-1.md`) · Milestone: M1
 Kind: kernel · Owns: the Compose deployment (`compose.yaml`, the four images and their entrypoints, `deploy/grindstone.toml`, secret provisioning), Unix users and file layout on the shared volumes, container capabilities, listeners and network rules, the Claude agent preset's launcher and credential self-test, and the agent host's people directory
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -67,7 +67,7 @@ Scenarios: K1 step 3 (dispatch to a T1 agent station); S1's session runs as its 
 REQ-0501: `compose.yaml` runs exactly `postgres`, `grindstone`, `agent-host` and `runner`, every image pinned by digest, with volumes mounted only as ADR-01 allows, no Docker socket and no host path other than secret files and the instance configuration.
 REQ-0502: Each secret is a file on the host, readable only by its owner there, mounted only into the containers in the secret table, and inside each container readable only by the one service user that needs it.
 REQ-0503: No file, environment variable or process attribute readable by an agent user or by `gs-runner` yields the database password, a GitHub credential, the MCP token key, the host control key, the host event key, the operator session key or the operator password hash.
-REQ-0504: Every service process runs as its own non-root user with an empty capability set, except the agent host, which keeps exactly `CAP_SETUID` and `CAP_SETGID`; a container's entrypoint holds more only until it hands secrets to its service user, and then drops them.
+REQ-0504: Every service process runs as its own non-root user with an empty capability set, except the agent host, which keeps exactly `CAP_SETUID` and `CAP_SETGID`, and `postgres`, which keeps its official image's defaults; a container's entrypoint holds more only until it hands secrets to its service user, and then drops them.
 REQ-0505: Each concurrent agent session runs as a distinct agent user, one per lane slot, with no capabilities, umask 027, no membership of a shared group, and a working directory under its own user's subtree of `workspaces`.
 REQ-0506: No agent user can list the workspaces root, read another agent user's subtree, or read the staging area; the control plane and the host can read every run directory but cannot write into one.
 REQ-0507: An agent process does not outlive its host: the host runs under an init that stops the container when the host exits, and each agent is started with a parent-death signal.
@@ -99,7 +99,7 @@ REQ-0514: An entrypoint refuses to start when a mounted secret is readable by an
 | `/var/lib/grindstone/workspaces` | `root:gs-workspaces` | 2771 | Nobody lists; members create `staging` |
 | `…/staging/` | `grindstone:gs-workspaces` | 2750 | The control plane writes one archive per run (0640); the host reads it; agents cannot |
 | `…/agents/<agent>/` | `<agent>:gs-workspaces` | 2750 | Created by the agent-host entrypoint |
-| `…/agents/<agent>/<run>/` | `<agent>:gs-workspaces` | 2750 | The agent, through the host's helper (TKT-0502): extracted from the staging archive as the agent user, written by the agent, read by the control plane, removed as the agent user |
+| `…/agents/<agent>/<run>/` | `<agent>:gs-workspaces` | 2750 | The agent, through the host's helper (TKT-0502): the host, a member of `gs-workspaces`, reads the staging archive and streams it to an extractor running as the agent user, who cannot open the archive itself; written by the agent, read by the control plane, removed as the agent user |
 
 Run directories are named by run ID (UUIDv7) under the slot's subtree. The setgid bit keeps every file in group `gs-workspaces`, and umask 027 keeps it group-readable and closed to others. An agent that makes a file unreadable to the group only makes its own collect fail (SPEC-09).
 
@@ -107,7 +107,7 @@ Run directories are named by run ID (UUIDv7) under the slot's subtree. The setgi
 
 **Session configuration area** (agent host only, never on a shared volume): a tmpfs at `/run/gs-sessions`, with one directory per agent user (`<agent>`, 0700). Under it the host's helper creates, as the agent user, `<session>/` as that session's `CLAUDE_CONFIG_DIR` and `HOME` (ADR-39). Start skills are copied there read-only (files 0444, directories 0555). M1 capabilities have none.
 
-**Capabilities and entrypoints.** Every container keeps `no-new-privileges`, a read-only root, `cap_drop: ALL` and `/tmp` on tmpfs.
+**Capabilities and entrypoints.** Every container keeps `no-new-privileges`. Every container but `postgres` also keeps a read-only root, `cap_drop: ALL` and `/tmp` on tmpfs. `postgres` is the one exception: its official entrypoint needs its default capabilities to read its operator-owned secret and to own its data directory, so it keeps the image defaults with a writable root and its data volume, as in M0. It runs no work content and is reachable only on `db`.
 
 | Service | Entrypoint (as root) adds | Service process runs as | Keeps |
 | --- | --- | --- | --- |
@@ -134,8 +134,8 @@ The entrypoints are POSIX shell scripts of a few lines in `docker/entrypoints/`.
 The GitHub App ID and installation ID are not secrets. They are configuration in the project's factory section (SPEC-09).
 
 How secrets are handled:
-- **Mounting.** Compose mounts file secrets with their host ownership and mode. The files are 0600 and owned by the operator, so no container user can read the mounted copy; only the entrypoint, with `DAC_READ_SEARCH`, copies each into its service user's private tmpfs before dropping the capability (DEC-0501). `[secrets]` in `grindstone.toml` names the copies, for example `/run/gs/github_app_key`.
-- **Provisioning (REQ-0513).** `make secrets` replaces M0's `dev-secrets.sh`. It generates the random keys (32 bytes, base64url) and prompts once for the operator password, storing its Argon2id hash with the parameters SPEC-10 sets. It asks for the paths of the GitHub App key and the Claude token and copies them in. It never overwrites an existing file.
+- **Mounting.** Compose mounts file secrets with their host ownership and mode: "when the source is a file, Compose uses a bind-mount under the hood which doesn't allow uid remapping, and these attributes [`uid`, `gid`, `mode`] are silently ignored" (Docker documentation, Compose file reference, services, `secrets`, read 18 October 2026). The files are 0600 and owned by the operator, so no container user can read the mounted copy; only the entrypoint, with `DAC_READ_SEARCH`, copies each into its service user's private tmpfs before dropping the capability (DEC-0501). `[secrets]` in `grindstone.toml` names the copies, for example `/run/gs/github_app_key`.
+- **Provisioning (REQ-0513).** `make secrets` replaces M0's `dev-secrets.sh`. It generates the random keys (32 bytes, base64url) and prompts once for the operator password, storing its Argon2id hash. The parameters are this specification's: RFC 9106's second recommended option (64 MiB, 3 passes, 4 lanes), which SPEC-10 reads from the hash itself when it verifies. The hash is computed by `uv run --frozen python -m scripts.hash_password`, which reads the password from the terminal without echo, never from argv or the environment, and uses `argon2-cffi==25.1.0` (PyPI, released 3 June 2025, the latest; its bindings 26.1.0 ship abi3 wheels for CPython 3.14), pinned by this specification and used by SPEC-10 to verify. It asks for the paths of the GitHub App key and the Claude token and copies them in. It never overwrites an existing file.
 - **Rotation.** Replace the file, then restart every container the table lists for it. The host keys need `grindstone` and `agent-host` together.
 
 **The Claude preset's launcher** (`agent-host/presets/claude/`; a preset is the host's configuration for one agent runtime, so nothing Claude-specific enters the host core, ADR-41). Started by the host's helper as the agent user:
@@ -156,14 +156,14 @@ SPK-1, experiment 5, showed that with this floor a hostile workspace's `.claude/
 - the control plane, whose root token is `host_control_key`, with every grant;
 - a viewer role, with `config:settings`, `session:state`, `chat:turns` and `chat:send` but never `chat:answer`.
 
-In M1 the AHP listener binds loopback only and no viewer token is issued. SPEC-22 issues viewer tokens to the UI and VS Code after login. The refusal is tested now, in-container.
+In M1 the AHP listener binds loopback only and no viewer token is issued. Loopback inside `agent-host` is shared with every agent process in the same network namespace, so the address protects nothing: the people directory and its tokens are the protection, and an agent connecting without a token is refused. SPEC-22 issues viewer tokens to the UI and VS Code after login. The refusal is tested now, in-container.
 
 **Listeners and networks.** The M0 networks stay as they are:
 - `db` (internal) carries `postgres` and `grindstone`;
 - `agents` (internal) carries `grindstone` and `agent-host`;
 - `control-egress` carries `grindstone`, to GitHub;
 - `agent-egress` carries `agent-host`, to model providers and package registries;
-- `runner-egress` carries `runner`, to package registries.
+- `runner` is on no network in M1 (DEC-0505): its toolchain image carries the project's dependencies, as the Risks table's "dependencies baked into the toolchain image" says and as M0-04's fixture check already runs, and the M0 `runner-egress` network is removed.
 
 Compose gives each a fixed subnet. `grindstone` serves two listeners (REQ-0512):
 - **operator**, `:8080`, published as `127.0.0.1:8080`. It serves REST, the event stream and the UI (SPEC-10), and refuses any peer in the `agents` or `db` subnet.
@@ -192,7 +192,8 @@ Compose gives each a fixed subnet. `grindstone` serves two listeners (REQ-0512):
   - a secret is mounted in a container not listed for it in the secret table (kept as data in `scripts/ff/deployment.py`);
   - a station mounts `blobs` or `repos`;
   - anything mounts the Docker socket or a host path other than secrets and the instance file;
-  - a service adds a capability outside the entrypoint table;
+  - a service but `postgres` lacks `cap_drop: ALL` and a read-only root, or adds a capability outside the entrypoint table;
+  - `runner` is attached to any network;
   - `agent-host` lacks `init: true`;
   - a published port binds anything but loopback.
 - FF-06 is added. It fails when:
@@ -202,33 +203,34 @@ Compose gives each a fixed subnet. `grindstone` serves two listeners (REQ-0512):
 
 ## 6. Decisions
 
-DEC-0501: Secret files are 0600 on the host and copied by a root entrypoint holding only `DAC_READ_SEARCH` (with `SETUID`, `SETGID`, and `CHOWN` for the host's directories) into the service user's private tmpfs, before the capabilities are dropped · Compose mounts file secrets with host ownership and ignores per-secret owner and mode outside Swarm, so a mounted copy readable by the service user would also be readable by every agent in the same container · Rejected: world-readable mounted secrets, as in M0 (agents in `agent-host` could read the host keys); requiring the operator to `chown` secrets to container UIDs (a manual, host-specific install step); secrets in environment variables (`@ahpd/agent-acp` merges an agent's environment over the host's, so they would leak into agents, as SPK-1 found).
+DEC-0501: Secret files are 0600 on the host and copied by a root entrypoint holding only `DAC_READ_SEARCH` (with `SETUID`, `SETGID`, and `CHOWN` for the host's directories) into the service user's private tmpfs, before the capabilities are dropped · Compose mounts file secrets with host ownership and silently ignores per-secret owner and mode (Docker documentation, cited in section 5), so a mounted copy readable by the service user would also be readable by every agent in the same container · Rejected: world-readable mounted secrets, as in M0 (agents in `agent-host` could read the host keys); requiring the operator to `chown` secrets to container UIDs (a manual, host-specific install step); secrets in environment variables (`@ahpd/agent-acp` merges an agent's environment over the host's, so they would leak into agents, as SPK-1 found); Compose secrets sourced from the environment, for which Compose does apply `uid`, `gid` and `mode` (the secrets would have to live in Compose's environment, a `.env` file or the operator's shell, and the multi-line App key would need encoding, for no gain in protection over a 0600 file).
 DEC-0502: One agent Unix user per lane slot, with workspaces under that user's own subtree · Concurrent sessions never share a UID, and an agent can create its run directory without any capability · Rejected: one agent user for all sessions (concurrent runs could read each other's workspaces); a user per run (needs `useradd` at run time, that is, root).
 DEC-0503: Docker's init as PID 1 with the host as its only child, plus a parent-death signal per agent · SPK-1, experiment 8, showed an orphaned Claude Code process writing after its host died; the init also reaps orphaned grandchildren, which the host as PID 1 would not · Rejected: the host as PID 1 (zombie processes accumulate); parent-death signal alone (a grandchild that re-parents survives).
 DEC-0504: The launcher's security floor overrides per-session options · Repository configuration must never reach a session, whatever a capability asks for (ADR-18) · Rejected: trusting capability files to set `settingSources` (one wrong capability file would load repository hooks).
+DEC-0505: The runner has no network in M1 · Checks must be repeatable from the subject and the image, and code under test then cannot reach anything; Compose cannot restrict a network to package registries, so `runner-egress` was open egress in fact · Rejected: open egress for the runner (code under test reaches the internet, and results can depend on what a registry serves that day); an egress proxy (a new component, OQ-0502). A ticket that changes a project's dependencies needs its toolchain image rebuilt by the operator before its checks can pass, and its evidence names the new image digest (SPEC-08's environment fingerprint).
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0501: Images, users, entrypoints, compose, `make secrets`, instance file · implements REQ-0501, REQ-0502, REQ-0504, REQ-0512 to REQ-0514 · depends on TKT-0303 · paths `compose.yaml`, `docker/`, `deploy/`, `scripts/make_secrets.sh`, `Makefile`.
+TKT-0501: Images, users, entrypoints, compose (with the runner off every network), `make secrets` and `scripts/hash_password.py`, instance file · implements REQ-0501, REQ-0502, REQ-0504, REQ-0512 to REQ-0514 · depends on TKT-0303 · paths `compose.yaml`, `docker/`, `deploy/`, `scripts/make_secrets.sh`, `scripts/hash_password.py`, `pyproject.toml` (argon2-cffi), `Makefile`.
 TKT-0502: Workspace and session layout, and the host's helper that runs a command as an agent user (`spawnAsAgent` with umask 027 and a parent-death signal, archive extraction, removal, session directories), which SPEC-06's host core uses · implements REQ-0505 to REQ-0507, REQ-0510 · depends on TKT-0501 · paths `docker/entrypoints/`, `agent-host/src/helper/`.
 TKT-0503: Claude preset launcher, security floor and credential self-test · implements REQ-0508, REQ-0509 · depends on TKT-0501 · paths `agent-host/presets/claude/`, `agent-host/test/`, `agent-host/package.json`.
 TKT-0504: People directory and viewer grants, tested on `createHost` from `@ahpd/sdk` with a stub backend, so it does not wait for SPEC-06's host core · implements REQ-0511 · depends on TKT-0501 · paths `agent-host/src/people.ts`, `agent-host/test/`.
 TKT-0505: FF-05, FF-06 and the M1-05 security tests in `make smoke` · implements REQ-0501, REQ-0503, REQ-0510 · depends on TKT-0502, TKT-0503 · paths `scripts/ff/`, `scripts/compose_smoke.py`, `tests/fitness/`.
 
 AC-0501-1: FF-05 passes on `compose.yaml`, and fixtures with a Docker socket mount, `blobs` on a station, an unlisted secret mount, an extra capability and a non-loopback published port each fail it · verifies REQ-0501 · contract · `test_ff05_deployment_lint`.
-AC-0502-1: Inside each container, every mounted secret's original under `/run/secrets` is unreadable by the service user, and its copy is readable only by the user the secret table names · verifies REQ-0502 · security · `test_secrets_readable_only_by_their_user`.
+AC-0502-1: Inside each container but `postgres`, every mounted secret's original under `/run/secrets` is unreadable by the service user, and its copy is readable only by the user the secret table names; the `runner` container has no network interface but loopback · verifies REQ-0502 · security · `test_secrets_readable_only_by_their_user`.
 AC-0503-1: From each agent user and from `gs-runner`, every read the security test attempts fails, and no secret's SHA-256 matches anything read or any environment value · verifies REQ-0503 · security · `test_no_control_credential_reachable_from_stations`.
 AC-0503-2: From each agent user and from `gs-runner`, `git push` to the test repository fails with an authentication error · verifies REQ-0503 · security · `test_push_from_stations_fails`.
 AC-0504-1: The capability sets in `/proc/<pid>/status` are empty for the `grindstone`, `gs-runner` and agent processes, and exactly `CAP_SETUID` and `CAP_SETGID` for the host · verifies REQ-0504 · security · `test_process_capabilities`.
 AC-0505-1: Two agents started concurrently through the helper for different lane slots run as different agent users, each with umask 027, no capabilities and no supplementary groups · verifies REQ-0505 · security · `test_concurrent_agents_have_distinct_users`.
-AC-0506-1: An agent user cannot list the workspaces root, read another agent's subtree or the staging area; `grindstone` and `gs-host` can read a run directory and cannot create a file in it · verifies REQ-0506 · security · `test_workspace_layout_isolation`.
+AC-0506-1: An agent user cannot list the workspaces root, read another agent's subtree, or open the staging area or its own run's archive; `grindstone` and `gs-host` can read a run directory and cannot create a file in it · verifies REQ-0506 · security · `test_workspace_layout_isolation`.
 AC-0507-1: After SIGKILL of the host process while a stub agent started through the helper is about to write a file, the container restarts, no process of any agent user exists, and the file never appears · verifies REQ-0507 · security · `test_agents_die_with_host`.
 AC-0508-1: In front of a stub ACP adapter that records its input, the launcher sets `settingSources: []`, a private `CLAUDE_CONFIG_DIR` and `HOME` outside `workspaces`, and no bare mode on every `session/new`, load, resume and fork, and overrides a per-session option asking for `settingSources: ["project"]` · verifies REQ-0508 · contract · `test_launcher_security_floor`.
 AC-0508-2: Live run: with the testbed's hostile fixtures at their real paths in a workspace, a Claude Code session through the launcher runs none of their hooks, sets none of their environment, starts none of their MCP servers, and loads neither the `CLAUDE.md` nor the skill · verifies REQ-0508 · live run · `live_m1_05_hostile_repository`.
 AC-0509-1: The self-test fails with each listed credential source set in turn, with a managed-settings file present, and with a stored login in the configuration directory, and passes with none · verifies REQ-0509 · unit · `test_credential_selftest`.
 AC-0509-2: Changing the pinned adapter version without updating the self-test list's version fails the test suite · verifies REQ-0509 · unit · `test_selftest_list_tracks_adapter_version`.
 AC-0510-1: FF-06 passes, and fixtures mounting the instance file into `agent-host`, `workspaces` over `/etc/grindstone`, and a session area under the workspaces root each fail it · verifies REQ-0510 · contract · `test_ff06_workspace_mount_lint`.
-AC-0511-1: A viewer principal's permission answer is refused by the host and nothing runs; the control plane's answer is honoured · verifies REQ-0511 · integration · `test_viewer_cannot_answer_permission`.
+AC-0511-1: A viewer principal's permission answer is refused by the host and nothing runs; the control plane's answer is honoured; an agent user connecting to the AHP listener on loopback without a token is refused · verifies REQ-0511 · integration · `test_viewer_cannot_answer_permission`.
 AC-0512-1: A request to `:8080` from `agent-host` is refused; `/kernel/mcp` and `/stations/host/events` are not served on `:8080`; REST is not served on `:8081` · verifies REQ-0512 · security · `test_listeners_are_separated`.
 AC-0513-1: `make secrets` on an empty directory creates every secret 0600 in a 0700 directory, with the password stored only as an Argon2id hash; run again, it changes nothing · verifies REQ-0513 · unit · `test_make_secrets_idempotent`.
 AC-0514-1: An entrypoint given a secret file with mode 0644 exits non-zero naming the file, and does not start its service · verifies REQ-0514 · unit · `test_entrypoint_refuses_readable_secret`.
