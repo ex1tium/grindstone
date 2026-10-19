@@ -6,7 +6,7 @@ Grindstone is a self-hosted orchestrator for agent work with a person in the loo
 
 It is built as a small **domain-neutral kernel** with plug-in **factories**. The kernel holds the guarantees: provenance, freshness, independent proof, reviewed change, typed decisions, and durable, bounded execution. A factory teaches it one domain. Software development is the first factory and the reason Grindstone exists. Reverse engineering, testing and security, CAD, PCB, game development and in-house domains are meant to follow on the same kernel, with no change to it.
 
-> **Status: M0, nearly closed.** Foundation v4.6 is accepted. The repository scaffold, CI with the M0 fitness functions and the four-container stack are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. The ten M1 specifications are drafted and are going through independent review. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
+> **Status: M0, nearly closed.** Foundation v4.7 is accepted. The repository scaffold, CI with the M0 fitness functions and the four-container stack are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. The ten M1 specifications are drafted and are going through independent review. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
 
 ## Why
 

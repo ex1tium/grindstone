@@ -40,7 +40,7 @@ Out of scope:
 Implements:
 - **ADR-27, as amended by ADR-40.** Bare mirrors, worktrees, branches, copy-back path tiers, the CI-suite method and the GitHub pull-request adapter are factory code behind kernel ports. The control plane commits with hooks disabled from private clones and is the only place that pushes, with a GitHub App installation token. Each delivery posts one verification status the ruleset requires. The provider returns extra checks and permission requests with the subject.
 - **ADR-40.** The mode is observed from the rules in force on the target branch at setup and before every delivery. In unenforced mode Grindstone merges with the verified head SHA and reports outside merges.
-- **ADR-41.** The implementer and the test reviewer run Claude Code on different configured models by default. Reviewer independence beyond make and prove is SPEC-18's to enforce.
+- **ADR-41, as amended by ADR-47.** The implementer and the test reviewer run Claude Code on models chosen by configuration, which may be the same model; the test reviewer runs in a fresh read-only session that shares none of the implementer's context. Reviewer independence beyond make and prove is SPEC-18's to enforce.
 - **ADR-12 and I-15.** The test reviewer is a required prover. The implementer's tests prove nothing until the check station runs them and the reviewer passes them.
 - **I-08.** No SDLC capability holds GitHub credentials. Only the adapter, in the control plane, uses the App key.
 - **I-09 and QS-06.** No git hook, filter or repository configuration runs in the control plane.
@@ -164,7 +164,7 @@ A protected path is in the commit while its permission is pending, and the kerne
 
 Permission categories are agent-neutral. SPEC-06's preset options translate them for Claude Code.
 
-The model slots `primary` and `secondary` name models in instance configuration (SPEC-06). Their values are the operator's to choose before M1-01's live run, as status.md records, and differ by default. Prompt content:
+The model slots `primary` and `secondary` name models in instance configuration (SPEC-06). Their values are the operator's to choose before M1-01's live run, as status.md records, and may name the same model (ADR-47). Prompt content:
 - **The implementer's:** implement the ticket within its declared paths; annotate each test with `@verifies <criterion>`; run the tests (as working notes); call `report` once.
 - **The test reviewer's:** for each criterion, judge whether its annotated tests verify it, and, from the diff against the base it is given as prover context, whether any test or assertion was weakened or deleted (a diff marked truncated cannot pass this judgment unless the reviewer acknowledges the truncation explicitly and explains why the unseen part cannot hide a weakened test; otherwise it fails with the reason "diff truncated"); pass each listed path explicitly or fail it with a reason (QS-01).
 

@@ -1,6 +1,6 @@
-# Project Grindstone — Foundation v4.6
+# Project Grindstone — Foundation v4.7
 
-18 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
+19 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
 Grindstone is a self-hosted orchestrator that makes agent work trustworthy enough to delegate: intent is typed and versioned, every result is proven by someone other than its maker against the exact intent it claims to satisfy, and a person decides only what a person should.
 
@@ -1188,7 +1188,7 @@ The one rule every factory shares is that nothing grades itself (I-15, ADR-12). 
 | Prover — judgement | A different capability, `review` method, read-only | Read-only copy and pinned items | Structured verdicts as evidence | Yes |
 | Prover — person | Operator, through `manual_check` | — | Verdict and attachments | Yes |
 
-**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer on a different model from the author and implementer, in a fresh read-only session, and on a different model family once a second agent is configured (ADR-41).
+**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer in a fresh read-only session that shares none of the author's or implementer's context, on a model chosen by configuration that may be the maker's own (ADR-47).
 
 **Tests written by the maker.** In SDLC the implementer writes tests, and tests are the main evidence. The rule handles this in two steps: the **test reviewer** (a prover) checks that each added or changed test verifies its criterion and was not weakened — a weakened or deleted test fails that check — and the tests then run on the check station against the copied-back commit. Implementation and its proof stay separate even though one agent typed both.
 
@@ -1273,16 +1273,16 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 | `sdlc.implementer` | `sdlc.implement` · delegate | write, git worktree | No | Claude Code | M1 |
 | `sdlc.test_reviewer` | `sdlc.review.tests` · check | read-only | Yes | Claude Code | M1 |
 | `sdlc.spec_author` | `sdlc.specify` · delegate | write, items only | No | Claude Code | M2 |
-| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code, on a different model from the spec author | M2 |
+| `sdlc.auditor` | `sdlc.audit.spec` · check, consult | read-only | Yes | Claude Code | M2 |
 | `sdlc.impact_reviewer` | `core.review.impact` · check | read-only | Yes | Claude Code | M3 |
-| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Claude Code, on a different model from the implementer | M3 |
+| `sdlc.code_reviewer` | `sdlc.review.code` · check, consult | read-only | Yes | Claude Code | M3 |
 | `sdlc.security_reviewer` | `sdlc.review.security` · check, consult | read-only | Yes | Claude Code | M3 |
 | `sdlc.discoverer` | `sdlc.discover` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.planner` | `sdlc.breakdown` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.advisor` | `core.advise` · consult | read-only | No | Claude Code | M4 |
 | `sdlc.repairer` | `sdlc.repair` · delegate | write, git worktree | No | Claude Code | M5 |
 
-**Independence.** The auditor and the code reviewer run on a different model from the author and the implementer, in a fresh read-only session that shares none of their context; once a second agent is configured they default to a different model family (ADR-41). This is SDLC policy above make/prove; a project may relax it only by a `principle`-flagged decision.
+**Independence.** The auditor, the test reviewer and the code reviewer run in a fresh read-only session that shares none of the author's or the implementer's context. Each capability's model is configuration and may be the maker's own; a project may require its reviewers to run on a different model, or on a different model family once a second agent is configured, by configuration only (ADR-47). This is SDLC policy above make/prove.
 
 **Skills.** `sdlc.repo-conventions` (generated by `/init`), `sdlc.security-basics`, `sdlc.testing-patterns`, `sdlc.migration-safety`, `sdlc.api-design`.
 
@@ -1396,7 +1396,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty-six records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted**, on 17 October 2026 except ADR-45 and ADR-46 (18 October 2026); ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026. ADR-45 and ADR-46 come from the first review of the M1 specifications; the operator accepted both on 18 October 2026.
+Forty-seven records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted**, on 17 October 2026 except ADR-45 and ADR-46 (18 October 2026) and ADR-47 (19 October 2026); ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026. ADR-45 and ADR-46 come from the first review of the M1 specifications; the operator accepted both on 18 October 2026. ADR-47 comes from the operator's choice of models for M1's live runs.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1448,12 +1448,13 @@ Forty-six records cover every choice that is expensive to reverse. Each states t
 | 38 | A consult holds the call open until it answers, under a ceiling | Execution |
 | 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
 | 40 | Delivery states whether the remote enforces the gate | Factories |
-| 41 | Claude Code is the only agent until the operator adds another | Execution |
+| 41 | Claude Code is the only agent until the operator adds another (amended by 47) | Execution |
 | 42 | The agent host uses its packages unmodified, behind a launcher and a backend wrapper | Execution |
 | 43 | A skill's tools are listed from session start and refused until the skill is loaded | Execution |
 | 44 | Semantic hashes omit fields at their default | Kernel |
 | 45 | The delivery port reports the gate and completes deliveries through optional operations | Factories |
 | 46 | Dependencies are the latest stable release compatible with the other pins | Platform |
+| 47 | Reviewer independence is a separate capability in a fresh session; models are configuration | Factories |
 
 ## Platform and runtime
 
@@ -1725,6 +1726,8 @@ Forty-six records cover every choice that is expensive to reverse. Each states t
 
 #### ADR-41 — Claude Code is the only agent until the operator adds another
 
+**Status.** Amended by ADR-47 (reviewer models are configuration).
+
 **Decision.** Amends ADR-18. Claude Code on the operator's subscription is the only real agent in the MVP. Codex moves from M3 to whenever the operator adds a second provider, joining pi and other model APIs (R2). The abstraction stays whole: every agent runs through ACP behind the same host, a capability's agent is configuration, and the scripted agent (ADR-19) is a second ACP implementation exercised on every commit, so no Claude-specific path may enter the host or the kernel. Reviewer independence in the SDLC factory becomes a different model from the author or implementer, in a fresh read-only session that shares none of their context; it returns to a different model family, by configuration only, once a second agent exists. Make and prove (I-15) is unchanged: provers are still different capabilities, and mechanical proof still runs on the check station.
 
 **Why.** The operator has a Claude subscription and no other provider; paying for a second only to meet a default is cost without a user. Make and prove does not depend on model family; family diversity reduces correlated blind spots, which a different model and a fresh, context-free review partly recover. **Consequences.** SPK-3 is deferred, with Q-3 and Q-4; M0-03 no longer waits on it; M3-06 is restated; SPEC-18 drops its Codex variants. Author and reviewer errors are more likely to be correlated; the mechanical provers (CI suite, tests on the check station) and the test reviewer's criterion-by-criterion verdicts carry more of the weight, and the risk is revisited when a provider is added. All agent work now depends on one vendor's terms; switching to an API key stays configuration only (ADR-18). **Rejected:** keeping Codex at M3 (a cost the operator declined); building on the Claude Agent SDK directly instead of ACP (locks the host to one vendor, as ADR-15 and ADR-18 already rejected); dropping the reviewer-independence policy (loses the protection a different model and fresh context still give).
@@ -1769,6 +1772,14 @@ Forty-six records cover every choice that is expensive to reverse. Each states t
 **Decision.** Amends ADR-01 and the constraints table. Every dependency is the latest stable release that is compatible with the other pinned dependencies, pinned exactly. An exception, a dependency held below its latest release, names its constraint in `docs/m0/versions.md`: which dependency's declared range blocks the latest release, and what lifts it. Exceptions are re-checked at every upgrade and end as soon as the constraint lifts. Pinning, digests and deliberate upgrades are unchanged.
 
 **Why.** The first case is TypeScript: 7.0.2 is the latest, but SvelteKit 3.1.0 and svelte-check 4.7.7 declare peer ranges that stop at TypeScript 6, so the web UI cannot use 7 yet. Read literally, ADR-01 would force an unsupported pair. **Rejected:** holding the whole repository at the newest version every package supports (gives up current releases everywhere for one package); ignoring declared peer ranges (unsupported combinations in CI and production).
+
+#### ADR-47 — Reviewer independence is a separate capability in a fresh session; models are configuration
+
+**Status.** Accepted on 19 October 2026 by the operator, when choosing the models for M1's live runs.
+
+**Decision.** Amends ADR-41. In the SDLC factory a reviewer is independent of the maker when it is a different capability (I-15) running in a fresh read-only session that shares none of the author's or implementer's context. The model each capability runs on is configuration, and a reviewer may run on the same model as the maker: no default requires a different model or model family, and using the same one needs no decision. A project may still require its reviewers to run on a different model, or on a different model family once a second agent exists, by configuration only. Every run records the model it ran on (M1-06), so the choice is visible on the evidence it produced.
+
+**Why.** The operator wants the strongest available model for making and reviewing alike. On a single vendor, a reviewer whose model is chosen only because it differs from the maker's is often a weaker reviewer, trading review quality for diversity. What independence must guarantee is that the reviewer does not inherit the maker's reasoning, which a separate capability in a fresh session with no shared context gives, and that mechanical proof gates the result, which the check station gives. Model diversity reduces correlated blind spots and stays available as configuration. **Consequences.** M3-06 is restated: reviewers run in fresh sessions on models chosen by configuration, and changing a reviewer's model changes no code. The SDLC capability table and independence policy follow; SPEC-09's model slots no longer differ by default; SPEC-18 enforces fresh sessions and context isolation, not a model difference. When one model makes and reviews, their errors are more likely to be correlated, so the mechanical provers and the test reviewer's criterion-by-criterion verdicts carry the gate, as under ADR-41; the risk is revisited at the M3 review from the review findings recorded until then. **Rejected:** keeping a different model as the default (forces a weaker maker or reviewer on a single-vendor operator); requiring a `principle`-flagged decision to use the same model (ceremony for a choice that is plain configuration and recorded on every run); dropping fresh-session isolation as well (the reviewer would inherit the maker's reasoning, which independence exists to prevent).
 
 # Roadmap
 
@@ -1834,7 +1845,7 @@ Discoveries and decisions flow back into intent through reviewed ChangeSets, and
 - [ ] M3-03: Two ChangeSets on the same item apply one after the other with nothing lost; a re-walk whose review set differs from the approved one asks again; a revert applies the inverse, and a revert over a later change raises a `revert_conflict` decision (S4).
 - [ ] M3-04: Batched decisions show on one card; an answer to a superseded decision is refused; only permission requests expire, and they deny; a `scope_expansion` or `untrusted` ChangeSet waits for a person at every level.
 - [ ] M3-05: `ask` returns a structured consult answer, and an identical ask hits the cache until an input changes; `delegate` creates a child with its own checks whose approved, pinned output resumes the parent; `load_skill` is recorded on the run; depth and live-children overflow return structured errors (property tests on delegation trees). A delegating parent frees its writing lane while its child runs on it. A consult longer than the agent's default tool timeout answers in the open call; a session dropped mid-consult re-asks and receives the same answer with no second run; a consult past its ceiling suspends the caller and raises an escalation. A run with no activity for the liveness timeout fails `stalled`, while a run waiting in an open `ask` does not. With the project cap enabled, reaching it stops new runs and raises an escalation flagged `cap_reached`. Live run: S5.
-- [ ] M3-06: Live run: the auditor and code reviewer run on a different Claude model from the author and implementer, chosen by configuration only (ADR-41); the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
+- [ ] M3-06: Live run: the auditor and code reviewer run in fresh read-only sessions that share none of the author's or implementer's context, on models chosen by configuration only, and changing a reviewer's model changes no code (ADR-47); the security reviewer is added as a required check at collect time when the path policy matches the changed files, and a protected path raises a permission decision before verifying; a failed run raises an escalation, and the retry starts from the current base with the previous run's diff.
 - [ ] M3-07: A fresh install from `compose.yaml` and the documented secrets runs M1-01 and M3-01 within the install target (QS-12); the success measures have a recorded baseline (Q-8).
 
 ### M4 — Discovery and planning
@@ -1915,7 +1926,7 @@ Twenty-seven specifications deliver the MVP. Each is either a **kernel** specifi
 | SPEC-15 | Decision service | Kernel | `decisions` | M3-02, M3-04 | ADR-28, ADR-30; I-07, I-11 |
 | SPEC-16 | Change pipeline | Kernel | `change` | M3-01, M3-02, M3-03 | ADR-10; I-13 |
 | SPEC-17 | Cooperation, matching and limits | Kernel | `work` | M3-05 | ADR-24, ADR-37, ADR-38, ADR-39; I-10, I-16, I-17, I-19 |
-| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41; I-15 |
+| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41, ADR-47; I-15 |
 | **M4** |  |  |  |  |  |
 | SPEC-19 | Template and capability engine | Kernel | `work` | M4-04 | ADR-22, ADR-23, ADR-24; I-14 |
 | SPEC-20 | SDLC discovery, planning and patch | Factory | `factories/sdlc`: `/init`, `/discover`, `/plan` break-down, `/patch` | M4-01, M4-02, M4-06, M4-07 | ADR-33; I-07 |
@@ -2003,7 +2014,7 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | Prompt injection through external signals or analysed content | Fixed-code mapping with no agent reading first; untrusted content reaches only drafting capabilities; everything derived stays `untrusted` and needs a person | M5-03 |
 | The policy answers wrongly at higher autonomy | L1 by default; eligibility classes; always-asked flags; every answer revertible; the tripwire; L3 deferred | M5-04 |
 | On free plans the remote does not enforce the merge gate on private repositories | Delivery modes: Grindstone merges itself and reports every bypass as a finding; the mode is visible on every delivery (ADR-40) | M1-02 |
-| With one agent family, author and reviewer share blind spots | Reviewers on a different model in a fresh read-only session; mechanical provers and the test reviewer carry the gate; revisit when a second provider is added (ADR-41) | M3-06 |
+| With one agent family, or one model making and reviewing, author and reviewer share blind spots | Reviewers in a fresh read-only session that shares no context with the maker, on a model chosen by configuration; mechanical provers and the test reviewer carry the gate; revisit at the M3 review and when a second provider is added (ADR-41, ADR-47) | M3-06 |
 | Dogfooding couples Grindstone's development to its own bugs | A manual path stays open (plain pull requests that touch no published file); the scripted agent and test repository are independent of Grindstone's own repository; a stable instance orchestrates | M1-08 |
 | The implementer weakens the tests it writes | Test reviewer as a required prover; protected and reviewed copy-back tiers; operator reviews pull requests below L3 | M1-05, M1-07 |
 | Ceremony drives the operator around the system, and intent rots | `/patch` for small changes; scope decisions instead of refused copy-backs; mentions notify; group verdicts; governed share is a success measure | M4-06, M3-01 |
@@ -2156,6 +2167,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.7 | 19 October 2026 | Accepted by the operator: ADR-47 (reviewer independence is a separate capability in a fresh, context-free session; each capability's model is configuration and may be the maker's own; amends ADR-41). The make-and-prove section, the SDLC capability table and independence policy, M3-06, the spec map's SPEC-18 row and the risk table follow. |
 | 4.6 | 18 October 2026 | From the first review of the M1 specifications, accepted by the operator: ADR-45 (the delivery port's operations: `observe_mode`, `prepare`, `deliver`, `observe`, and optional `publish_gate_state` and `accept`; amends ADR-26) and ADR-46 (dependencies are the latest stable release compatible with the other pins; amends ADR-01). The Concepts delivery port, the SDK's adapter ports and the constraints table follow. The ownership table splits revisions (SPEC-04) from contracts, lanes (SPEC-02) from the station registry (SPEC-06), has SPEC-04 introduce the one-round walk, and names SPEC-06 and SPEC-08 as contributors to SDK 0.1.0. Editorial: `storage_limit` replaces `budget_exhausted` in the blob store; limits replace budgets in project configuration; `request_permission` is a suspending tool; kinds declare an ID pattern; a delivery is complete when it reaches `delivered`; lifecycle columns have an enum or an equivalent constraint; the decision index lists ADR-42 to ADR-46. Playbook rule 6 names which dependencies need a record. |
 | 4.5 | 17 October 2026 | Accepted by the operator: ADR-44 (semantic hashes omit fields at their default, hashes written `sha256:<hex>`; amends ADR-08 and the hashing contract; from SPEC-01, carried by its first review); and, from the M0 spikes, ADR-42 (the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher; amends ADR-15; resolves Q-1) and ADR-43 (a skill's tools are listed from session start and refused until it is loaded; amends ADR-39). The agent-host component, the skills concept, the glossary's hash, the hashing contract, Q-1, Q-5 and the risk table follow. |
 | 4.4 | 17 October 2026 | ADR-41: Claude Code is the only agent for now; Codex deferred with SPK-3, Q-3 and Q-4; reviewer independence becomes a different Claude model in a fresh session until a second family exists. M0-03, M3-06, SPEC-18, the capabilities table and the risks follow. |
