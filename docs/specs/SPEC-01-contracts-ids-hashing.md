@@ -1,5 +1,5 @@
 # SPEC-01 — Contracts, IDs, hashing and code generation
-Status: draft · Milestone: M1
+Status: in review (revision 2 answers review 2, `docs/specs/reviews/SPEC-01-review-2.md`; revision 1 answered review 1) · Milestone: M1
 Kind: kernel · Owns: `grindstone.contracts` (base contract, typed IDs, references, provenance, run manifest, error envelope, semantic hashing, schema generation, schema compatibility check)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
@@ -31,7 +31,8 @@ Out of scope:
 
 Implements:
 - ADR-05: Pydantic is the only hand-written source of types; everything else is generated and drift-checked; stored payloads carry a schema version.
-- ADR-08: namespaced kinds with stable typed IDs; semantic hashes over RFC 8785 canonical JSON after NFC and LF normalisation. This specification makes the canonical form precise (section 5) and proposes one refinement as a decision record (section 6).
+- ADR-08 as amended by ADR-44: namespaced kinds with stable typed IDs; semantic hashes over RFC 8785 canonical JSON after NFC and LF normalisation, with fields at their declared default omitted and hashes written `sha256:<hex>`. This specification makes the canonical form precise (section 5).
+- ADR-11: freshness compares the semantic hashes defined here.
 - I-02: the provenance contract every revision carries.
 - I-06: the run manifest names everything a run used.
 - I-05, QS-02: semantic hashes are what freshness compares, so a presentation edit must never change one, and a semantic edit always must.
@@ -49,16 +50,17 @@ REQ-0101: Every model in `grindstone.contracts` derives from `Contract`, which i
 REQ-0102: Every contract that is stored, sent between processes or exposed to clients has a `schema_version` field typed as a literal integer.
 REQ-0103: `semantic_hash(contract)` returns `sha256:` followed by 64 lowercase hex digits, computed over the RFC 8785 canonical JSON of the contract's semantic content, defined in section 5.
 REQ-0104: A field is semantic unless it is explicitly marked presentation; changing only presentation fields never changes the semantic hash, and changing any semantic field always does.
-REQ-0105: Every string in semantic content, keys and values, is normalised to Unicode NFC, and every line ending to LF, before canonicalisation.
-REQ-0106: Semantic content admits only strings, booleans, null, integers within ±(2^53 − 1), lists and objects; a contract whose semantic fields can hold a float is refused when the contract class is defined.
-REQ-0107: A semantic field whose value equals its declared default is omitted from the canonical form, so adding an optional, defaulted field to a contract leaves every existing hash unchanged (proposed record, section 6).
-REQ-0108: Golden vectors (input, canonical bytes, hash) live in `grindstone.contracts`, and the Python and TypeScript implementations both reproduce every vector exactly.
-REQ-0109: Item IDs are typed per kind as `PREFIX-n`, with the prefix fixed by the kind; parsing an ID of the wrong prefix for its type fails validation.
-REQ-0110: The `RunManifest` contract holds the pinned item revisions, capability hash, factory version, provider, model, subject version, context pack hash and prompt blobs of one run, and has a stable semantic hash.
+REQ-0105: Every string in semantic content, keys and values, is normalised to Unicode NFC, and every line ending to LF, before canonicalisation; an object whose keys become equal after normalisation is refused.
+REQ-0106: Semantic content admits only strings, booleans, null, integers within ±(2^53 − 1), ordered lists and objects; a contract whose semantic fields can hold a float, or an unordered collection (`set`, `frozenset`), is refused when the contract class is defined, and a value inside a JSON-typed field that is a float, an integer outside that range or not a JSON value is refused when it is hashed, with `hash_input_invalid`, so the same content hashes the same in every process.
+REQ-0107: A semantic field whose value equals its declared default is omitted from the canonical form, so adding an optional, defaulted field to a contract leaves every existing hash unchanged (ADR-44).
+REQ-0108: Golden vectors (input, canonical bytes, hash) and refusal vectors (input, expected error code) live in `grindstone.contracts`, and the Python and TypeScript implementations both reproduce every hash vector exactly and refuse every refusal vector with its code.
+REQ-0109: Every item ID matches one base grammar, and each kind declares the pattern of its own IDs when it registers (SPEC-03); a typed ID field refuses an ID that does not match its kind's pattern.
+REQ-0110: The `RunManifest` contract holds the pinned item revisions, capability hash, factory version, provider, model, subject version, context pack hash, instance and project configuration hashes and prompt blobs of one run, and has a stable semantic hash.
 REQ-0111: Record IDs are UUIDv7, typed per record kind.
 REQ-0112: Every service error is an `ErrorEnvelope` with a stable code from a closed set per class, a message for people, a structured detail, and whether a retry can help.
 REQ-0113: `make gen` regenerates the JSON Schema bundle and the TypeScript types deterministically, and CI fails on any difference from the committed files (FF-02).
 REQ-0114: CI classifies every change to the schema bundle against the base branch as compatible or breaking, and fails a breaking change unless the affected model's `schema_version` was raised and an upgrade note names it (FF-03).
+REQ-0115: Reference contracts write every content hash as `sha256:<hex>`, a git commit reference accepts both SHA-1 (40 hex) and SHA-256 (64 hex) object names, and a blob set's version is `blob_set_version(members)`, the semantic hash of its members' sorted, de-duplicated content hashes.
 
 ## 5. Design
 
@@ -67,25 +69,27 @@ REQ-0114: CI classifies every change to the schema bundle against the base branc
 | Model | Fields | Schema version |
 | --- | --- | --- |
 | `ItemRef` | `id: ItemId`, `hash: SemanticHash` | 1 |
-| `BlobRef` | `sha256: BlobHash`, `media_type: str`, `size: int` (≥ 0) | 1 |
-| `SubjectRef` | Discriminated union on `kind`: `git_commit` (`repo: str`, `sha: str`, 40 hex), `blob` (`blob: BlobRef`), `blob_set` (`members: tuple[BlobRef, ...]`, sorted and unique by hash; its version is the hash of the sorted member hashes), `item_revision` (`item: ItemRef`). Factory subject kinds reduce to one of these (Concepts, "Subjects") and arrive through the registry in SPEC-03 | 1 |
+| `BlobRef` | `sha256: BlobHash` (`sha256:` and 64 lowercase hex, the same form as a semantic hash), `media_type: str`, `size: int` (≥ 0) | 1 |
+| `SubjectRef` | Discriminated union on `kind`: `git_commit` (`repo: str`, `sha: str`, 40 or 64 lowercase hex), `blob` (`blob: BlobRef`), `blob_set` (`members: tuple[BlobRef, ...]`, sorted and unique by hash; its version is `blob_set_version(members)`: the semantic hash of a `BlobSetMembers` contract whose one field is the sorted tuple of the members' `sha256` strings, so relabelling a member's media type changes no version, as the Concepts tab's "hash of the sorted member hashes" says), `item_revision` (`item: ItemRef`). Factory subject kinds reduce to one of these (Concepts, "Subjects") and arrive through the registry in SPEC-03 | 1 |
 | `Provenance` | `author_kind: person \| agent \| policy \| system`, `author: str`, `changeset: ChangeSetId \| None`, `task: TaskId \| None`, `finding: ItemId \| None`, `decision: DecisionId \| None`, `reason: str` (non-empty) | 1 |
-| `RunManifest` | `run: RunId`, `task: TaskId`, `items: tuple[ItemRef, ...]` (sorted by ID and unique, enforced by a validator, so equal manifests hash equally), `capability: str`, `capability_hash: SemanticHash`, `factory: str`, `factory_version: str`, `provider: str`, `model: str`, `subject: SubjectRef \| None`, `context_pack_hash: SemanticHash`, `prompts: tuple[BlobRef, ...]` | 1 |
+| `RunManifest` | `run: RunId`, `task: TaskId`, `items: tuple[ItemRef, ...]` (sorted by ID and unique, enforced by a validator, so equal manifests hash equally), `capability: str`, `capability_hash: SemanticHash`, `factory: str`, `factory_version: str`, `provider: str`, `model: str`, `subject: SubjectRef \| None`, `context_pack_hash: SemanticHash`, `instance_config_hash: SemanticHash`, `project_config_hash: SemanticHash`, `prompts: tuple[BlobRef, ...]` (I-06; Components, "Error model and configuration": every run records the configuration hashes it used) | 1 |
 | `ErrorEnvelope` | `code: str`, `error_class: validation \| rule \| authority \| limit \| transient \| internal`, `message: str`, `detail: JsonObject`, `retryable: bool` | 1 |
 
-`ErrorEnvelope.code` is validated against a registry of codes per class: kernel codes are declared here, starting with the codes the Components tab names; later specifications register more through SPEC-03's registry, and an unregistered code is refused.
+`ErrorEnvelope.code` is validated against a closed list of codes per class. Kernel codes are declared in `grindstone.contracts.errors`, starting with the codes the Components tab names; each later kernel specification appends its own codes to that module, so modules below `platform` (such as `store`) can use them. Factory codes are registered through SPEC-03's registry, which copies the kernel list into its `core` names. An unknown code is refused.
 
-**Identifiers.** `ItemId` is a constrained string `^[A-Z][A-Z0-9]{0,7}-[0-9]+(-[0-9]+)?$`. `item_id_type("REQ")` returns a distinct annotated type that also checks the prefix, so a `ReqId` field refuses `TKT-0001`; criterion IDs (`AC-0101-1`) use the optional second number. IDs are compared as strings and never reused; allocating them is `intent`'s job (SPEC-04). Record IDs (`RunId`, `TaskId`, `ChangeSetId`, `DecisionId`, …) are `NewType`s over `uuid.UUID`, version 7, created with the standard library's `uuid.uuid7()`. Python 3.14 is the first version with it in the standard library (`docs/m0/versions.md`).
+**Identifiers.** `ItemId` is a constrained string matching the base grammar `^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$`: a prefix of capital letters and digits, then up to two numbers. It admits every ID form the foundation defines, including a singleton (`PRD`), a number fused to its prefix (`M1`), one number (`N-3`) and two (`M1-01`, `AC-0101-1`). A kind declares its own pattern when it registers (SPEC-03), as an anchored regular expression, with example IDs that registration checks against both the pattern and the base grammar. `item_id_type(name, pattern)` returns a distinct annotated type that validates the base grammar and then the kind's pattern, so no ID outside the base grammar can pass, and a field typed for the `notes` factory's `N-` items refuses `P-3`. IDs are compared as strings and never reused; allocating them is `intent`'s job (SPEC-04). Record IDs (`RunId`, `TaskId`, `ChangeSetId`, `DecisionId`, …) are `NewType`s over `uuid.UUID`, version 7, created with the standard library's `uuid.uuid7()`. Python 3.14 is the first version with it in the standard library (`docs/m0/versions.md`).
 
-**Semantic and presentation fields.** A field is marked presentation with `Annotated[T, Presentation]`. Everything unmarked is semantic: an unmarked field makes evidence stale too often, never too rarely. At class definition, `Contract.__pydantic_init_subclass__` computes and caches the semantic field set, recursing into nested contracts, and refuses a float anywhere in semantic content (REQ-0106). Lifecycle state is never a contract field of an item: it is stored beside the item (Concepts, "Lifecycles").
+**Semantic and presentation fields.** A field is marked presentation with `Annotated[T, Presentation]`. Everything unmarked is semantic: an unmarked field makes evidence stale too often, never too rarely. At class definition, `Contract.__pydantic_init_subclass__` computes and caches the semantic field set, recursing into nested contracts, and refuses a float or an unordered collection anywhere in semantic content (REQ-0106): Pydantic writes a `set` in iteration order, which for strings changes from process to process, so a contract that means a set holds a tuple that a validator sorts and de-duplicates, as `RunManifest.items` does. Lifecycle state is never a contract field of an item: it is stored beside the item (Concepts, "Lifecycles").
 
 **Canonical form and hash.**
 1. Take the semantic fields; recurse into nested contracts, applying each one's own semantic set.
 2. Omit any field whose value equals its declared default (REQ-0107).
 3. Serialise to JSON values (Pydantic JSON mode): enums by value, UUIDs and dates as strings.
-4. Normalise every string, keys included, to NFC, and `\r\n` and lone `\r` to `\n`.
+4. Normalise every string, keys included, to NFC, and `\r\n` and lone `\r` to `\n`; refuse an object whose keys collide after normalisation (REQ-0105). Refuse, with `hash_input_invalid`, a float, an integer outside ±(2^53 − 1) or a non-JSON value reached inside a JSON-typed field (`JsonObject`, `JsonValue`), which the class-definition check cannot see (REQ-0106).
 5. Canonicalise with RFC 8785 (key order by UTF-16 code units, no insignificant whitespace, the RFC's string escaping).
 6. Hash the UTF-8 bytes with SHA-256 and render the result as `sha256:<hex>`.
+
+The serialized form of a record — what is stored, sent and generated into schemas — always carries every field, defaults included (REQ-0101); only the canonical form for hashing omits defaults.
 
 The same steps run in TypeScript (`@grindstone/contracts`, a hand-written `hashing.ts` beside the generated types), so the agent host and the UI can verify hashes. Golden vectors in `contracts/golden/hash-vectors.json` cover:
 - key ordering with non-ASCII and astral-plane keys;
@@ -93,8 +97,12 @@ The same steps run in TypeScript (`@grindstone/contracts`, a hand-written `hashi
 - integers at the ±(2^53 − 1) bounds;
 - empty containers;
 - omitted defaults;
+- every control character U+0000–U+001F in a string (OQ-0101);
 - a presentation field ignored;
-- a nested contract.
+- a nested contract;
+- a `blob_set` version.
+
+Refusal vectors (input and expected code) cover keys colliding after NFC, a float and an unsafe integer inside a JSON-typed field, and a non-JSON value. The kernel code `hash_input_invalid` (validation) is declared here.
 
 **Code generation.** As built in M0: `scripts/gen_contract_schemas.py` writes one bundle with every exported model under `$defs`, in serialization mode and without field titles. `scripts/gen-contracts-ts.mjs` compiles it to `packages/contracts-ts/src/index.ts`. SPEC-04 adds SQL enum generation to the same `make gen`.
 
@@ -128,18 +136,13 @@ DEC-0102: Floats are refused in semantic content, and integers are limited to ±
 DEC-0103: Use the `rfc8785` package for Python (Trail of Bits, pure Python, 0.1.4) and `canonicalize` for TypeScript (5.1.0, by an author of RFC 8785), each pinned exactly · The golden vectors bind both, so either can be replaced without changing a hash · Rejected: our own canonicaliser (UTF-16 key ordering and escaping are easy to get subtly wrong; the dependencies are small and fixed to a finished RFC).
 DEC-0104: Hashes are rendered `sha256:<hex>` · The algorithm travels with the value, so a later scheme can coexist without ambiguity · Rejected: bare hex (an algorithm change would need a format migration everywhere).
 
-**Proposed record: semantic hashes omit defaulted fields.** The foundation defines the hash as SHA-256 over the canonical JSON of the semantic fields. Read literally, adding an optional field with a default to a kind adds `"field": null` to every item's canonical form. That changes every hash and makes every piece of evidence in every project stale on an ordinary, compatible upgrade, the opposite of what the compatible-change rule promises. The proposed record refines the hashing contract:
-- a semantic field whose value equals its declared default is omitted from the canonical form;
-- changing a semantic field's default is a breaking change under FF-03;
-- the hash is rendered with its algorithm prefix (DEC-0104).
-
-It touches ADR-05, ADR-08 and ADR-11 and the hashing contract in the Components tab. It must be accepted before TKT-0103 is implemented.
+**Record.** The refinement this specification proposed — semantic hashes omit fields at their declared default, a changed semantic default is a breaking change, and hashes are written with their algorithm — was accepted as ADR-44 on 17 October 2026.
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0101: Contract base, typed IDs, references, provenance, run manifest · implements REQ-0101, REQ-0102, REQ-0109, REQ-0110, REQ-0111 · depends on — · paths `packages/grindstone/src/grindstone/contracts/`, `packages/grindstone/tests/contracts/`.
+TKT-0101: Contract base, typed IDs, references, provenance, run manifest · implements REQ-0101, REQ-0102, REQ-0109, REQ-0110, REQ-0111, REQ-0115 (hash forms) · depends on — · paths `packages/grindstone/src/grindstone/contracts/`, `packages/grindstone/tests/contracts/`.
 TKT-0102: Error envelope and kernel error codes · implements REQ-0112 · depends on TKT-0101 · same paths.
-TKT-0103: Canonical form, semantic hash and golden vectors in Python · implements REQ-0103 to REQ-0108 · depends on TKT-0101 and the proposed record · same paths plus `pyproject.toml` (rfc8785).
+TKT-0103: Canonical form, semantic hash, `blob_set_version`, golden and refusal vectors in Python · implements REQ-0103 to REQ-0108, REQ-0115 (blob set version) · depends on TKT-0101 · same paths plus `pyproject.toml` (rfc8785).
 TKT-0104: TypeScript hashing against the golden vectors · implements REQ-0108 · depends on TKT-0103 · paths `packages/contracts-ts/`.
 TKT-0105: FF-03 schema compatibility check · implements REQ-0114 · depends on TKT-0101 · paths `scripts/ff/`, `tests/fitness/`, `docs/upgrades.md`, `Makefile`, `.github/workflows/ci.yml`.
 
@@ -149,22 +152,28 @@ AC-0102-1: Every exported model that is stored or sent has a literal-integer `sc
 AC-0103-1: `semantic_hash` returns `sha256:` and 64 lowercase hex digits, and equals SHA-256 of `canonical_bytes` · verifies REQ-0103 · property · `test_hash_format_and_definition`.
 AC-0104-1: For generated contract instances, changing only presentation fields keeps the hash, and changing any semantic field changes it · verifies REQ-0104 · property · `test_presentation_edits_never_change_hash`.
 AC-0105-1: NFD and NFC spellings, and CRLF and LF text, of the same content hash identically · verifies REQ-0105 · property · `test_normalisation_before_hashing`.
+AC-0105-2: An object with two keys that differ only in Unicode normalisation is refused · verifies REQ-0105 · unit · `test_keys_colliding_after_nfc_refused`.
 AC-0106-1: Defining a contract with a float in a semantic field raises at class creation, and an integer beyond ±(2^53 − 1) is refused at validation · verifies REQ-0106 · unit · `test_floats_and_unsafe_integers_refused`.
+AC-0106-2: Defining a contract with a `set` or `frozenset` in a semantic field, directly or nested, raises at class creation · verifies REQ-0106 · unit · `test_unordered_collections_refused`.
+AC-0106-3: The same contract instances hash identically in subprocesses run with different `PYTHONHASHSEED` values · verifies REQ-0106 · property · `test_hash_is_stable_across_processes`.
+AC-0106-4: Hashing a contract whose JSON-typed field holds a float, an integer beyond ±(2^53 − 1) or a non-JSON value fails `hash_input_invalid` · verifies REQ-0106 · unit · `test_json_fields_checked_at_hash_time`.
 AC-0107-1: Adding an optional defaulted field to a model leaves the hash of an instance that does not set it unchanged · verifies REQ-0107 · unit · `test_added_default_field_keeps_hashes`.
-AC-0108-1: Python reproduces every golden vector's canonical bytes and hash · verifies REQ-0108 · golden round-trip · `test_python_golden_vectors`.
-AC-0108-2: TypeScript reproduces every golden vector's canonical bytes and hash · verifies REQ-0108 · golden round-trip · `hash-vectors.test.ts`.
-AC-0109-1: `item_id_type("REQ")` accepts `REQ-0412`, and refuses `TKT-0412`, `req-0412` and `REQ-` · verifies REQ-0109 · unit · `test_typed_item_ids`.
-AC-0110-1: A `RunManifest` holds every field M1-06 names, and round-trips through JSON unchanged · verifies REQ-0110 · unit · `test_run_manifest_fields_and_round_trip`.
+AC-0108-1: Python reproduces every golden vector's canonical bytes and hash, and refuses every refusal vector with its code · verifies REQ-0108 · golden round-trip · `test_python_golden_vectors`.
+AC-0108-2: TypeScript reproduces every golden vector's canonical bytes and hash, and refuses every refusal vector with its code · verifies REQ-0108 · golden round-trip · `hash-vectors.test.ts`.
+AC-0109-1: The base grammar accepts `ABC`, `X1`, `X1-01`, `N-3` and `X-12-3`, and refuses `x-1`, `N-`, `-3` and `N-1-2-3`; a type declared for the pattern `^N-[0-9]+$` accepts `N-3` and refuses `P-3`; a type declared with a looser pattern (`^.*$`) still refuses `x-1`, through the base grammar; declaring a kind whose example IDs do not match its pattern fails · verifies REQ-0109 · unit · `test_typed_item_ids`.
+AC-0110-1: A `RunManifest` holds every field M1-06 names and both configuration hashes, and round-trips through JSON unchanged · verifies REQ-0110 · unit · `test_run_manifest_fields_and_round_trip`.
 AC-0110-2: Two manifests that differ only in the order their items were supplied hash identically, because items are stored sorted by ID · verifies REQ-0110 · unit · `test_run_manifest_hash_is_order_independent`.
 AC-0111-1: Generated record IDs are UUIDv7 and sort by creation time · verifies REQ-0111 · unit · `test_record_ids_are_uuid7`.
+AC-0115-1: A `BlobRef` refuses a hash not written `sha256:<64 lowercase hex>`; a `git_commit` reference accepts 40 and 64 hex digits and refuses 39 or uppercase · verifies REQ-0115 · unit · `test_reference_hash_forms`.
+AC-0115-2: `blob_set_version` is the same for members supplied in any order or with a member's media type relabelled, and differs when any member's content hash differs; it matches its golden vector · verifies REQ-0115 · unit · `test_blob_set_version`.
 AC-0112-1: An `ErrorEnvelope` with a code not registered for its class is refused; every class in the error model exists · verifies REQ-0112 · unit · `test_error_codes_are_closed`.
 AC-0113-1: `make ff` fails when a contract changes without `make gen` · verifies REQ-0113 · contract · `test_schema_bundle_matches_contracts` (exists).
 AC-0114-1: Removing a field without raising `schema_version` fails FF-03, and adding an optional field passes · verifies REQ-0114 · contract · `test_ff03_breaking_change_needs_version_bump`.
 
 ## 8. Test plan
 
-- Unit: AC-0101-1, AC-0102-1, AC-0106-1, AC-0107-1, AC-0109-1, AC-0110-1, AC-0110-2, AC-0111-1, AC-0112-1.
-- Property, with Hypothesis strategies built from the contract classes: AC-0103-1, AC-0104-1, AC-0105-1.
+- Unit: AC-0101-1, AC-0102-1, AC-0105-2, AC-0106-1, AC-0106-2, AC-0106-4, AC-0107-1, AC-0115-2, AC-0109-1, AC-0110-1, AC-0110-2, AC-0111-1, AC-0112-1, AC-0115-1.
+- Property, with Hypothesis strategies built from the contract classes: AC-0103-1, AC-0104-1, AC-0105-1, and AC-0106-3 across subprocesses.
 - Golden round-trip: AC-0108-1 and AC-0108-2.
 - Contract (FF-02, FF-03 with fixtures): AC-0101-2, AC-0113-1, AC-0114-1.
 
@@ -175,7 +184,7 @@ There are no crash-and-resume, integration or live-run tests: the module has no 
 OQ-0101: Does the `rfc8785` package's string escaping match `canonicalize` for every control character? · Default: the golden vectors include all of U+0000–U+001F; a mismatch is fixed by a thin wrapper on whichever side diverges · Resolved by TKT-0104.
 OQ-0102: Should a factory be able to mark fields of a kernel kind it extends as presentation? · Default: no; extensions add fields only, and their semantic or presentation mark is the extension's own (I-18) · Resolved by SPEC-11.
 
-Risks mitigated: hash drift between implementations (golden vectors); evidence going stale on a compatible upgrade (omitted defaults); silent incompatible schema changes (FF-03).
+Risks mitigated: hash drift between implementations (golden vectors) and between processes (no unordered collections); evidence going stale on a compatible upgrade (omitted defaults); silent incompatible schema changes (FF-03).
 Risk added: a contributor marks a field presentation that should be semantic. Mitigation: FF-03 treats moving a field between the two as breaking, and review checks every `Presentation` mark.
 
 ## 10. Rollout

@@ -1,5 +1,5 @@
 # Lint, type checks, tests and the fitness functions on every push and pull
-# request (M0-02), plus the M0-01 compose smoke test. Actions are pinned to
+# request (M0-02), plus the M0-01 compose smoke test and the M0-04 fixture check. Actions are pinned to
 # full commit SHAs (FF-04); Dependabot proposes upgrades.
 name: CI
 
@@ -62,3 +62,24 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose down --volumes
+
+  fixture:
+    name: Fixture project in the runner image (M0-04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check out the fixture project (the testbed's default branch)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ex1tium/grindstone-testbed
+          ref: main
+          path: testbed
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - run: make fixture FIXTURE=testbed

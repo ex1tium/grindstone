@@ -10,9 +10,15 @@
   },
   "bypass_actors": [],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
-    { "type": "required_linear_history" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "required_linear_history"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -30,8 +36,18 @@
         "strict_required_status_checks_policy": true,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "Lint, types, tests, fitness functions", "integration_id": 15368 },
-          { "context": "Compose smoke test (M0-01)", "integration_id": 15368 }
+          {
+            "context": "Lint, types, tests, fitness functions",
+            "integration_id": 15368
+          },
+          {
+            "context": "Compose smoke test (M0-01)",
+            "integration_id": 15368
+          },
+          {
+            "context": "Fixture project in the runner image (M0-04)",
+            "integration_id": 15368
+          }
         ]
       }
     }

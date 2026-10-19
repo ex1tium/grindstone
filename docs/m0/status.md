@@ -1,6 +1,6 @@
 # M0 status and handover
 
-Updated 17 October 2026. The living handover between sessions: update it when a step finishes.
+Updated 18 October 2026. The living handover between sessions: update it when a step finishes.
 
 ## Done
 - Foundation v4.4: Q-1 to Q-11 answered; ADR-37 limits instead of budgets, ADR-38 consults stay open under a ceiling, ADR-39 skills materialized per session, ADR-40 delivery modes for remotes that do not enforce rulesets, ADR-41 Claude Code is the only agent for now.
@@ -8,18 +8,66 @@ Updated 17 October 2026. The living handover between sessions: update it when a 
 - M0-01: four services healthy under `compose.yaml`; `make smoke` verifies health, mounts and network isolation.
 - M0-02: CI workflow with FF-01, FF-02, FF-04, FF-13 and failing fixtures; Dependabot.
 - M0-03 (partly): versions recorded (`docs/m0/versions.md`); spike plans in `docs/spikes/`.
-- M0-04 (partly): `ex1tium/grindstone-testbed` is public with the fixture project on `main`; the operator created the GitHub App (installed on the testbed only), imported the testbed ruleset, and set the cloud environment variables `GRINDSTONE_CLAUDE_OAUTH_TOKEN`, `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY_B64`.
-- SPEC-01 drafted (`docs/specs/`), with one proposed decision record (hashes omit defaulted fields); awaiting independent review.
+- M0-04: `ex1tium/grindstone-testbed` is public with the fixture project on `main`; the operator created the GitHub App (installed on the testbed only), imported the testbed ruleset, and set the cloud environment variables `GRINDSTONE_CLAUDE_OAUTH_TOKEN`, `GRINDSTONE_GITHUB_APP_ID`, `GRINDSTONE_GITHUB_APP_INSTALLATION_ID`, `GRINDSTONE_GITHUB_APP_PRIVATE_KEY_B64`. The runner image is the fixture project's toolchain: `make fixture` (CI job `fixture`) runs the testbed's tagged tests in it as `gs-runner`, with no network, no capabilities, a read-only root and subject, and no credentials, and maps every `@verifies` criterion to a passing test. `make benchmark` generates the benchmark project (`scripts/benchmark.py`): 20,000 items in the fixture's Markdown style, no dangling references, reproducible (golden digest in `tests/test_benchmark_project.py`), with an impact probe (`P-08` reaches 500 items) for FF-14 at M2.
+- Environment verified (17 October 2026): the four variables are set and the App key signs a JWT; the testbed's `main` rules require `grindstone/verification` from the App (`integration_id` matches the App ID), strict.
+- SPK-4 (17 October 2026, run by the operator as the App; report in `docs/spikes/SPK-4-github-mechanics.md`): all eleven experiments pass. Only the App's status satisfies the check (forgeries by an admin and by a workflow's own token are refused); a new head or a behind base needs a fresh status; Q-7 confirmed; delivery mode detectable through `rules/branches` (`403` when private on the free plan); merging with the verified SHA refuses a concurrent push; bypasses visible; 6 calls a poll, ETag 304s free, 5,000 calls an hour; pushes without hooks work.
+- SPK-2 (17 October 2026; report in `docs/spikes/SPK-2-dbos-fastapi.md`): all nine experiments pass. No duplicate effect after SIGKILL during steps, `recv`, `sleep`, child workflows and scheduled runs; idempotent messages; the writing lane serializes; a writing parent must delegate rather than wait on a writing child. For SPEC-02: set `application_version` explicitly and drain before an incompatible workflow change (DBOS recovers only its own version; the default is a hash of the workflow source); use DBOS's `_async` calls in the FastAPI lifespan.
+- SPK-1 (17 October 2026; report in `docs/spikes/SPK-1-host-claude-vscode.md`): experiments 1–9 pass; the VS Code half of experiment 6 is deferred. No package patch: a backend wrapper gives each session its kernel MCP server and token, environment and Unix user; the vendored plugin is a launcher (`settingSources: []`, credential self-test). AHP 1.0.0; FastMCP 4.1.0 on MCP SDK 2.3.0 verifies tokens per request. For SPEC-05: grants are enforced only with a `users` directory; agents outlive a killed host unless it is PID 1 or sets a parent-death signal; the host needs exactly `CAP_SETUID` and `CAP_SETGID`; run directories `<agent>:gs-workspaces` 2750. Proposed amendment to ADR-15 (no patch) in the report.
+- SPK-5 (17 October 2026; report in `docs/spikes/SPK-5-cooperation.md`): Claude Code holds an `ask` open for 45 minutes (longest run, shortened from 120 with the operator) with progress every 30 s; without keepalives it aborts at the 5-minute idle window; defaults already allow about 28 h. Single-flight join, cache, ceiling and resume, and liveness on the kernel's open-call count all work. **Claude Code never sees a tool added mid-session** (`tools/list_changed`): proposed ADR-39 change, skill tools listed from start and refused until loaded. Uncached small consult: 4 s, $0.03; cached: free.
+- Foundation v4.5 (accepted by the operator, 17 October 2026): ADR-44, semantic hashes omit fields at their default (from SPEC-01); ADR-42, the agent host uses its packages unmodified behind a backend wrapper and a vendored launcher (amends ADR-15, resolves Q-1); ADR-43, a skill's tools are listed from session start and refused until loaded (amends ADR-39). SPK-2's version-and-drain finding needs no record (the foundation already names explicit application versions and an upgrade path for in-flight workflows); it goes into SPEC-02 and SPEC-27.
+- SPEC-01 reviewed (`docs/specs/reviews/SPEC-01-review-1.md`), then revised (revision 1) by the same session at the operator's instruction: all nine findings answered; the item ID grammar now admits every foundation form, unordered collections are refused in semantic content, ADR-44 cited.
+
+- SPEC-02 to SPEC-10 drafted (17 October 2026), all by one session, which therefore reviews none of them. Each is in `docs/specs/`, status draft, with `make check` passing:
+  - SPEC-02 store, runtime, lanes and blobs;
+  - SPEC-03 platform, which introduces SDK 0.1.0;
+  - SPEC-04 items, thin ChangeSet and decisions;
+  - SPEC-05 deployment, users and secrets;
+  - SPEC-06 agent station and task runs;
+  - SPEC-07 kernel MCP surface;
+  - SPEC-08 check station, evidence and delivery port;
+  - SPEC-09 SDLC skeleton factory;
+  - SPEC-10 operator surface.
+
+  Every M1 exit criterion maps to acceptance criteria in the specifications the spec map assigns, and every requirement has at least one acceptance criterion and one ticket. New package versions are recorded in `docs/m0/versions.md` under "Resolved for the M1 specifications".
+
+- M1 specifications reviewed (17 October 2026) by a session that wrote none of them. The results are in `docs/specs/reviews/`, starting with `M1-specifications-review-1.md`: the summary, cross-cutting findings X1–X8, and the judgments on the author's four questions.
+  - SPEC-01 revision 1 closes all nine review 1 findings; approve after minor changes (`SPEC-01-review-2.md`).
+  - SPEC-05, SPEC-07 and SPEC-10: approve after minor changes.
+  - SPEC-02, SPEC-03 (with its architecture review), SPEC-04, SPEC-06, SPEC-08 and SPEC-09: changes required.
+  - Blocking themes:
+    - four module-map violations (X1);
+    - FF-07, FF-08 and FF-09 built by no ticket (X2);
+    - idempotency keys under `fork` (SPEC-02);
+    - a lost update on a moved base (SPEC-04);
+    - run and slot affinity, and a suspended run state (SPEC-06);
+    - the status-post key (SPEC-08);
+    - a symlink escape at collect, and a test reviewer that cannot see the base (SPEC-09);
+    - SDK contexts, the delivery-port shape and order-dependent loading (architecture review).
+  - Two records are proposed: delivery-port operations (amends ADR-26) and dependency currency (amends ADR-01, for TypeScript 6 in `web/`).
+
+- Foundation v4.6 (accepted by the operator, 18 October 2026): ADR-45, the delivery port's operations with optional `publish_gate_state` and `accept` under neutral names (amends ADR-26); ADR-46, dependencies are the latest release compatible with the other pins, exceptions recorded (amends ADR-01; covers TypeScript 6 in `web/`); the ownership table amended (X3); editorial alignments (X7); playbook rule 6 reworded for dependencies.
+- M1 specifications revised (18 October 2026) by their author, answering every finding of review 1: `docs/specs/reviews/M1-specifications-revision-1.md` maps each finding to its change. SPEC-06 is now two parts, `SPEC-06-1-stations-agent-host.md` and `SPEC-06-2-task-runs.md`, so the specification graph is acyclic. Three fixes differ from the reviewer's proposal, each with its reason in that file: drafts are requested through one event contract SPEC-04 owns (`change.draft_requested`); a run binds an agent user from a pool for its life while lanes stay queues; the runner has no network in M1.
+- Confirmation pass (18 October 2026), by a session that wrote none of the specifications, reviews or revision: `docs/specs/reviews/M1-specifications-confirmation-1.md`. Every blocking finding of review 1 is closed, and the three different fixes are sound. Four items remain before approval: C1, where a moved-base ChangeSet records its new bases (SPEC-04); C2, the port and context protocols belong in `grindstone.contracts`, because `platform`, `stations`, `evidence` and `delivery` may not import the SDK (SPEC-03); C3, gate-state re-evaluation must be serialized per delivery, or a stale `success` can be posted last (SPEC-08, new); C4, collect must kill the run's agent-user processes and read through directory descriptors, or a symlink swapped mid-walk reads control-plane files (SPEC-09, new).
+
+- Revision 2 (18 October 2026) answers confirmation 1's C1 to C4 and its eight small inconsistencies: `docs/specs/reviews/M1-specifications-revision-2.md`. Two fixes differ from the confirmation's proposals: C3 posts gate states only from passes on one queue of concurrency 1, and C4 also stops leftover agent processes before the user is released. `make check` passes.
 
 ## Next, in order
-1. **Verify the environment** (no values printed): the four variables exist; mint an App installation token (JWT from the key, then the installation token); read `ex1tium/grindstone-testbed`; read its active rules on `main` and confirm `grindstone/verification` is required. If the check's source is not yet restricted to the App, have the App post a first status on a commit so the operator can select it.
-2. **SPK-4 GitHub mechanics** (`docs/spikes/SPK-4-github-mechanics.md`): needs only the App. Spike code goes under `spikes/spk-4/` on a branch and is not merged; the report is appended to the plan.
-3. **SPK-2 DBOS in FastAPI** and **SPK-1 host and Claude** (SPK-1 uses `GRINDSTONE_CLAUDE_OAUTH_TOKEN`).
-4. **SPK-5 cooperation**, after SPK-1.
-5. Remaining M0-04: runner toolchain image and the benchmark project generator; wire the testbed into CI.
-6. Independent review of SPEC-01; then SPEC-02 to SPEC-10 from the spike results.
+1. **Re-check of C1 to C4 only**, by a session that wrote none of the specifications, reviews, revisions or confirmation (the revision 2 author also reviewed, so it cannot).
+2. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
+3. **Merge into `main`:** a pull request for this work; the `fixture` CI job runs only on pull requests and `main`. Re-import `.github/rulesets/grindstone-main.json` first.
+4. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+
+## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
+- **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
+- **Operator login:** a local password. One operator account, the password hashed with Argon2, a session cookie, and the UI and API bound to loopback by default (SPEC-10 owns it; SPEC-05 provisions the secret).
+- **Models for M1's agents:** set later. The specifications keep the model as capability configuration with a stated default (implementer and test reviewer on different Claude models, ADR-41); the operator chooses before M1-01's live run.
+- **SPK-1's VS Code half:** deferred to M4, with SPEC-22, on the operator's machine (M4-05 needs it; M1 does not).
 
 ## Open with the operator
-- Both repositories are public (decided 17 October 2026), so Actions minutes are free and the `main` ruleset on `ex1tium/grindstone` can be enforced: import `.github/rulesets/grindstone-main.json` if not done. With both public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
-- After SPK-4: set the testbed check's source to the App if GitHub only offered it after a first status.
-- Where the stable self-hosting instance runs: decided at the M1 review.
+- Before M1-01's live run: choose the models for the `primary` and `secondary` slots in `deploy/grindstone.toml` (SPEC-06, SPEC-09; different by default).
+- Before M1-08: install the GitHub App on `ex1tium/grindstone` and require `grindstone/verification` from it in that repository's ruleset (SPEC-09, OQ-0902).
+- At the M1 review: whether agent egress stays open at T1 (SPEC-05, OQ-0502), and where M1's real delivery runs (default: the operator's machine; SPEC-05, OQ-0501 checks secrets there).
+- Re-import `.github/rulesets/grindstone-main.json` on `ex1tium/grindstone`: it now also requires the `fixture` CI job (M0-04). The ruleset is otherwise active (checked 17 October 2026).
+- Open a pull request for this branch when ready: the `fixture` CI job runs only on pull requests and `main`.
+- Anything that must act as the App runs on the operator's machine (`docs/spikes/SPK-4-local-run.md`).
+- With both repositories public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
