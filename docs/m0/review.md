@@ -2,7 +2,7 @@
 
 Prepared 19 October 2026 from `main` at c502c87, whose CI run is <https://github.com/ex1tium/grindstone/actions/runs/39262057690>. The review follows the Roadmap's milestone-review procedure: exit criteria, success measures, risks and open questions, fitness functions, and changes to scope or order. Each section ends with what the operator confirms. When everything is confirmed, M0's checkboxes in the foundation are ticked, and from then on M0's criteria never change.
 
-**Status: awaiting the operator's confirmation.**
+**Status: confirmed on 19 October 2026. M0 is closed.**
 
 ## 1. Exit criteria
 
@@ -86,14 +86,14 @@ Milestone order and the M1 to M5 exit criteria are unchanged, apart from M3-06's
 
 ## Confirmation
 
-To be filled in by the operator: confirmed or rejected, per section, with any notes.
+Confirmed on 19 October 2026. Each section's evidence was re-checked at confirmation against the repository, CI and the live rulesets.
 
-| Section | Confirmed |
-| --- | --- |
-| 1. Exit criteria | |
-| 2. Deferrals | |
-| 3. Success measures | |
-| 4. Risks | |
-| 5. Open questions | |
-| 6. Fitness functions | |
-| 7. Scope and order | |
+| Section | Confirmed | Checked at confirmation |
+| --- | --- | --- |
+| 1. Exit criteria | Yes | Every image is pinned by digest: `postgres` in `compose.yaml`, and every `FROM` and `COPY --from` in `docker/`. The smoke test probes that both stations are refused by PostgreSQL, that the runner is refused by the control plane, and that the agent host reaches it. CI runs `make lint`, `typecheck`, `test`, `ff`, `smoke` and `fixture`. The testbed's live rule requires `grindstone/verification` from integration 5358336 with strict checks; this is the App, as verified on 17 October 2026 and by SPK-4's refused forgeries. SPK-1's precedence list covers 36 sources. |
+| 2. Deferrals | Yes | M4-05 needs VS Code, and the spec map gives it to SPEC-22. SPK-3, Q-3 and Q-4 are deferred by ADR-41. |
+| 3. Success measures | Yes | Nothing to read before M1. |
+| 4. Risks | Yes | The movements in section 4 match the spike reports and ADR-47. |
+| 5. Open questions | Yes | Each carried question has a default and an owner in its specification. |
+| 6. Fitness functions | Yes | Each of FF-05 to FF-10 has a ticket and an acceptance criterion: FF-05 and FF-06 in TKT-0505 (AC-0501-1, AC-0510-1); FF-07 and FF-09 in TKT-0206 (AC-0215-1, AC-0216-1); FF-08 in TKT-0405 (AC-0420-1); FF-10 in TKT-0203 (AC-0204-2). FF-11, FF-12 and FF-14 are M2's. |
+| 7. Scope and order | Yes | ADR-37 to ADR-47 cover every change; the milestone order is unchanged. |

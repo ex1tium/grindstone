@@ -1,4 +1,4 @@
-# Project Grindstone — Foundation v4.8
+# Project Grindstone — Foundation v4.9
 
 19 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
@@ -1807,10 +1807,10 @@ A milestone closes when every exit criterion passes on the GitHub test repositor
 
 Repository, CI and four empty services running; the unknowns that could change the design are settled.
 
-- [ ] M0-01: `docker compose up` brings `grindstone`, `agent-host`, `runner` and `postgres` to healthy with the `blobs`, `repos`, `workspaces` and `runs` volumes mounted only where ADR-01 allows, every image pinned by digest.
-- [ ] M0-02: CI runs lint, type checks, tests and the M0 fitness functions — import boundaries (FF-01), generated-contract drift (FF-02), pins (FF-04) and traceability over `docs/` including this foundation (FF-13); fixtures prove that a floating tag, a kernel-to-factory import and a dangling ID each fail the build.
-- [ ] M0-03: SPK-1, SPK-2, SPK-4 and SPK-5 reports are filed (SPK-3 is deferred by ADR-41); Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
-- [ ] M0-04: The GitHub test repository with its ruleset and a GitHub App installation, the runner toolchain image, a fixture project with tagged tests and the benchmark project exist and are wired into CI.
+- [x] M0-01: `docker compose up` brings `grindstone`, `agent-host`, `runner` and `postgres` to healthy with the `blobs`, `repos`, `workspaces` and `runs` volumes mounted only where ADR-01 allows, every image pinned by digest.
+- [x] M0-02: CI runs lint, type checks, tests and the M0 fitness functions — import boundaries (FF-01), generated-contract drift (FF-02), pins (FF-04) and traceability over `docs/` including this foundation (FF-13); fixtures prove that a floating tag, a kernel-to-factory import and a dangling ID each fail the build.
+- [x] M0-03: SPK-1, SPK-2, SPK-4 and SPK-5 reports are filed (SPK-3 is deferred by ADR-41); Q-1 to Q-11 are resolved or their defaults confirmed; resolved dependency versions and the Claude credential-precedence list are recorded from primary sources.
+- [x] M0-04: The GitHub test repository with its ruleset and a GitHub App installation, the runner toolchain image, a fixture project with tagged tests and the benchmark project exist and are wired into CI.
 
 ### M1 — Walking skeleton
 
@@ -2167,6 +2167,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.9 | 19 October 2026 | M0 closed at its milestone review (`docs/m0/review.md`): M0-01 to M0-04 are met and ticked, the deferral of SPK-1's VS Code half to M4 and of SPK-3 under ADR-41 is accepted, and the scope and order are unchanged. M0's criteria no longer change. |
 | 4.8 | 19 October 2026 | Editorial, before the M0 review: the status of Q-2 and Q-5 states what the spikes actually confirmed. Q-2: SPK-1 confirmed AHP 1.0.0 with a headless client, and VS Code's attach is deferred to M4 (SPEC-22). Q-5: SPK-3 is deferred, so it confirmed nothing; SPK-1 confirmed that workspace skills are not discovered natively, and SPK-5 led to ADR-43. No commitment changes. |
 | 4.7 | 19 October 2026 | Accepted by the operator: ADR-47 (reviewer independence is a separate capability in a fresh, context-free session; each capability's model is configuration and may be the maker's own; amends ADR-41). The make-and-prove section, the SDLC capability table and independence policy, M3-06, the spec map's SPEC-18 row and the risk table follow. |
 | 4.6 | 18 October 2026 | From the first review of the M1 specifications, accepted by the operator: ADR-45 (the delivery port's operations: `observe_mode`, `prepare`, `deliver`, `observe`, and optional `publish_gate_state` and `accept`; amends ADR-26) and ADR-46 (dependencies are the latest stable release compatible with the other pins; amends ADR-01). The Concepts delivery port, the SDK's adapter ports and the constraints table follow. The ownership table splits revisions (SPEC-04) from contracts, lanes (SPEC-02) from the station registry (SPEC-06), has SPEC-04 introduce the one-round walk, and names SPEC-06 and SPEC-08 as contributors to SDK 0.1.0. Editorial: `storage_limit` replaces `budget_exhausted` in the blob store; limits replace budgets in project configuration; `request_permission` is a suspending tool; kinds declare an ID pattern; a delivery is complete when it reaches `delivered`; lifecycle columns have an enum or an equivalent constraint; the decision index lists ADR-42 to ADR-46. Playbook rule 6 names which dependencies need a record. |
