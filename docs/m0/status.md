@@ -53,11 +53,12 @@ Updated 19 October 2026. The living handover between sessions: update it when a 
 - Revision 2 (18 October 2026) answers confirmation 1's C1 to C4 and its eight small inconsistencies: `docs/specs/reviews/M1-specifications-revision-2.md`. Two fixes differ from the confirmation's proposals: C3 posts gate states only from passes on one queue of concurrency 1, and C4 also stops leftover agent processes before the user is released. `make check` passes.
 - Merged into `main` (19 October 2026, #5), with the README rewritten for the domain-neutral kernel and factories; foundation v4.7 (ADR-47) merged in #6.
 - Re-check of C1 to C4 (19 October 2026), by a session that wrote none of the specifications, reviews, revisions or confirmation: `docs/specs/reviews/M1-specifications-recheck-1.md`. All four are closed, and both departures from confirmation 1 (the gate-state queue, the second process stop) are sound. Two notes for the implementing tickets: open FIFOs without blocking at collect, and guard against hard links (`fs.protected_hardlinks` or `st_nlink`).
+- M1 specifications accepted by the operator (19 October 2026): SPEC-01 to SPEC-10, with SPEC-06 in two parts, each marked `accepted`. Their section 7 tickets are the M1 backlog.
+- The `main` ruleset re-imported by the operator; the live rules require all three CI jobs, `fixture` included (checked 19 October 2026).
 
 ## Next, in order
-1. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
-2. **Re-import `.github/rulesets/grindstone-main.json`** on `ex1tium/grindstone`: the live ruleset still requires only the lint and smoke jobs, not `fixture` (checked 19 October 2026).
-3. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+1. **M0 milestone review:** a review record in `docs/m0/review.md` with the evidence for M0-01 to M0-04, the risks, the open questions and the fitness functions; the operator confirms each, and the foundation's M0 checkboxes are ticked.
+2. **M1 backlog:** break the section 7 tickets into work in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
 - **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).

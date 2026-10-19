@@ -1,5 +1,5 @@
 # SPEC-01 — Contracts, IDs, hashing and code generation
-Status: in review (revision 2 answers review 2, `docs/specs/reviews/SPEC-01-review-2.md`; revision 1 answered review 1) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.contracts` (base contract, typed IDs, references, provenance, run manifest, error envelope, semantic hashing, schema generation, schema compatibility check)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.

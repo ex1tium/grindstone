@@ -1,5 +1,5 @@
 # SPEC-06 part 1 — Stations and the agent host
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.stations`: agent-user bindings, sessions, workspace lifecycle, the host adapter and its event intake, reconciliation, the activity registry, the runner job envelope and dispatch;
 - the SDK ports `WorkspaceProvider` and `SubjectResolver`, with `RunContext`, `Materialization` and `CollectOutcome`;

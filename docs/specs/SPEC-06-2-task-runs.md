@@ -1,5 +1,5 @@
 # SPEC-06 part 2 — Task runs
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1: SPEC-06 split into two parts and revised from `docs/specs/reviews/SPEC-06-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.work`: tasks, runs, turns, reports, thin matching, thin template runs, context packs, run manifests, liveness, failure causes, the suspend-and-resume mechanism, collect into verifying
 
 Compact walking-skeleton specification (Planning playbook). Part 2 of SPEC-06; part 1 (`SPEC-06-1-stations-agent-host.md`) owns `stations` and the agent host. Review: by a session that did not write it, then the operator.

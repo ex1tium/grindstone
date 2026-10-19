@@ -1,5 +1,5 @@
 # SPEC-07 — Kernel MCP surface, first cut
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-07-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.surface.mcp` (the kernel MCP server, per-task tokens, the M1 tool set and its schemas, the tool wrapper that counts open calls and sends keepalives)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
