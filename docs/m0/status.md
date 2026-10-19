@@ -55,6 +55,7 @@ Updated 19 October 2026. The living handover between sessions: update it when a 
 - Re-check of C1 to C4 (19 October 2026), by a session that wrote none of the specifications, reviews, revisions or confirmation: `docs/specs/reviews/M1-specifications-recheck-1.md`. All four are closed, and both departures from confirmation 1 (the gate-state queue, the second process stop) are sound. Two notes for the implementing tickets: open FIFOs without blocking at collect, and guard against hard links (`fs.protected_hardlinks` or `st_nlink`).
 - M1 specifications accepted by the operator (19 October 2026): SPEC-01 to SPEC-10, with SPEC-06 in two parts, each marked `accepted`. Their section 7 tickets are the M1 backlog.
 - The `main` ruleset re-imported by the operator; the live rules require all three CI jobs, `fixture` included (checked 19 October 2026).
+- Gaps closed before the M0 review (19 October 2026): foundation v4.8 corrects the status of Q-2 and Q-5, which claimed confirmations from SPK-1's deferred VS Code half and from the deferred SPK-3; the fitness functions and their tests read and write UTF-8 and report POSIX paths, so the Python suite passes on Windows without `PYTHONUTF8`, and the contract generator writes LF line endings.
 
 ## Next, in order
 1. **M0 milestone review:** a review record in `docs/m0/review.md` with the evidence for M0-01 to M0-04, the risks, the open questions and the fitness functions; the operator confirms each, and the foundation's M0 checkboxes are ticked.
