@@ -6,7 +6,7 @@ Grindstone is a self-hosted orchestrator for agent work with a person in the loo
 
 It is built as a small **domain-neutral kernel** with plug-in **factories**. The kernel holds the guarantees: provenance, freshness, independent proof, reviewed change, typed decisions, and durable, bounded execution. A factory teaches it one domain. Software development is the first factory and the reason Grindstone exists. Reverse engineering, testing and security, CAD, PCB, game development and in-house domains are meant to follow on the same kernel, with no change to it.
 
-> **Status: M0, nearly closed.** Foundation v4.8 is accepted. The repository scaffold, CI with the M0 fitness functions and the four-container stack are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. The ten M1 specifications are drafted and are going through independent review. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
+> **Status: M1, walking skeleton.** M0 closed on 19 October 2026 ([review](docs/m0/review.md)): the repository scaffold, CI with the M0 fitness functions, the four-container stack and the GitHub testbed are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. Foundation v4.9 is accepted, and the ten M1 specifications are accepted; their tickets are being built. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
 
 ## Why
 
@@ -117,7 +117,7 @@ Agents reach Grindstone only through a per-task MCP surface. They never deliver,
 
 | Milestone | Outcome |
 | --- | --- |
-| M0 Foundations | Repository, CI and four services; spikes settled; M1 specified |
+| M0 Foundations (closed) | Repository, CI and four services; spikes settled; M1 specified |
 | M1 Walking skeleton | A hand-written ticket becomes a verified pull request through a skeleton SDLC factory, and Grindstone starts building itself |
 | M2 Traceable intent | Full item model and relation graph; freshness computed; the `notes` factory proves the kernel neutral |
 | M3 Safe change and cooperation | Findings flow back through reviewed ChangeSets; agents consult and delegate |
