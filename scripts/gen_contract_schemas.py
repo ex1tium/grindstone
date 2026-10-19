@@ -19,7 +19,7 @@ def main() -> None:
     bundle = bundle_schema(EXPORTED, title="GrindstoneContracts")
     text = json.dumps(bundle, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     target = OUT / "contracts.schema.json"
-    target.write_text(text)
+    target.write_text(text, encoding="utf-8", newline="\n")
     for stale in OUT.glob("*.json"):
         if stale != target:
             stale.unlink()

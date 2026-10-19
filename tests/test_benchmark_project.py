@@ -19,7 +19,10 @@ def test_benchmark_project_is_complete_reproducible_and_probed(tmp_path: Path) -
     probe = cast("dict[str, int]", manifest["impact_probe"])
     assert abs(probe["reaches"] - IMPACT_TARGET) <= 25  # FF-14's "a change touching 500 items"
     assert manifest["sha256"] == GOLDEN_SHA256
-    assert json.loads((tmp_path / "manifest.json").read_text())["sha256"] == GOLDEN_SHA256
+    assert (
+        json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))["sha256"]
+        == GOLDEN_SHA256
+    )
 
 
 def test_a_different_seed_gives_a_different_project(tmp_path: Path) -> None:

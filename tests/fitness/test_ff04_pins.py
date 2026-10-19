@@ -36,7 +36,7 @@ def test_floating_tag_fixture_fails_the_build() -> None:
 def test_pin_rules(tmp_path: Path, path: str, content: str, expected: str | None) -> None:
     target = tmp_path / path
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content)
+    target.write_text(content, encoding="utf-8")
     found = violations(tmp_path)
     if expected is None:
         assert found == []
@@ -55,8 +55,10 @@ def test_pin_rules(tmp_path: Path, path: str, content: str, expected: str | None
 )
 def test_python_requirements(tmp_path: Path, deps: list[str], ok: bool) -> None:
     listed = ", ".join(f'"{d}"' for d in deps)
-    (tmp_path / "pyproject.toml").write_text(f"[project]\nname='x'\ndependencies=[{listed}]\n")
-    (tmp_path / "uv.lock").write_text("")
+    (tmp_path / "pyproject.toml").write_text(
+        f"[project]\nname='x'\ndependencies=[{listed}]\n", encoding="utf-8"
+    )
+    (tmp_path / "uv.lock").write_text("", encoding="utf-8")
     assert (violations(tmp_path) == []) is ok
 
 
@@ -65,6 +67,8 @@ def test_python_requirements(tmp_path: Path, deps: list[str], ok: bool) -> None:
     [("1.2.3", True), ("workspace:*", True), ("^1.2.3", False), ("latest", False), ("~1.2", False)],
 )
 def test_node_dependencies(tmp_path: Path, version: str, ok: bool) -> None:
-    (tmp_path / "package.json").write_text(json.dumps({"dependencies": {"x": version}}))
-    (tmp_path / "pnpm-lock.yaml").write_text("")
+    (tmp_path / "package.json").write_text(
+        json.dumps({"dependencies": {"x": version}}), encoding="utf-8"
+    )
+    (tmp_path / "pnpm-lock.yaml").write_text("", encoding="utf-8")
     assert (violations(tmp_path) == []) is ok
