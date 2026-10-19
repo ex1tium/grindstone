@@ -1,5 +1,5 @@
 # SPEC-03 — Platform: registries, loader and configuration
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1 and architecture review 1, `docs/specs/reviews/SPEC-03-review-1.md`, `SPEC-03-architecture-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.platform` (registries, factory manifest schema and loader, kinds declared as data, instance and project configuration, `grindstone check`, the event outbox, event union and dispatcher, secret grants) and `grindstone.sdk` 0.1.0
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.

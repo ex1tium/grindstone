@@ -1,5 +1,5 @@
 # SPEC-09 — SDLC skeleton factory
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-09-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: factory `sdlc` · Owns, in `factories/sdlc/`:
 - the kinds `sdlc.requirement`, `sdlc.criterion` and `sdlc.ticket` with their edges and lifecycles;
 - the capabilities `sdlc.implementer` and `sdlc.test_reviewer`;

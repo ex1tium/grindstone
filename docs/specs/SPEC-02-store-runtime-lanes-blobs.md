@@ -1,5 +1,5 @@
 # SPEC-02 — Store, runtime, lanes and blob store
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-02-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.store` (database access, schema migrations, unit of work, DBOS setup and workflow version, external-step idempotency helper, lanes as queues, blob store and its roots, crash harness, FF-07 table ownership, FF-09 no stored derivations)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.

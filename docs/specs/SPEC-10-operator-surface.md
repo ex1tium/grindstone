@@ -1,5 +1,5 @@
 # SPEC-10 — Operator surface, first cut
-Status: in review (revision 1 answers review 1, `docs/specs/reviews/SPEC-10-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.surface` (REST and events): the REST API under `/api/v1` and its OpenAPI document; the per-project and instance event streams; operator login and sessions; idempotency on client keys; the generated TypeScript REST client.
 - `web/`: the web shell.

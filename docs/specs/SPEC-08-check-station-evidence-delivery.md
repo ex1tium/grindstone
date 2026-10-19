@@ -1,5 +1,5 @@
 # SPEC-08 — Check station, evidence and the delivery port
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-08-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.evidence`: check plans, each task's current subject, check runs, evidence records, the freshness function, the gate, mechanical check execution, the `CheckMethod` port, JUnit parsing.
 - `grindstone.delivery`: deliveries, the idempotency ledger, mode observations, verification state, gate-state posts, observe polling, bypass reporting, the `DeliveryAdapter` port with the operations of ADR-45.

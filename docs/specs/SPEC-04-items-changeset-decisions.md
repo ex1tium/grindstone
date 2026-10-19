@@ -1,5 +1,5 @@
 # SPEC-04 — Items, thin ChangeSet apply and decision records
-Status: in review (revision 2 answers confirmation 1, `docs/specs/reviews/M1-specifications-confirmation-1.md`; revision 1 answers review 1, `docs/specs/reviews/SPEC-04-review-1.md`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
 Kind: kernel · Owns: `grindstone.intent` (items, revisions, edges from typed references, lifecycles, ID allocation, rendering, the item bundle import format, the `core` kinds), `grindstone.change` (ChangeDrafts, ChangeSets, the one-round walk, verdicts, apply), `grindstone.decisions` (decision records, kernel decision kinds, flags, answers, continuations)
 
 Compact walking-skeleton specification (Planning playbook). Review: by a session that did not write it, then the operator.
