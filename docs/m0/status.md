@@ -1,6 +1,6 @@
 # M0 status and handover
 
-Updated 18 October 2026. The living handover between sessions: update it when a step finishes.
+Updated 19 October 2026. The living handover between sessions: update it when a step finishes.
 
 ## Done
 - Foundation v4.4: Q-1 to Q-11 answered; ADR-37 limits instead of budgets, ADR-38 consults stay open under a ceiling, ADR-39 skills materialized per session, ADR-40 delivery modes for remotes that do not enforce rulesets, ADR-41 Claude Code is the only agent for now.
@@ -51,24 +51,23 @@ Updated 18 October 2026. The living handover between sessions: update it when a 
 - Confirmation pass (18 October 2026), by a session that wrote none of the specifications, reviews or revision: `docs/specs/reviews/M1-specifications-confirmation-1.md`. Every blocking finding of review 1 is closed, and the three different fixes are sound. Four items remain before approval: C1, where a moved-base ChangeSet records its new bases (SPEC-04); C2, the port and context protocols belong in `grindstone.contracts`, because `platform`, `stations`, `evidence` and `delivery` may not import the SDK (SPEC-03); C3, gate-state re-evaluation must be serialized per delivery, or a stale `success` can be posted last (SPEC-08, new); C4, collect must kill the run's agent-user processes and read through directory descriptors, or a symlink swapped mid-walk reads control-plane files (SPEC-09, new).
 
 - Revision 2 (18 October 2026) answers confirmation 1's C1 to C4 and its eight small inconsistencies: `docs/specs/reviews/M1-specifications-revision-2.md`. Two fixes differ from the confirmation's proposals: C3 posts gate states only from passes on one queue of concurrency 1, and C4 also stops leftover agent processes before the user is released. `make check` passes.
+- Merged into `main` (19 October 2026, #5), with the README rewritten for the domain-neutral kernel and factories; foundation v4.7 (ADR-47) merged in #6.
+- Re-check of C1 to C4 (19 October 2026), by a session that wrote none of the specifications, reviews, revisions or confirmation: `docs/specs/reviews/M1-specifications-recheck-1.md`. All four are closed, and both departures from confirmation 1 (the gate-state queue, the second process stop) are sound. Two notes for the implementing tickets: open FIFOs without blocking at collect, and guard against hard links (`fs.protected_hardlinks` or `st_nlink`).
 
 ## Next, in order
-1. **Re-check of C1 to C4 only**, by a session that wrote none of the specifications, reviews, revisions or confirmation (the revision 2 author also reviewed, so it cannot).
-2. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
-3. **Merge into `main`:** a pull request for this work; the `fixture` CI job runs only on pull requests and `main`. Re-import `.github/rulesets/grindstone-main.json` first.
-4. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
+1. **Operator approval** of the ten (SPEC-06 in two parts). Then the tickets in each specification's section 7 are ready to break down.
+2. **Re-import `.github/rulesets/grindstone-main.json`** on `ex1tium/grindstone`: the live ruleset still requires only the lint and smoke jobs, not `fixture` (checked 19 October 2026).
+3. **M0 milestone review:** the exit criteria (the `fixture` CI job must pass on the pull request), risks and open questions.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
 - **Where M1's real delivery runs:** decided at the M1 review. The specifications carry it as an open item whose default is the operator's machine (Docker Desktop with WSL2 runs the four Linux containers; the App key stays there). A cloud session can never act as the App (SPK-4).
 - **Operator login:** a local password. One operator account, the password hashed with Argon2, a session cookie, and the UI and API bound to loopback by default (SPEC-10 owns it; SPEC-05 provisions the secret).
-- **Models for M1's agents:** set later. The specifications keep the model as capability configuration with a stated default (implementer and test reviewer on different Claude models, ADR-41); the operator chooses before M1-01's live run.
+- **Models for M1's agents:** set later. The specifications keep the model as capability configuration with a stated default (implementer and test reviewer on different Claude models, ADR-41; ADR-47 now allows the same model); the operator chooses before M1-01's live run.
 - **SPK-1's VS Code half:** deferred to M4, with SPEC-22, on the operator's machine (M4-05 needs it; M1 does not).
 
 ## Open with the operator
 - Before M1-01's live run: choose the models for the `primary` and `secondary` slots in `deploy/grindstone.toml` (SPEC-06, SPEC-09). They may be the same model (ADR-47).
 - Before M1-08: install the GitHub App on `ex1tium/grindstone` and require `grindstone/verification` from it in that repository's ruleset (SPEC-09, OQ-0902).
 - At the M1 review: whether agent egress stays open at T1 (SPEC-05, OQ-0502), and where M1's real delivery runs (default: the operator's machine; SPEC-05, OQ-0501 checks secrets there).
-- Re-import `.github/rulesets/grindstone-main.json` on `ex1tium/grindstone`: it now also requires the `fixture` CI job (M0-04). The ruleset is otherwise active (checked 17 October 2026).
-- Open a pull request for this branch when ready: the `fixture` CI job runs only on pull requests and `main`.
 - Anything that must act as the App runs on the operator's machine (`docs/spikes/SPK-4-local-run.md`).
 - With both repositories public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.
