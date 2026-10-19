@@ -75,4 +75,4 @@ The names are prefixed so the tools themselves never pick them up implicitly; sp
 - [x] GitHub App created, key generated, installed on the testbed only
 - [x] Testbed ruleset imported from `testbed-main.json`, check source set to the App
 - [x] Cloud environment: token and key variables, network allow-list
-- [ ] SessionStart hook merged to `main`
+- [x] SessionStart hook merged to `main`
