@@ -62,7 +62,7 @@ def _strip_code(text: str) -> str:
 def read_foundation(root: Path) -> Foundation:
     f = Foundation()
     for path in sorted((root / "docs" / "foundation").glob("*.md")):
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         for pattern in DEFINITIONS:
             f.defined.update(pattern.findall(text))
         f.superseded.update(m.group(1) for m in SUPERSEDED.finditer(text))
@@ -96,14 +96,16 @@ def _tests_text(root: Path) -> str:
             if "node_modules" in parts or ".venv" in parts:
                 continue
             if path.suffix in TEST_SUFFIXES and "test" in path.name:
-                chunks.append(path.read_text(errors="replace"))
+                chunks.append(path.read_text(encoding="utf-8", errors="replace"))
     return "\n".join(chunks)
 
 
 def _undefined_references(root: Path, f: Foundation) -> Iterator[str]:
     for path in _documents(root):
-        rel = path.relative_to(root)
-        for lineno, line in enumerate(_strip_code(path.read_text()).splitlines(), 1):
+        rel = path.relative_to(root).as_posix()
+        for lineno, line in enumerate(
+            _strip_code(path.read_text(encoding="utf-8")).splitlines(), 1
+        ):
             for ref in REFERENCE.findall(line):
                 if ref not in f.defined:
                     yield f"{rel}:{lineno}: cites undefined identifier {ref}"
@@ -121,11 +123,11 @@ def _specification_gaps(root: Path, f: Foundation) -> Iterator[str]:
     specs_dir = root / "docs" / "specs"
     if not specs_dir.is_dir():
         return
-    seen_items: dict[str, Path] = {}
+    seen_items: dict[str, str] = {}
     tests: str | None = None
     for path in sorted(specs_dir.glob("SPEC-*.md")):
-        rel = path.relative_to(root)
-        text = _strip_code(path.read_text())
+        rel = path.relative_to(root).as_posix()
+        text = _strip_code(path.read_text(encoding="utf-8"))
         for adr in sorted(set(re.findall(r"ADR-\d{2}", text)) & f.superseded):
             yield f"{rel}: cites superseded {adr}"
         for item in re.findall(r"^((?:REQ|AC|DEC|TKT|SCN|NG|OQ)-[\d-]+):", text, re.M):

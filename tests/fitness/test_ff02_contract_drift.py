@@ -14,11 +14,11 @@ BUNDLE = REPO / "packages" / "contracts-ts" / "schemas" / "contracts.schema.json
 
 def test_schema_bundle_matches_contracts() -> None:
     expected = bundle_schema(EXPORTED, title="GrindstoneContracts")
-    assert json.loads(BUNDLE.read_text()) == expected, "run `make gen`"
+    assert json.loads(BUNDLE.read_text(encoding="utf-8")) == expected, "run `make gen`"
 
 
 def test_every_exported_contract_is_in_the_bundle() -> None:
-    defs = json.loads(BUNDLE.read_text())["$defs"]
+    defs = json.loads(BUNDLE.read_text(encoding="utf-8"))["$defs"]
     assert {m.__name__ for m in EXPORTED} <= set(defs)
 
 

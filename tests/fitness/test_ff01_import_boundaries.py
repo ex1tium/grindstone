@@ -10,7 +10,7 @@ from tests.fitness.helpers import FIXTURES, REPO, copy_sources, lint_imports
 
 
 def test_committed_contracts_match_the_module_map() -> None:
-    assert (REPO / ".importlinter").read_text() == render(), (
+    assert (REPO / ".importlinter").read_text(encoding="utf-8") == render(), (
         "regenerate with: python -m scripts.ff.module_map > .importlinter"
     )
 
@@ -45,7 +45,9 @@ def test_forbidden_imports_fail_the_build(
     tmp_path: Path, package_dir: str, statement: str, contract: str
 ) -> None:
     root = copy_sources(tmp_path)
-    (root / package_dir / "_ff_probe.py").write_text(f"{statement}  # noqa: F401\n")
+    (root / package_dir / "_ff_probe.py").write_text(
+        f"{statement}  # noqa: F401\n", encoding="utf-8"
+    )
     result = lint_imports(root)
     assert result.returncode != 0
     broken = [line for line in result.stdout.splitlines() if line.endswith("BROKEN")]
