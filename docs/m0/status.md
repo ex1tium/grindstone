@@ -58,7 +58,7 @@ Updated 19 October 2026. The living handover between sessions: update it when a 
 - Gaps closed before the M0 review (19 October 2026): foundation v4.8 corrects the status of Q-2 and Q-5, which claimed confirmations from SPK-1's deferred VS Code half and from the deferred SPK-3; the fitness functions and their tests read and write UTF-8 and report POSIX paths, so the Python suite passes on Windows without `PYTHONUTF8`, and the contract generator writes LF line endings.
 
 ## Next, in order
-1. **M0 milestone review:** a review record in `docs/m0/review.md` with the evidence for M0-01 to M0-04, the risks, the open questions and the fitness functions; the operator confirms each, and the foundation's M0 checkboxes are ticked.
+1. **M0 milestone review:** the record is prepared in `docs/m0/review.md` (19 October 2026). The operator confirms each section; then the foundation's M0 checkboxes are ticked and M0 closes.
 2. **M1 backlog:** break the section 7 tickets into work in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
 
 ## Decided by the operator (17 October 2026), for SPEC-02 to SPEC-10
