@@ -29,6 +29,7 @@ In scope:
 - SQL enum generation for kernel lifecycles, added to `make gen` (as SPEC-01 left it).
 
 Out of scope:
+- **Answer principals** (ADR-51, proposed in foundation v4.10): SPEC-15 (M3) records the answering principal beside `answered_by`. In M1 every answer is the operator's.
 - Mentions, embeds, artifacts and their headers, link suggestions, Markdown round-trip and import of rendered Markdown: SPEC-11 (M2).
 - Multi-round walks with `amend`, `invalidate` and `escalate` verdicts, group verdicts and the round limit: SPEC-12 and SPEC-16.
 - Delivering changes to running tasks at their next turn, and cancelling tasks whose pinned item was removed: SPEC-16 (M3). M1 emits the events they will consume.

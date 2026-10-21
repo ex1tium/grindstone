@@ -1,8 +1,8 @@
-# Project Grindstone — Foundation v4.9
+# Project Grindstone — Foundation v4.10
 
-19 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
+21 October 2026 · @Matti · Repository copy of the Foundation doc (https://claude.ai/code/artifact/5bf48b42-cfd0-4721-b97e-2cc88dd972c5), maintained here from v4.2 on. The diagrams are not reproduced; each is replaced by a caption stating what it shows, and nothing in the diagrams adds a commitment the text does not state.
 
-Grindstone is a self-hosted orchestrator that makes agent work trustworthy enough to delegate: intent is typed and versioned, every result is proven by someone other than its maker against the exact intent it claims to satisfy, and a person decides only what a person should.
+Grindstone is a self-hosted orchestrator that makes agent work trustworthy enough to delegate: intent is typed and versioned, every result is proven by someone other than its maker against the exact intent it claims to satisfy, and a person decides what a person should and delegates the rest explicitly.
 
 ## How to read this set
 
@@ -27,7 +27,7 @@ This set is the foundation planning agents write specifications from. It fixes w
 | --- | --- | --- |
 | `I-nn` | Invariant | Architecture |
 | `QG-n`, `QS-nn`, FF-nn | Quality goal, quality-attribute scenario, fitness function | Architecture |
-| `K1`–`K4`, `S1`–`S6` | Kernel and SDLC scenarios | Architecture, Factories |
+| `K1`–`K4`, `S1`–`S7` | Kernel and SDLC scenarios | Architecture, Factories |
 | `ADR-nn` | Decision record | Decisions |
 | `Mn`, `Mn-nn` | Milestone, exit criterion | Roadmap |
 | `SPK-n`, `Q-n` | Spike, open question | Roadmap |
@@ -38,7 +38,7 @@ Item kinds are namespaced: `core.*` belongs to the kernel, `sdlc.*` to the softw
 
 ## Product goal
 
-**Grindstone makes agent-driven work trustworthy enough to delegate.** A person states intent; agents do the work; Grindstone keeps the intent typed and versioned, proves every result independently against the exact intent it claims to satisfy, feeds what the work discovers back into the intent, and asks the person only what only a person should decide.
+**Grindstone makes agent-driven work trustworthy enough to delegate, from one decision to an entire build.** A person states intent and decides how much authority to hand over; agents do the work, alongside the person or on their own; Grindstone keeps the intent typed and versioned, proves every result independently against the exact intent it claims to satisfy, whoever made it, feeds what the work discovers back into the intent, and asks the person only what only a person should decide or what they chose to keep. After the MVP an orchestrator can drive the work the way an engineer would, under a charter the person sets, up to a whole build from a one-shot product idea; every answer it gives is recorded and revertible like any other (ADR-52).
 
 Its first and main use is software: an **agent-driven software development loop (ASDLC)** that takes a repository from an idea to merged pull requests, with the specification and the code moving together. Grindstone builds that loop on a small domain-neutral **kernel**, so the same guarantees — provenance, freshness, independent proof, reviewed change, typed decisions, durable and bounded execution — serve other kinds of agent work through **factories**: reverse engineering, testing and security, CAD and 3D, PCB and hardware, game development and in-house domains. Within one project, factories' specialists switch modes, consult each other and hand off work without talking to each other directly and without anyone tracking it by hand.
 
@@ -50,7 +50,7 @@ Three properties make that possible, and every part of the design serves one of 
 | --- | --- | --- |
 | **Typed, versioned intent** | Everything agreed on is an item with a stable ID and a content hash; it changes only through a reviewed ChangeSet | Concepts: Item, ChangeSet |
 | **Independent, fresh proof** | Work is done only when someone other than its maker has proven it against the exact inputs, subject and environment; proof goes stale on its own when any of those change | Concepts: Check; Factories: make and prove |
-| **Bounded, recorded authority** | People answer typed decisions with a recommendation in front of them; policy answers only what they allowed, and every answer can be reverted | Concepts: Decision |
+| **Bounded, recorded authority** | People answer typed decisions with a recommendation in front of them; policy, and after the MVP an orchestrator under a charter, answer only what the person granted; every answer records who gave it and can be reverted | Concepts: Decision |
 
 ## Problem and users
 
@@ -64,6 +64,7 @@ Three properties make that possible, and every part of the design serves one of 
 - **Change is unsafe.** Changing a requirement or an interface gives no view of what else it affects, which evidence is now meaningless, or which running work builds on the old version.
 - **Expertise is siloed or chaotic.** One agent tries to be expert at everything, or several agents chat with each other with no record, no budget and no clear end.
 - **Supervision does not scale.** The person either babysits every session or reviews large outputs with no trace back to intent.
+- **Delegation is all or nothing.** Work a person shares with an agent, or finishes after one, goes around the process unproven; and handing over more than one task at a time means giving up control.
 - **Agent-run code is trusted too much.** Agents run with the same credentials that ship results and set status; untrusted inputs — issues, binaries, documents — reach them unmarked.
 
 **Jobs the operator hires Grindstone for:**
@@ -74,6 +75,8 @@ Three properties make that possible, and every part of the design serves one of 
 4. Change my mind — or let the work change it — and see and approve every consequence before it lands.
 5. Let agents bring in the right specialist at the right moment, within limits I set, with everything they exchange on the record.
 6. Delegate more decisions over time, with every delegated answer recorded and reversible.
+7. Work alongside agents — take over a stuck run, or make a change myself — and have my work proven by the same pipeline.
+8. Hand over a product idea in one prompt and have an orchestrator drive it to working, verified software under a charter I set, with every assumption it made open to my review (after the MVP).
 
 ## Promise and the universal loop
 
@@ -93,11 +96,20 @@ The full ASDLC loop, with its diagram and commands, is in the Factories tab.
 
 **Division of labour.** Every part of the system preserves it:
 
-- **You decide intent.** Every specification, every finding that changes intent, every change of scope takes effect only through an approval you give, or one your autonomy policy may give and you can revert.
+- **You decide intent.** Every specification, every finding that changes intent, every change of scope takes effect only through an approval you give, or one your autonomy policy — or, after the MVP, the orchestrator under your charter (ADR-52) — may give and you can revert.
 - **Agents propose.** They draft, make, report, ask and delegate — always through typed reports, proposals and decisions; never by writing intent, setting status or shipping.
 - **The kernel applies.** Grindstone turns accepted proposals into recorded revisions, one atomic change at a time, after showing everything each change affects.
 - **Only independent evidence closes work.** A task is done when someone other than its maker — a credential-less check station, a different specialist, or you — has proven its output against the exact intent revisions and subject.
 - **Specialists cooperate through the ledger.** Switching mode, consulting and delegating are recorded, bounded tasks; results cross only as pinned items and files.
+- **You may make, too.** Work you do yourself, or finish after an agent, is a subject like any other and is proven by the same pipeline; nothing proves work its makers did (ADR-50).
+
+**Delegation modes (after the MVP, ADR-52).** An orchestrator — a capability that drives commands and decisions as an engineer would, and never makes or proves a subject itself — works under a charter the operator writes: the mode, the decision kinds it may answer, the checkpoints where it must ask, the irreversible actions it may take (each named exactly) and its limits.
+
+| Mode | The orchestrator | The person | From |
+| --- | --- | --- | --- |
+| Assist | Drives the work, answers escalations and recommends every other answer | Answers every other decision | R2 |
+| Checkpointed | Also answers granted decisions within approved scope | Answers at the charter's checkpoints, and everything flagged | R2 |
+| Autonomous | Answers every granted decision; a question it would have asked becomes a recorded assumption | Reviews the assumptions and the build report; answers only what lies outside the charter | R5 |
 
 ## Factories in scope
 
@@ -140,7 +152,8 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 - Factories beyond SDLC and the test fixture; installing factories as separate packages (R1).
 - Agents talking to each other directly, or model-based routing between specialists.
 - Station tiers above T1: per-run microVMs (R3), full VMs, device passthrough and computer use (R4).
-- Repository snapshot and restore, vector search, autonomy L3 and auto-merge, the pi agent, baseline generation from an existing codebase (all R2).
+- Repository snapshot and restore, vector search, autonomy L3 and auto-merge, policy delivery of routine pull requests (ADR-53), the pi agent, baseline generation from an existing codebase (all R2).
+- The orchestrator: Assist and Checkpointed modes (R2) and autonomous builds from a one-shot prompt (R5), ADR-52. The MVP lays their ground: principals on every call (ADR-51), agent accounts (ADR-48), person-made subjects (ADR-50) and the delivery queue (ADR-49).
 - Indexing source code for retrieval; agents search the repository themselves.
 - Agent-quality metrics and capability evaluations; structured logs, traces and cost records are in scope.
 - Spec Kit and Obsidian exports, web-research capabilities, merging and splitting items, item-kind inheritance, signed snapshots.
@@ -153,7 +166,7 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 
 | Measure | Definition | Initial target at MVP |
 | --- | --- | --- |
-| Delegation rate | Share of merged ticket PRs with no commit authored by a person on the branch | ≥ 60% on Grindstone's own repository |
+| Maker mix | Share of merged ticket PRs made by agents only, by a person only, and by both, from the makers recorded on each subject (ADR-50) | Agents only ≥ 60% on Grindstone's own repository |
 | Evidence integrity | Share of merges whose every criterion had fresh, independent, passing evidence at the merge commit | 100%; zero bypassing merges where the remote enforces the gate, and every bypass detected and counted where it does not (ADR-40) |
 | Regression catch | Share of broken proven criteria found by re-checks or the regression sweep before a person reports them | ≥ 90% |
 | Decision load | Decisions a person answers per merged ticket, and median wait for an answer | Baseline at M3; falling month over month once L2 is available (M5), with no tripwire trips caused by policy answers |
@@ -162,7 +175,7 @@ The quality bars apply to Grindstone's own code and to everything Grindstone pro
 | Cooperation value | Share of consults and delegations whose output the caller used (cited in its report or pinned), and their share of total spend | Baseline at M3; used share ≥ 70% |
 | Kernel stability | Kernel changes required by factory work after M2 | Zero breaking SDK changes; every additive change recorded |
 
-The measures judge Grindstone, not agents: agent-quality metrics stay a non-goal.
+The measures judge Grindstone, not agents: agent-quality metrics stay a non-goal. From R5, the share of the orchestrator's assumptions a person overturns, weighted by what depends on them, joins them (ADR-52).
 
 ## Glossary
 
@@ -170,23 +183,28 @@ Every term the set uses with a specific meaning. Specifications use these words 
 
 | Term | Meaning |
 | --- | --- |
+| Agent account | A provider, an agent preset, the models it serves and its credential, held only on the agent station; lanes belong to an account (ADR-48) |
 | ACP | Agent Client Protocol: how the agent host talks to each agent runtime (Claude Code in the MVP; others by configuration) |
 | Agent host | The process on an agent station that runs agent sessions; built on `@ahpd/sdk` |
 | AHP | Agent Host Protocol: how the UI and VS Code attach to live agent sessions |
 | Artifact | A container kind with one header item and member items, such as a specification |
 | ASDLC | Agent-driven software development loop: the SDLC factory's workflow |
-| Autonomy level | L0–L3: how much the project's policy may answer on the operator's behalf |
+| Assumption | A `core.assumption` item: a question the orchestrator answered itself in Autonomous mode, with the options, its choice, its reason and its evidence; overturned by a ChangeSet (ADR-52, R5) |
+| Autonomy level | L0–L3: how much the project's policy may answer on the operator's behalf; the orchestrator's charter is separate (ADR-52) |
 | Blob | An immutable file in the content-addressed store, identified by SHA-256 |
 | Capability | A specialist defined as data: prompt, agent, skills, toolbox, workspace mode, permissions, offers |
 | ChangeSet | The only way intent changes: drafted, walked for impact to a fixed point, approved, applied atomically |
+| Charter | The operator's written grant to the orchestrator: its delegation mode, the decision kinds it may answer, checkpoints, irreversible actions named exactly, and limits (ADR-52) |
 | Check | One recorded attempt to prove a target item holds for a subject, by someone other than its maker |
 | Check station | A station that runs mechanical checks with no credentials; the `runner` container in the MVP |
 | Consult | A read-only child task answering a question; its answer is a suggestion and is cached |
 | Context pack | What a task run sees: pinned items, principles, learnings, interfaces and skills, recorded by hash |
 | Control plane | The `grindstone` process: kernel, factories, workflows, APIs, delivery |
-| Decision | A typed question only a person or approved policy may answer, with a recommendation |
+| Decision | A typed question only a person, approved policy or a chartered orchestrator may answer, with a recommendation |
 | Delegate | A child task in work mode, in any enabled factory, with its own checks, within the depth and live-children caps |
+| Delegation mode | Assist, Checkpointed or Autonomous: how much a charter lets the orchestrator answer (ADR-52) |
 | Delivery adapter | A factory component that ships verified subjects outside Grindstone after a decision |
+| Delivery queue | One queue per delivery target that re-checks the gate at the target's current head and delivers one at a time (ADR-49) |
 | Evidence | The immutable record a check produces |
 | Factory | A package that gives the kernel one domain: kinds, capabilities, templates, methods, subjects, adapters, interfaces |
 | Finding | A `core.finding` item: something noticed that may change intent |
@@ -194,14 +212,18 @@ Every term the set uses with a specific meaning. Specifications use these words 
 | Interface item | A `core.interface` item: a contract between two parts of a project, with a provider and consumers |
 | Item | A typed, hashed, versioned unit of intent or knowledge |
 | Kernel | The domain-neutral core: concepts, invariants, services and the SDK |
-| Lane | A queue on an agent station: writing (one at a time) or read-only (small concurrency) |
+| Lane | A queue on an agent station, per agent account: writing (one at a time) or read-only (small concurrency) (ADR-48) |
 | Limits | Structural guards against runaway work that do not depend on a task's size: delegation depth and live children, a liveness timeout, a consult ceiling, and an optional project cap. Cost is recorded, never gating (ADR-37) |
-| Make and prove | The rule that whoever makes a subject never produces the evidence that gates it |
+| Make and prove | The rule that whoever makes a subject — capabilities, a person, or both — never produces the evidence that gates it |
+| Maker | Whoever made a subject: one or more capabilities, the operator, or both, recorded on the subject (ADR-50) |
 | Need | A namespaced label for what a task or agent asks for; capabilities offer needs |
-| Operator | The one person who runs Grindstone and answers its decisions |
+| Operator | The one person who runs Grindstone, answers its decisions and may make subjects (ADR-50) |
+| Orchestrator | A capability offering `core.orchestrate` that drives commands and decisions under a charter, as an agent principal; it never makes or proves a subject (ADR-52, from R2) |
+| Principal | Who makes an API call or answers a decision: the operator, policy or an agent, each with grants (ADR-51) |
 | Project | One ledger: items, tasks, evidence, decisions and enabled factories for one body of work |
 | Report | The typed result that ends each turn: done, blocked, failed, or waiting (set by a suspending tool) |
 | Revision | An immutable version of an item, with provenance |
+| Routine delivery | A delivery whose risk class, computed by a fixed rule, is routine: declared paths only, no added checks, findings or flags, under the size threshold, fresh evidence, and no release on delivery (ADR-53) |
 | Skill | A Markdown instruction pack, optionally with tools, that a capability may load mid-session |
 | Station | Where work or checks run, with an isolation tier T0–T3 |
 | Subject | The versioned thing a check proves and delivery ships: a commit, a blob, a blob set, an item revision |
@@ -282,7 +304,7 @@ Generality ranks last on purpose: when making the kernel more general would make
 | --- | --- |
 | Projects per instance | 10 active |
 | Items per project | 20,000 live, 200,000 revisions |
-| Concurrent agent sessions | 1 writing + 4 read-only per agent station |
+| Concurrent agent sessions | 1 writing + 4 read-only per agent account; one account in M1 and M2 (ADR-48) |
 | Concurrent check jobs | 1 per check station |
 | Task runs per day | 500 |
 | Blob store | 200 GB, single blob ≤ 2 GB |
@@ -382,16 +404,17 @@ Invariants are the rules every specification cites and every factory inherits. N
 | I-12 | Policy answers only by written rules, records the rule it matched, and can be reverted | Policy engine; tripwire | Policy tests; revert test |
 | I-13 | Every intent change is a ChangeSet walked to a fixed point before apply | Apply requires an approved ChangeSet with a complete walk | Property tests for impact analysis |
 | I-14 | Agents never change the configuration that governs them: capabilities, templates, policy, manifests, limits | Configuration lives outside every workspace and is not a proposable kind | Tool tests; workspace mount lint |
-| I-15 | Whoever makes a subject never produces the evidence that gates it | The check plan rejects a prover equal to the maker; self-checks are working notes | Conformance kit |
+| I-15 | Whoever makes a subject — one or more capabilities, a person, or both — never produces the evidence that gates it | The check plan rejects a prover among the subject's makers; self-checks are working notes | Conformance kit |
 | I-16 | Agents never talk to each other directly; cooperation goes through `ask` and `delegate` as kernel tasks | No agent-to-agent channel exists; MCP is per task | Architecture test (import and network rules) |
 | I-17 | Delegation is bounded: depth at most two and a live-children cap per task; overflow returns a structured tool error, never a silent child | Dispatch checks both caps before creating a child | Property tests on delegation trees |
 | I-18 | Factories add names only in their own namespace and never redefine kernel meaning; the kernel never imports a factory | Loader validation; import linter | Conformance kit; CI import check |
 | I-19 | Results cross task and factory boundaries only as pinned item revisions and blobs | Child output is a ChangeDraft and blobs; parents read by pin | Scenario K3 |
 | I-20 | Stations that touch untrusted targets or hardware hold no control-plane credentials; irreversible actions are asked unless an approved runbook covers them | Tier rules; `irreversible` flag | Station tests (R3, R4) |
+| I-21 | An orchestrator answers only the decisions its charter grants, within its mode's bound; a `never`-class or flagged decision only where the charter names that exact case, and never anything `untrusted`; every answer records its principal and the evidence it relied on, and can be reverted | The decision service checks the answering principal's grants and refuses an answer without cited evidence | Decision service tests (R2) |
 
 ## Runtime views
 
-Four scenarios show the kernel working without any domain logic. Each is an end-to-end test in the kernel suite, run against the fixture `notes` factory so it cannot lean on SDLC code; crash-and-resume variants kill the control plane, the agent host and the runner at every step. The SDLC factory's scenarios (S1–S6, Factories tab) exercise the same paths with real work.
+Four scenarios show the kernel working without any domain logic. Each is an end-to-end test in the kernel suite, run against the fixture `notes` factory so it cannot lean on SDLC code; crash-and-resume variants kill the control plane, the agent host and the runner at every step. The SDLC factory's scenarios (S1–S7, Factories tab) exercise the same paths with real work.
 
 ### K1 — A task, end to end
 
@@ -458,6 +481,7 @@ The adversary is the work itself: agent output, code agents write and run, and c
 | Runaway spend | Delegation loop, oversized context, stuck session | Depth and live-children caps; liveness timeout; provider quota signals park runs; optional project cap; cost visible per tree | I-17 | QS-10, QS-15 |
 | Event spoofing | A process forges a host event to end a run | HMAC-signed events with IDs and turn numbers; unknown or duplicate IDs ignored | — | M1-04 |
 | Merge outside Grindstone | Someone merges a Grindstone pull request in GitHub, or pushes to the default branch, where the ruleset is not enforced | Enforced mode: the remote refuses it. Unenforced mode: Grindstone merges itself with the head SHA it verified; `observe` reports any other merge as an `untrusted` `delivery_bypass` finding (ADR-40) | I-08 | M1-02 |
+| Orchestrator steered by work content | Text an implementer wrote into a question or a file argues the orchestrator into approving a weaker design or a protected change | Grants bounded by mode and decision class; flagged, `permission` and irreversible decisions only where the charter names them; `untrusted` never; answers cite evidence; the change-class floor; revert and the tripwire | I-21 | Decision service tests (R2) |
 | Container escape to the host | A malicious build escapes the runner container | Accepted residual risk at T1 for trusted repositories; T2 microVMs for untrusted code (R3); nothing mounts the Docker socket | I-09, I-20 | Deployment lint |
 
 **Accepted residual risks for the MVP.** Agents can read the model credential of their own station and use it with network egress; mitigated by per-provider spend limits, a rotation runbook, and per-run isolation at T2. A kernel-level container escape on T1 is out of scope; repositories with untrusted code wait for T2.
@@ -471,8 +495,8 @@ Every external action is a DBOS workflow step with an idempotency key derived fr
 | Control plane crash or upgrade | DBOS on restart | Every workflow resumes at its last completed step; external steps are looked up by key | A gap in the event stream; no duplicates |
 | Agent host restart mid-turn | Missing heartbeat; host event stream resets | The run continues in a new session on the same workspace, or fails `host_lost` and retries once | Run timeline shows a new session |
 | Agent never reports | Turn timeout | One corrective prompt; then the run fails `missing_report` | Escalation decision |
-| Provider error or rate limit | Typed host event | Waits park the run; retry within the run with backoff; persistent errors fail `provider_error` | Run state `parked` with reason |
-| Context exhausted | Agent or host signal | Run fails `context_exhausted`; retry with a smaller context pack or another capability | Escalation decision |
+| Provider error or rate limit | Typed host event | Waits park the run; retry within the run with backoff; from M3 a rate limit marks the account exhausted until it resets and the run continues on another eligible account (ADR-48); persistent errors fail `provider_error` | Run state `parked` with reason |
+| Context exhausted | Agent or host signal | From M3 the run continues once in a fresh session from a continuation pack (ADR-48); then it fails `context_exhausted`; retry with a smaller context pack or another capability | Escalation decision |
 | Run stalls | No agent activity for the liveness timeout; an open kernel tool call is not inactivity | Run fails `stalled` | Escalation decision |
 | Project cap reached (when enabled) | Cap check before each new run | No new run starts in the project; running turns finish | Escalation flagged `cap_reached` |
 | Consult passes its ceiling | Ceiling timer on the open `ask` | The caller's turn suspends with outcome waiting; the consult keeps running | Escalation: wait longer, retry, cancel |
@@ -504,7 +528,7 @@ Every external action is a DBOS workflow step with an idempotency key derived fr
 | Lost or duplicated external effects | 0 |
 | Evidence or revisions lost on crash | 0 |
 
-**Operations view.** One page shows lanes and queues, running and parked tasks, waiting decisions with their age, stale evidence, spend against the project cap, blob store use and the capacity envelope, with a warning for anything outside it.
+**Operations view.** One page shows lanes and queues, agent accounts and their quota state, running and parked tasks, waiting decisions with their age, stale evidence, spend against the project cap, blob store use and the capacity envelope, with a warning for anything outside it.
 
 **Routine operations.** Each has a runbook and a test:
 
@@ -571,6 +595,7 @@ An item is the unit of intent and knowledge: a requirement, a design decision, a
 | `core.finding` | `FND` | Something noticed that may change intent: ambiguity, gap, conflict, discovery, failure, drift. Carries severity, trust and a type a factory may extend |
 | `core.observation` | `OBS` | A consult answer or a recorded tool result, with its source and the inputs it saw. Advisory only (I-10) |
 | `core.interface` | `IF` | A contract one part of the project publishes for others to build against, owned by one factory (ADR-25) |
+| `core.assumption` | `ASM` | A question the orchestrator answered itself in Autonomous mode: options, choice, reason and evidence; overturned by a ChangeSet (ADR-52, R5) |
 
 Factories add their own kinds in their namespace and may extend kernel kinds only by adding fields through registered extensions, never by changing the meaning of existing ones (I-18).
 
@@ -611,8 +636,8 @@ A station is a place where agents work or checks run. Stations isolate untrusted
 | `image` | Pinned by digest; for check stations, chosen per project from an instance allow-list |
 | `resources` | CPU and memory; later GPU, passed-through devices, licensed tools, a desktop |
 | `network` | `none`, `registries` (package registries only) or an explicit allow-list per capability |
-| `lanes` | Agent stations run two lanes: **writing** (one session at a time by default) and **read-only** (a small configurable concurrency for planning, reviewing and consulting) |
-| `credentials` | Never a control-plane credential. Agent stations hold model credentials for their agents and host tokens readable only by the host process |
+| `lanes` | Agent stations run two lanes per agent account (ADR-48): **writing** (one session at a time by default) and **read-only** (a small configurable concurrency for planning, reviewing and consulting) |
+| `credentials` | Never a control-plane credential. Agent stations hold the model credentials of their agent accounts, each given only to that account's sessions, and host tokens readable only by the host process |
 
 | Tier | Isolation | Allowed work | Available |
 | --- | --- | --- | --- |
@@ -626,6 +651,8 @@ A station is a place where agents work or checks run. Stations isolate untrusted
 **Protocols.** Agent stations are driven through the typed host control API and report signed, at-least-once events. Check stations receive job directories and return results as files. A station of any tier speaks one of these two protocols, so adding T2 and T3 adds adapters, not kernel concepts.
 
 **Physical safety.** A station that holds hardware or runs untrusted targets never holds control-plane credentials, and an irreversible physical or external action is always asked unless a runbook item a person approved covers it exactly (I-20).
+
+**Agent accounts (ADR-48, from M3).** An agent account is a provider, an agent preset, the models it serves and a credential held only on the agent station; the kernel knows it by ID and quota state. Each account has its own writing and read-only lanes, so writing work runs in parallel only across accounts. The kernel places a run on an account that serves its capability's agent and model and has a free lane, by fixed order; a rate limit marks the account exhausted until it resets, and the run continues on another eligible account. A project may keep reviews and consults on different accounts from writing work.
 
 ## Task
 
@@ -650,7 +677,7 @@ A task is the one unit of work in Grindstone. Implementing a ticket, drafting a 
 | State | Means | Leaves to |
 | --- | --- | --- |
 | `queued` | Created; waiting until it is ready (readiness is computed, below) | `running`, `cancelled` |
-| `running` | A run is in progress on a station | `waiting`, `verifying`, `blocked`, `cancelled` |
+| `running` | A run is in progress on a station, or the operator is making the subject (ADR-50) | `waiting`, `verifying`, `blocked`, `cancelled` |
 | `waiting` | The last turn ended with outcome waiting: a delegated child, an operator answer, or a consult past its ceiling; no lane is held | `running`, `blocked`, `cancelled` |
 | `verifying` | The maker reported `done`; required checks are running on the collected subject | `delivering`, `done`, `blocked`, `running` (a rework round) |
 | `delivering` | Every required check is fresh and passing; a `delivery` decision and the adapter are in progress | `done`, `blocked` |
@@ -662,7 +689,7 @@ A run parked on a provider limit stays `running`; parking is a run state, not a 
 
 **Readiness** is computed, never stored: a queued task is ready when its inputs exist at approved revisions, its prerequisite tasks are done, no decision blocks its scope, the project cap (if enabled) is not reached, and a station of its tier has a free lane.
 
-**Runs, sessions and turns.** Each attempt is a **task run** with a fresh workspace. A run is a series of agent sessions — a new session after a host restart, a parked wait or a provider limit continues from the workspace. Grindstone numbers its own turns. The operator may steer a running session from the UI or VS Code; steering turns are recorded but carry no Grindstone number and cannot end the run. Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it was given (I-06).
+**Runs, sessions and turns.** Each attempt is a **task run** with a fresh workspace. A run is a series of agent sessions — a new session after a host restart, a parked wait or a provider limit continues from the workspace. From M3 it continues by the agent's native session resume where its adapter supports it, otherwise from a **continuation pack** the kernel assembles without a model call: the task, the workspace's diff against its base, the run's earlier reports and its latest `progress` notes (ADR-48). Grindstone numbers its own turns. The operator may steer a running session from the UI or VS Code; steering turns are recorded but carry no Grindstone number and cannot end the run. Every run records the item revisions, capability hash, factory version, provider, model, subject version, context pack and prompts it was given (I-06).
 
 **Reports.** One accepted report ends each turn, with outcome `done`, `blocked` or `failed`. The kernel validates it against the output contract and returns structured errors the agent fixes in the same turn; a turn without a report gets one corrective prompt, then the run fails `missing_report`. Proposed items become a ChangeDraft; declared output files are copied out of the workspace into the blob store; nothing an agent writes reaches intent or delivery any other way (I-03). Three tools end a turn by themselves: delegate, ask addressed to the operator, and a request for permission, which raises a `permission` decision. Each records its request, counts as the turn's report with outcome waiting, closes the session and frees the lane; when the child finishes or the decision is answered, the run continues in a new session on the same workspace with the result in context. A consult that passes its ceiling (ADR-38) suspends the same way. No task ever holds a lane while it waits.
 
@@ -670,14 +697,17 @@ A run parked on a provider limit stays `running`; parking is a run state, not a 
 
 | Cause | Retry rule |
 | --- | --- |
-| `rate_limited`, `provider_error` | Park and retry within the run with backoff |
+| `rate_limited`, `provider_error` | Park and retry within the run with backoff; from M3 a rate limit moves the run to another eligible account (ADR-48) |
 | `host_lost` | Continue in a new session; retry the run once |
-| `stalled`, `missing_report`, `context_exhausted` | Block the task; escalation |
+| `stalled`, `missing_report` | Block the task; escalation |
+| `context_exhausted` | From M3, continue once in a fresh session from a continuation pack (ADR-48); then block the task; escalation |
 | `cap_reached`, `storage_limit` | Block; escalation (flagged `cap_reached` for the project cap) |
 | `checks_failed` | Block with the failing evidence attached; a template with rework rounds retries at once with that evidence in context, up to its round limit, then escalates |
 | `cancelled` | None |
 
-An escalation offers retry, reassign to another capability, raise the project cap where it applies, or cancel.
+An escalation offers retry, reassign to another capability, raise the project cap where it applies, take over as the operator for a `work` task (ADR-50, from M3), or cancel.
+
+**Person-made tasks (ADR-50, from M3).** The operator may claim a ready `work` task, or take over a run from its escalation; the factory's workspace provider hands the work over. The task is `running` with no station run until the operator submits a subject through the authenticated `submit` command; the provider's `adopt` collects it like an agent's output, and verifying proceeds unchanged. The subject records its makers — capabilities, the operator, or both — and no prover may be among them (I-15). A push to a remote makes nobody a maker.
 
 **Context pack.** The kernel assembles what a run sees: the pinned items rendered as Markdown, the project's principles, relevant learnings, the interface items in scope and the capability's loaded skills. The pack is recorded by hash, so advice and drafts built on it go stale when it changes.
 
@@ -689,7 +719,7 @@ A check is how Grindstone proves something. An acceptance criterion names *what*
 | --- | --- |
 | `target` | The item it verifies: an acceptance criterion, a finding, an interface item, a principle |
 | `method` | One of the six kernel methods below, or a factory method registered under its namespace |
-| `by` | The need or capability that performs it; never the capability that made the subject (I-15) |
+| `by` | The need or capability that performs it, or a person; never among the subject's makers (I-15) |
 | `subject` | A typed subject reference: `git_commit`, `blob`, `blob_set`, `item_revision`, or a factory subject kind |
 | `inputs` | Hashes of the items it verifies against, including the target's semantic hash |
 | `env` | Environment fingerprint: station image digest, toolchain versions, tier, declared tool versions |
@@ -769,7 +799,7 @@ A decision is anything only a person, or a policy the person approved, may settl
 
 **Lifecycle.** `open → answered | superseded | expired`. An answer is refused if the decision was superseded or its context hash changed; a decision superseded three times becomes an escalation. Related decisions are batched on one card. Only `permission` decisions expire, to deny. A waiting workflow holds no resources: the decision stores a typed continuation that the answer starts exactly once.
 
-**Recommendation.** Every decision carries one recommended answer and its reason, from one source recorded on the decision: a **fixed default** declared by the template or manifest; the **asking agent**, which must recommend when it asks; or the **advisor** capability (M4), which drafts recommendations with options, change class and impact (ADR-29). Recommendations are suggestions (I-10).
+**Recommendation.** Every decision carries one recommended answer and its reason, from one source recorded on the decision: a **fixed default** declared by the template or manifest; the **asking agent**, which must recommend when it asks; or the **advisor** capability (M4), which drafts recommendations with options, change class and impact (ADR-29). After the MVP the **orchestrator** may also recommend (ADR-52). Recommendations are suggestions (I-10).
 
 **Policy and autonomy.** Each decision kind belongs to an eligibility class: `never` (always a person), `l2` (policy may answer at L2 and above), `l3` (only at L3). Factories map their own kinds to a class and cannot place a kernel kind in a lower class (ADR-30).
 
@@ -782,7 +812,9 @@ A decision is anything only a person, or a policy the person approved, may settl
 
 **Tripwire.** Any of these drops the project to L1 until the operator restores it: a reverted policy answer, two consecutive failed deliveries, a high-severity security finding, the project cap reached, a principle-flagged decision. Every policy answer records the rule that matched and can be reverted like a ChangeSet (I-12). A pause switch stops dispatch and policy answers at once.
 
-**Channels.** Decisions are answered in the web UI, in VS Code and — from M5 — through the operator plugin in Claude Code, all through one service; the answer records who answered, where and when.
+**Orchestrator (after the MVP, ADR-52).** A third answerer beside people and policy: a capability acting as an agent principal (ADR-51) under a charter the operator sets. Its mode bounds what it may answer — Assist: `escalation` decisions; Checkpointed: also unflagged `l2` kinds within approved scope, except at the charter's checkpoints; Autonomous: also `l3` kinds, and a question it would have asked becomes a `core.assumption` — and it answers a `never`-class or flagged decision only where the charter names that exact case, never anything `untrusted` (I-21). Every answer cites its evidence, records the principal and can be reverted; the tripwire counts its answers like policy's, and the pause switch stops it too.
+
+**Channels.** Decisions are answered in the web UI, in VS Code and — from M5 — through the operator plugin in Claude Code, all through one service; the answer records its principal (ADR-51), channel and time.
 
 ## Substrate: blobs, subjects, delivery and interfaces
 
@@ -808,7 +840,7 @@ A factory subject kind — `re.binary`, `pcb.board` — always resolves to a blo
 
 ### Delivery port
 
-Delivery is the only way verified output leaves Grindstone (I-08, ADR-26, ADR-45). The port's operations are `observe_mode` (whether the remote enforces the gate, ADR-40), `prepare` (build the outgoing change from verified subjects, idempotent by delivery key), `deliver` (perform it after a `delivery` decision), `observe` (report external state back: accepted, closed, rejected, commented), and two optional ones with no-op defaults for remotes without a gate or an acceptance step: `publish_gate_state` (show the remote the current verification state) and `accept` (complete the delivery on the remote, used only in unenforced mode after the gate is re-checked). The kernel calls them in order, re-checks the gate and holds every idempotency key. The kernel owns the port, the decision and the idempotency ledger; factories ship adapters. The MVP has one adapter, `sdlc.github_pr` (ADR-27). Agents never hold delivery credentials.
+Delivery is the only way verified output leaves Grindstone (I-08, ADR-26, ADR-45). The port's operations are `observe_mode` (whether the remote enforces the gate, ADR-40), `prepare` (build the outgoing change from verified subjects, idempotent by delivery key), `deliver` (perform it after a `delivery` decision), `observe` (report external state back: accepted, closed, rejected, commented), and two optional ones with no-op defaults for remotes without a gate or an acceptance step: `publish_gate_state` (show the remote the current verification state) and `accept` (complete the delivery on the remote, used only in unenforced mode after the gate is re-checked). The kernel calls them in order, re-checks the gate and holds every idempotency key. The kernel owns the port, the decision and the idempotency ledger; factories ship adapters. The MVP has one adapter, `sdlc.github_pr` (ADR-27). Agents never hold delivery credentials. From M3, deliveries to one target pass through one **delivery queue**, which re-checks the gate at the target's current head, has the factory update a behind subject, re-runs only the checks the move made stale and calls `accept` in both modes (ADR-49); each delivery carries a risk class computed by a fixed rule from the collect outcome's facts, and routine deliveries are batched on one card (ADR-53).
 
 ### Interface items
 
@@ -834,7 +866,7 @@ An agent that needs expertise it does not have has exactly three options, each a
 
 **Delegate** creates a child task in `work` mode, in the matched capability's factory, with its own template step, workspace and checks, counted against the parent's live-children cap. The child's proposals go through a ChangeSet like any other, so the parent receives approved, pinned results (I-19). A delegated child may consult, and may delegate once more (depth two, I-17).
 
-**Asking a person** uses the same tool: `ask(need="operator", …)` raises a `question` decision instead of a consult, with the agent's recommended answer; the turn suspends until the answer arrives.
+**Asking a person** uses the same tool: `ask(need="operator", …)` raises a `question` decision instead of a consult, with the agent's recommended answer; the turn suspends until the answer arrives. From M3 the ask may carry options, each with its approach, tradeoffs, affected files and estimated change class. After the MVP, when a charter routes the question to the orchestrator, it is answered like a consult, in the open call under the consult ceiling, from a read-only snapshot of the asking run's workspace (ADR-52); only an escalation to a person suspends the turn.
 
 **Why agents never talk directly.** A chat between agents has no auditable record, no bounds, no freshness and no clear end. Every cooperation is a task with pinned inputs, a typed result and a cost, so the ledger stays a tree of verifiable work and no factory tracks another's conversations (I-16).
 
@@ -907,13 +939,13 @@ Each module has one responsibility, owns specific state, offers a typed service 
 | `platform` | Extension registry and configuration | Registries (kinds, edges, methods, capabilities, templates, subjects, adapters, decision kinds, rules), manifest loader, project configuration, versions | Registry lookups, `grindstone check`, the kernel SDK | `factory.loaded`, `config.changed` |
 | `intent` | Items and their history | Items, revisions, artifacts, references and edges, lifecycles, rendering | Read by pin, graph queries, render to Markdown, transition functions | `item.revised`, `artifact.transitioned` |
 | `evidence` | Proof | Check definitions, evidence records, the freshness function, regression sweep schedule | Plan checks, record evidence, `freshness()`, sweep | `evidence.recorded`, `evidence.stale` |
-| `decisions` | Authority | Decisions, kinds and flags, continuations, policy rules, autonomy state, tripwire | Raise, answer, supersede, batch; register a continuation; policy evaluation | `decision.raised`, `decision.answered` |
+| `decisions` | Authority | Decisions, kinds and flags, continuations, policy rules, autonomy state, tripwire, answer principals; charters after the MVP | Raise, answer, supersede, batch; register a continuation; policy evaluation | `decision.raised`, `decision.answered` |
 | `memory` | What the project learned | Principle and learning indexes, full-text index; later vector index | Retrieval for context packs, search (suggestions only) | `learning.accepted` |
-| `stations` | Where work runs | Station registry, tiers, lanes, workspace lifecycle, host and runner adapters | Dispatch session or job, cancel, workspace prepare/collect/discard hooks | `session.*`, `job.*` |
+| `stations` | Where work runs | Station registry, tiers, lanes, agent accounts and their quota state, workspace lifecycle, host and runner adapters | Dispatch session or job, cancel, workspace prepare/collect/discard hooks | `session.*`, `job.*` |
 | `change` | Changing intent safely | ChangeDrafts, ChangeSets, impact walks, verdicts, apply and revert | Draft, walk, validate rules, apply, revert | `changeset.applied`, `changeset.reverted` |
-| `work` | Running work | Tasks, runs, turns, reports, readiness, matching, limits, cooperation, template runs, context packs | Create task, dispatch, report intake, `ask`, `delegate`, `load_skill`, start template | `task.*`, `run.*` |
-| `delivery` | Shipping verified output | Delivery records, idempotency ledger, adapter invocation, `observe` polling | Prepare, deliver, observe | `delivery.*` |
-| `surface` | Every way in | REST API, event stream, kernel MCP server, operator authentication, AHP attach proxy | HTTP endpoints, MCP tools, streamed events | — |
+| `work` | Running work | Tasks, runs, turns, reports, readiness, matching, limits, cooperation, template runs, context packs, continuation packs, person-made tasks and maker sets | Create task, dispatch, report intake, `ask`, `delegate`, `load_skill`, start template | `task.*`, `run.*` |
+| `delivery` | Shipping verified output | Delivery records, idempotency ledger, delivery queues and risk classes, adapter invocation, `observe` polling | Prepare, deliver, observe | `delivery.*` |
+| `surface` | Every way in | REST API, event stream, kernel MCP server, operator authentication, principals and client tokens with grants, AHP attach proxy | HTTP endpoints, MCP tools, streamed events | — |
 
 **Failure modes and tests per module.**
 
@@ -938,11 +970,11 @@ Five components run outside the `grindstone` process. None holds kernel state; e
 
 | Component | Language and base | Responsibility | Talks to | Holds |
 | --- | --- | --- | --- | --- |
-| Agent host (`agent-host`) | TypeScript on `@ahpd/sdk`, unmodified, with a backend wrapper and a vendored launcher in front of each ACP agent (ADR-15, ADR-42) | Starts, prompts, cancels and disposes agent sessions; runs each agent as a child process under its own Unix user; sets the workspace and the per-task MCP server; forwards permission requests; serves AHP to the UI and VS Code | The control plane's host control API (in) and event endpoint (out); model providers | Model credentials; host tokens readable only by the host process |
+| Agent host (`agent-host`) | TypeScript on `@ahpd/sdk`, unmodified, with a backend wrapper and a vendored launcher in front of each ACP agent (ADR-15, ADR-42) | Starts, prompts, cancels and disposes agent sessions; runs each agent as a child process under its own Unix user; sets the workspace and the per-task MCP server; forwards permission requests; serves AHP to the UI and VS Code | The control plane's host control API (in) and event endpoint (out); model providers | Model credentials of its agent accounts, each given only to that account's sessions; host tokens readable only by the host process |
 | Runner (`runner`) | A small Python job executor inside the project's declared image | Picks up one job directory at a time, runs the declared command, tests or reproduction steps, writes results and logs as files | The `runs` volume only | Nothing |
 | Web UI (`web`) | SvelteKit (static build) with Svelte 5, served by the control plane | Decision cards, item pages and graph, ChangeSet diffs, task and template runs, delegation trees with costs, live sessions, operations view | REST and the event stream; AHP for live sessions | A session cookie |
 | VS Code extension | TypeScript | Item navigation and editing, decisions, attach to live sessions | REST, events, AHP | A per-client token |
-| Operator plugin | A Claude Code plugin with skills and an MCP client | Lists and answers decisions, starts commands, shows status from the operator's own Claude Code | REST through an operator MCP endpoint | A per-client token |
+| Operator plugin | A Claude Code plugin with skills and an MCP client | Lists and answers decisions, starts commands, shows status from the operator's own Claude Code | REST through an operator MCP endpoint | A per-client token acting as the operator, which the operator may scope down (ADR-51) |
 
 **Agent host control API.** Idempotent on client keys; every call names the run:
 
@@ -977,6 +1009,7 @@ One MCP server inside `grindstone` (FastMCP), mounted per task run and authentic
 | `delegate(need, goal, refs, output, checks)` | Creates a child task | `work` mode, depth below two |
 | `load_skill(name)` | Loads a skill from the capability's library | All modes |
 | `request_permission(action, reason)` | Raises a `permission` decision | All modes |
+| `progress(note)` | Records a checkpoint note on the run without ending the turn (ADR-48, from M3) | All modes |
 
 **Suspending tools.** `delegate`, `ask(need="operator")` and `request_permission` end the turn, because no task holds a lane while it waits on a person or a child: the tool result confirms the request, the kernel records it as the turn's report with outcome `waiting`, disposes the session and frees the lane. When the child finishes or the decision is answered, the run continues in a new session on the same workspace, with the result at the top of the next prompt. A specialist consult keeps the call open until it answers, with progress notifications as keepalives, up to the consult ceiling, and then suspends the same way (ADR-38). A parent never waits on a lane its child needs: delegation frees the lane, and consults run on the read-only lane. A caller in an open consult does hold its own lane; the operations view shows it.
 
@@ -990,15 +1023,15 @@ There are no tools to apply, transition, deliver, change configuration or reach 
 | --- | --- |
 | Types | Base classes for item kinds, report contracts, subject kinds, decision kinds; typed IDs; hashing helpers |
 | Registration | Decorators and manifest schema for kinds, edges, rules, methods, capabilities, templates, subjects, workspace providers, adapters, interface shapes |
-| Adapter ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`), `SubjectResolver`, `CheckMethod` (maps to an execution shape), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `observe`, and the optional `publish_gate_state` and `accept`, ADR-45) |
+| Adapter ports | `WorkspaceProvider` (`prepare`, `collect`, `discard`; from M3 `adopt` for person-made subjects and `update` onto a moved base, ADR-49, ADR-50), `SubjectResolver`, `CheckMethod` (maps to an execution shape), `DeliveryAdapter` (`observe_mode`, `prepare`, `deliver`, `observe`, and the optional `publish_gate_state` and `accept`, ADR-45) |
 | Read services | Read items by pin, graph queries within the factory's kinds and interfaces, blob access |
 | Testing | An in-memory kernel and the conformance kit (pytest plugin) |
 
-**Collect outcome.** `WorkspaceProvider.collect(run)` returns a `CollectOutcome`, not just a subject: the `subject` reference; `extra_checks`, which the kernel adds to the task's check plan before it enters verifying (for example a security review because a security-relevant path changed); and `permission_requests` for anything the factory's policy says needs a person (for example a protected path), each raised as a `permission` decision while the run waits, with `deny` failing the run `checks_failed`. A factory can add checks this way but never remove one, and the maker cannot influence the outcome: it is computed from the factory's policy and the actual changes.
+**Collect outcome.** `WorkspaceProvider.collect(run)` returns a `CollectOutcome`, not just a subject: the `subject` reference; `extra_checks`, which the kernel adds to the task's check plan before it enters verifying (for example a security review because a security-relevant path changed); and `permission_requests` for anything the factory's policy says needs a person (for example a protected path), each raised as a `permission` decision while the run waits, with `deny` failing the run `checks_failed`. A factory can add checks this way but never remove one, and the maker cannot influence the outcome: it is computed from the factory's policy and the actual changes. From M3 it also carries the facts a delivery's risk class is computed from (ADR-53).
 
 ### REST API and event stream (clients)
 
-Resource-oriented JSON over HTTPS under `/api/v1`, generated from `contracts`, with an OpenAPI document. Commands are idempotent on a client key. The event stream is Server-Sent Events, one stream per project, each event carrying a per-project sequence number; clients resume with `Last-Event-ID`. The UI, VS Code and the operator plugin use exactly the same API; there are no private endpoints.
+Resource-oriented JSON over HTTPS under `/api/v1`, generated from `contracts`, with an OpenAPI document. Commands are idempotent on a client key. The event stream is Server-Sent Events, one stream per project, each event carrying a per-project sequence number; clients resume with `Last-Event-ID`. The UI, VS Code and the operator plugin use exactly the same API; there are no private endpoints. Every call is made by a principal — the operator, or an agent acting under its own grants — and the API refuses what the principal's token does not grant (ADR-51).
 
 ### Host control API and runner jobs (stations)
 
@@ -1182,13 +1215,13 @@ The one rule every factory shares is that nothing grades itself (I-15, ADR-12). 
 
 | Role | Who | Workspace | Output | Counts as evidence |
 | --- | --- | --- | --- | --- |
-| Maker | The capability running the `work` task | Writable, its own | Subjects (commits, blobs) and proposed items | No |
+| Maker | The capability running the `work` task, the operator who submitted the subject, or both (ADR-50) | Writable, its own | Subjects (commits, blobs) and proposed items | No |
 | Maker's own checks | The same capability, inside its workspace | Same | Working notes on the run | No |
 | Prover — mechanical | Check station running `command`, `test`, `reproduce`, `cross_tool` | Fresh, read-only copy of the subject | Evidence records | Yes |
 | Prover — judgement | A different capability, `review` method, read-only | Read-only copy and pinned items | Structured verdicts as evidence | Yes |
 | Prover — person | Operator, through `manual_check` | — | Verdict and attachments | Yes |
 
-**What "different" means.** The prover is a different capability (by ID, not just version) from the maker of the subject and from any capability that delegated to the maker for that subject. A factory may require more: the SDLC factory runs its auditor and code reviewer in a fresh read-only session that shares none of the author's or implementer's context, on a model chosen by configuration that may be the maker's own (ADR-47).
+**What "different" means.** The prover is a different capability (by ID, not just version) from every maker of the subject and from any capability that delegated to a maker for that subject, and never a person among the makers. A factory may require more: the SDLC factory runs its auditor and code reviewer in a fresh read-only session that shares none of the author's or implementer's context, on a model chosen by configuration that may be the maker's own (ADR-47).
 
 **Tests written by the maker.** In SDLC the implementer writes tests, and tests are the main evidence. The rule handles this in two steps: the **test reviewer** (a prover) checks that each added or changed test verifies its criterion and was not weakened — a weakened or deleted test fails that check — and the tests then run on the check station against the copied-back commit. Implementation and its proof stay separate even though one agent typed both.
 
@@ -1281,6 +1314,9 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 | `sdlc.planner` | `sdlc.breakdown` · delegate | write, items only | No | Claude Code | M4 |
 | `sdlc.advisor` | `core.advise` · consult | read-only | No | Claude Code | M4 |
 | `sdlc.repairer` | `sdlc.repair` · delegate | write, git worktree | No | Claude Code | M5 |
+| `sdlc.orchestrator` | `core.orchestrate` · work, producing no subject | read-only | No | Claude Code | R2 (ADR-52) |
+| `sdlc.acceptance_author` | `sdlc.acceptance` · delegate | write, acceptance test paths only | No | Claude Code | R5 |
+| `sdlc.fidelity_auditor` | `sdlc.audit.fidelity` · check | read-only | Yes | Claude Code | R5 |
 
 **Independence.** The auditor, the test reviewer and the code reviewer run in a fresh read-only session that shares none of the author's or the implementer's context. Each capability's model is configuration and may be the maker's own; a project may require its reviewers to run on a different model, or on a different model family once a second agent is configured, by configuration only (ADR-47). This is SDLC policy above make/prove.
 
@@ -1298,6 +1334,7 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 | `/implement [tickets]` | `fan_out` over ready tickets: `task` implementer → `check` CI suite, test reviewer, code reviewer, security reviewer by path policy → `change` findings and learnings → `deliver` | Delivery; findings that change intent | Thin M1, reviewers M3 |
 | `/patch <request>` | `task` spec author drafts the smallest change → `check` auditor → `change` → `decide` → `/implement` on its tickets | The change, then delivery | M4 |
 | `/repair` | `check` regression sweep → `fan_out` `task` repairer per failure → `check` → `deliver` | Delivery; scope if new intent is needed | M5 |
+| `/build <idea>` | Root intent from the prompt → `task` orchestrator, in the charter's mode, drives `/init`, `/discover`, the acceptance phase, `/plan` and `/implement` until a stop condition → build report | The charter; whatever it leaves to them; the assumptions afterwards | R5 (ADR-52) |
 
 **Existing repositories.** `/init` followed by `/discover` in import mode drafts items from existing documents and code as `untrusted` drafts the operator approves. Generating a full baseline specification from an existing codebase is R2.
 
@@ -1315,13 +1352,15 @@ The kernel kinds `core.principle`, `core.finding`, `core.learning`, `core.observ
 
 The result is a `git_commit` subject on the mirror; the worktree is discarded. Checks and delivery use only that commit.
 
+**Person-made subjects (M3, ADR-50).** When the operator takes over a run, the provider pushes the run's branch to the remote. `adopt(ref)` collects what the operator submits: it fetches the named commit into the private clone with hooks disabled, refuses one that does not descend from the task's pinned base, and returns the same collect outcome, tiers and permission requests as `collect`. A push alone makes nobody a maker.
+
 **Path policy at collect time.** `collect` returns a `CollectOutcome` (Components tab): the subject, the extra checks the path policy requires for the files actually changed — `sdlc.review.security` for authentication, crypto, input parsing, dependency manifests and infrastructure files; an explicit pass by the test or code reviewer for reviewed-tier files — and a permission request for each protected path. The kernel adds the checks to the task's plan and raises the permission decisions before verifying starts. Projects extend the path policy in their configuration.
 
 **Check method.** `sdlc.ci_suite` (shape `command`) runs the project's declared lint, type check, build and test commands on a check station from a fresh checkout of the subject, and maps results to criteria by test annotations (`@verifies AC-0412-3`). A required criterion with method `test` and no annotated test fails the suite.
 
 **Environment fingerprint.** The runner image digest plus the toolchain versions the project declares (runtime, package manager, lockfile hash). Changing the lockfile therefore stales test evidence.
 
-**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane.
+**Delivery.** `sdlc.github_pr` prepares a pull request from the subject commit to the target branch, with a body generated from the ledger: tickets, requirements and criteria covered, evidence with freshness, findings raised, decisions taken. It posts one verification status. Delivery is idempotent by `(project, ticket, subject commit)`. `observe` reports merge, close, review comments and failing external checks back; review comments arrive as `untrusted` findings. Merging is a `delivery` decision at L0–L2; the GitHub App key lives only in the control plane. From M3 the adapter merges through the delivery queue in both modes after that decision: a behind branch is rebased in the private clone with hooks disabled, only the checks the new base made stale re-run, and a conflict outside lockfiles and generated files raises `sdlc.merge_conflict` (ADR-49). Its collect outcome carries the facts each delivery's risk class is computed from (ADR-53).
 
 **Delivery modes** (ADR-40). The adapter observes, at project setup and before every delivery, whether the target branch's rules actually require the verification status from the Grindstone App. **Enforced:** GitHub itself refuses an unverified merge. **Unenforced** (for example, rulesets on a private repository on GitHub's free plans): Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified so a concurrent push fails the merge, and `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not come through a delivery, as a high-severity `untrusted` `delivery_bypass` finding. The mode is shown on the project and on every delivery card; a switch from enforced to unenforced raises an escalation before the next delivery.
 
@@ -1331,18 +1370,18 @@ The result is a `git_commit` subject on the mirror; the worktree is discarded. C
 | --- | --- | --- | --- |
 | `approval` of a specification or ticket ChangeSet | `l2` | Auditor's final verdict | Approve if the auditor passed, rules pass and no flag is set |
 | `approval` of a findings or learnings ChangeSet | `l2` | Impact reviewer | Approve learnings only; findings that amend requirements wait |
-| `delivery` of a pull request | `l3` | Fixed: deliver when all required evidence is fresh and passing | None before L3 |
+| `delivery` of a pull request | `l3`; `l2` for the routine class from R2 (ADR-53) | Fixed: deliver when all required evidence is fresh and passing | None in the MVP; from R2, deliver routine pull requests once the project has 10 person-approved routine deliveries with none reverted |
 | `escalation` after a failed run | `l2` | Fixed: retry once with the same capability | Retry once for `stalled`, `rate_limited`, `provider_error`, `host_lost` |
 | `suggestion` from an advisory reviewer | `l2` | The reviewer | Dismiss style-only suggestions; queue others |
 | `permission` for a protected path | `never` | The implementer's stated reason | — |
 | `sdlc.merge_conflict` | `l2` | Fixed: rebase and re-run checks | Rebase if conflicts are only in lockfiles or generated files |
 | `sdlc.flaky_test` | `l2` | Fixed: re-run once, then quarantine as a finding | Re-run once |
 
-New projects start at L1. The operator moves a project to L2 once its first milestone has delivered through Grindstone and the tripwire has stayed quiet for a set number of deliveries (default 10). At every level, principles, scope, protected paths, anything `untrusted`, any security finding of medium severity or higher and every irreversible action stay with a person.
+New projects start at L1. The operator moves a project to L2 once its first milestone has delivered through Grindstone and the tripwire has stayed quiet for a set number of deliveries (default 10). At every level, principles, scope, protected paths, anything `untrusted`, any security finding of medium severity or higher and every irreversible action stay with a person. An orchestrator (ADR-52, from R2) may answer one of these only where its charter names that exact case, and never anything `untrusted`.
 
 ## SDLC scenarios
 
-Six scenarios define what the SDLC factory must do; each becomes an end-to-end test with the scripted agent, and a live run where a real agent is the point. S1–S4 are the core loop; S5 and S6 show cooperation.
+Seven scenarios define what the SDLC factory must do; each becomes an end-to-end test with the scripted agent, and a live run where a real agent is the point. S1–S4 are the core loop; S5 and S6 show cooperation; S7 shows a person and an agent making one subject.
 
 ### S1 — One ticket, end to end (M1)
 
@@ -1367,6 +1406,10 @@ Implementing a password-reset ticket, the implementer loads `sdlc.security-basic
 ### S6 — Another factory delegates code to SDLC (R1)
 
 In a project with SDLC and RE enabled, an RE analyst has documented a proprietary file format and proposed IF-0003 (shape `format_spec`, provider: the RE report). It calls `delegate(need="sdlc.implement", goal="A Python parser for this format", refs=[IF-0003], output={kind: "sdlc.ticket"}, checks=[IF-0003 conformance])`. The kernel creates an SDLC ticket and implementation task; the implementer builds the parser; the CI suite and the conformance check (parsing the RE team's sample blobs) pass; a pull request is delivered. The RE task resumes with the delivered commit pinned. When the analyst later corrects a field width in IF-0003, the parser's evidence goes stale and `/repair` picks it up.
+
+### S7 — The operator takes over a stuck run (M3)
+
+The implementer on TKT-0050 fails twice with `checks_failed` on the same criterion. The escalation offers retry, reassign, take over or cancel; the operator takes over. The SDLC provider pushes the run's branch `gs/TKT-0050/r2`; the operator fixes the failing case locally and runs `submit TKT-0050 <sha>`. `adopt` fetches the commit into the private clone with hooks disabled, checks that it descends from the pinned base and classifies its paths; the CI suite and the test reviewer — neither among the makers, `sdlc.implementer` and the operator — prove it, and the pull request opens with both makers on its evidence table.
 
 ## Later factories, sketched
 
@@ -1396,7 +1439,7 @@ One record per choice that is expensive to reverse.
 
 ## How decision records work
 
-Forty-seven records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record is **Accepted**, on 17 October 2026 except ADR-45 and ADR-46 (18 October 2026) and ADR-47 (19 October 2026); ADR-20 is superseded by ADR-37. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026. ADR-45 and ADR-46 come from the first review of the M1 specifications; the operator accepted both on 18 October 2026. ADR-47 comes from the operator's choice of models for M1's live runs.
+Fifty-three records cover every choice that is expensive to reverse. Each states the decision, why it was made, what it commits the specifications to, and the options rejected with their reasons. Every record to ADR-47 is **Accepted**, on 17 October 2026 except ADR-45 and ADR-46 (18 October 2026) and ADR-47 (19 October 2026); ADR-20 is superseded by ADR-37. ADR-48 to ADR-53 are **Proposed** with foundation v4.10 (21 October 2026) and bind once the operator accepts them. Records 37 to 39 come from the operator's answers to the open questions at the M0 kickoff; ADR-40 from the decision to stay on GitHub's free plan, where rulesets on private repositories are not enforced; ADR-41 from the decision to work with Claude only for now. ADR-42 and ADR-43 come from the M0 spike results (SPK-1, SPK-5) and ADR-44 from SPEC-01; the operator accepted all three on 17 October 2026. ADR-45 and ADR-46 come from the first review of the M1 specifications; the operator accepted both on 18 October 2026. ADR-47 comes from the operator's choice of models for M1's live runs. ADR-48 to ADR-53 come from evaluating Grindstone against current practice in agent-driven development: parallel work across agent accounts, people and agents making work together, review that scales, and an orchestrator that drives the work under a charter.
 
 **Append-only.** From the start of M0 (foundation v4.2) records are never edited: a change is a new record that supersedes an old one, and the superseded record keeps a pointer to its successor.
 
@@ -1413,15 +1456,15 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 | 03 | DBOS runs every workflow; waits on people park | Platform |
 | 04 | A content-addressed blob store owned by the control plane | Platform |
 | 05 | Pydantic is the single source of types | Platform |
-| 06 | A static SvelteKit UI; one API for every client | Platform |
+| 06 | A static SvelteKit UI; one API for every client (amended by 51) | Platform |
 | 07 | A domain-neutral kernel with a grammar of three nouns and four verbs | Kernel |
-| 08 | Items are namespaced, typed and hashed; the kernel defines five kinds | Kernel |
+| 08 | Items are namespaced, typed and hashed; the kernel defines five kinds (amended by 44, 52) | Kernel |
 | 09 | One typed relation graph, derived from content, with three impact rules | Kernel |
 | 10 | Every intent change is a ChangeSet walked to a fixed point | Kernel |
 | 11 | Freshness is computed from inputs, subject and environment | Kernel |
-| 12 | Checks prove subjects; makers never prove their own work | Kernel |
+| 12 | Checks prove subjects; makers never prove their own work (amended by 50) | Kernel |
 | 13 | Rules are registered Python functions over SQL | Kernel |
-| 14 | One task model for all work | Execution |
+| 14 | One task model for all work (amended by 50) | Execution |
 | 15 | Grindstone runs its own thin AHP host; agents connect over ACP | Execution |
 | 16 | Agents act only through a per-task kernel MCP surface | Execution |
 | 17 | Stations have tiers T0 to T3 | Execution |
@@ -1434,27 +1477,33 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 | 24 | Cooperation through three verbs and deterministic matching | Factories |
 | 25 | Factories integrate through interface items | Factories |
 | 26 | Delivery is a kernel port with factory adapters (amended by 45) | Factories |
-| 27 | The SDLC factory owns git workspaces, copy-back and GitHub delivery | Factories |
-| 28 | Every question to a person is one typed decision | People |
-| 29 | An advisor recommends; change classes have computed floors | People |
-| 30 | Autonomy is decided by fixed rules, with a tripwire | People |
-| 31 | Project memory is principles and learnings; search only suggests | People |
+| 27 | The SDLC factory owns git workspaces, copy-back and GitHub delivery (amended by 40, 49, 50) | Factories |
+| 28 | Every question to a person is one typed decision (amended by 51, 52) | People |
+| 29 | An advisor recommends; change classes have computed floors (amended by 52) | People |
+| 30 | Autonomy is decided by fixed rules, with a tripwire (amended by 52, 53) | People |
+| 31 | Project memory is principles and learnings; search only suggests (amended by 52) | People |
 | 32 | The outer loop maps external signals by fixed code | People |
 | 33 | Discovery comes before planning; small changes take a fast path | People |
 | 34 | Walking skeleton first; Grindstone builds itself | Scope |
 | 35 | The foundation holds commitments; specifications hold designs | Scope |
-| 36 | The MVP is SDLC on the kernel, with cooperation | Scope |
-| 37 | Limits bound runaway work; cost is recorded, never gating | Execution |
-| 38 | A consult holds the call open until it answers, under a ceiling | Execution |
+| 36 | The MVP is SDLC on the kernel, with cooperation (amended by 50, 52) | Scope |
+| 37 | Limits bound runaway work; cost is recorded, never gating (amended by 48) | Execution |
+| 38 | A consult holds the call open until it answers, under a ceiling (amended by 52) | Execution |
 | 39 | Skills are materialized per session outside the workspace and returned inline | Execution |
-| 40 | Delivery states whether the remote enforces the gate | Factories |
-| 41 | Claude Code is the only agent until the operator adds another (amended by 47) | Execution |
+| 40 | Delivery states whether the remote enforces the gate (amended by 49) | Factories |
+| 41 | Claude Code is the only agent until the operator adds another (amended by 47, 48) | Execution |
 | 42 | The agent host uses its packages unmodified, behind a launcher and a backend wrapper | Execution |
 | 43 | A skill's tools are listed from session start and refused until the skill is loaded | Execution |
 | 44 | Semantic hashes omit fields at their default | Kernel |
-| 45 | The delivery port reports the gate and completes deliveries through optional operations | Factories |
+| 45 | The delivery port reports the gate and completes deliveries through optional operations (amended by 49) | Factories |
 | 46 | Dependencies are the latest stable release compatible with the other pins | Platform |
 | 47 | Reviewer independence is a separate capability in a fresh session; models are configuration | Factories |
+| 48 | Agent work runs on a pool of agent accounts placed by quota, and a lost session continues (proposed) | Execution |
+| 49 | Deliveries to one target pass through a queue, and Grindstone performs the merge in both modes (proposed) | Factories |
+| 50 | A person can make a subject; others prove it (proposed) | Kernel |
+| 51 | Every caller is a principal with grants; answers record the principal (proposed) | Platform |
+| 52 | An orchestrator can drive the work under a charter, in three delegation modes (proposed) | People |
+| 53 | Deliveries are classified by a fixed risk rule; routine ones are batched, and policy may deliver them from R2 (proposed) | People |
 
 ## Platform and runtime
 
@@ -1492,6 +1541,8 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-06 — A static SvelteKit UI; one API for every client
 
+**Status.** Amended by ADR-51 (proposed, v4.10): every caller is a principal whose token carries grants.
+
 **Decision.** The UI is SvelteKit (static adapter) with Svelte 5, served by the control plane behind operator login, using the generated REST client and Server-Sent Events. Graphs use `@xyflow/svelte` behind one graph component. Live agent sessions are watched and steered in the browser through AHP, with the connection token served only after login; VS Code attaches to the same host. The UI, VS Code and the operator plugin use one public API; there are no private endpoints.
 
 **Why.** No Node server in production; one live-session protocol for every client; no client can do what another cannot audit. **Consequences.** UI pages hold no domain logic. **Rejected:** a server-rendered Node frontend (another runtime); proxying sessions through the control plane (re-implements AHP).
@@ -1506,7 +1557,7 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-08 — Items are namespaced, typed and hashed; the kernel defines five kinds
 
-**Status.** Amended by ADR-44 (defaults omitted from the hash).
+**Status.** Amended by ADR-44 (defaults omitted from the hash) and ADR-52 (proposed, v4.10) (`core.assumption` joins the kernel kinds in R5).
 
 **Decision.** An item is a typed record with a stable ID, a kind in a namespace (`core.*`, `sdlc.*`, `re.*`), fields marked semantic or presentation, typed references, mentions `[[ID]]` and embeds `![[ID]]`. Its semantic hash is SHA-256 over RFC 8785 canonical JSON of the semantic fields after NFC and LF normalisation. Revisions are immutable and carry provenance. Artifacts are containers with a header item; any kind may declare a lifecycle — a transition table with one writer per transition — whose state is stored beside the item and never hashed. The kernel defines `core.principle`, `core.learning`, `core.finding`, `core.observation` and `core.interface`.
 
@@ -1532,6 +1583,8 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-12 — Checks prove subjects; makers never prove their own work
 
+**Status.** Amended by ADR-50 (proposed, v4.10): a subject's makers are a set that may include a person; no prover may be among them.
+
 **Decision.** A check verifies a target item against a typed subject by one of six methods — `command`, `test`, `reproduce`, `cross_tool`, `review`, `manual` — or a factory method mapped onto one. Evidence that gates done comes only from a credential-less check station, a different capability in read-only mode, or a person. A maker's own runs are working notes.
 
 **Why.** Agents grading their own work is the central failure of agent-driven development; one rule applied everywhere fixes it for code, findings, models and boards alike. **Consequences.** The SDLC test reviewer is a required prover; checks run on a fresh copy of the subject. **Rejected:** trusting maker-reported results; one check method per domain (unbounded kernel growth).
@@ -1545,6 +1598,8 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 ## Execution, stations and agents
 
 #### ADR-14 — One task model for all work
+
+**Status.** Amended by ADR-50 (proposed, v4.10): a `work` task may be made by the operator, with no station run.
 
 **Decision.** Every unit of agent or check work is a task with a mode (`work`, `consult`, `check`), pinned inputs, an output contract, a check plan, a budget, a tier and a parent. Attempts are task runs in fresh workspaces; runs are sessions and Grindstone-numbered turns; each turn ends with exactly one validated report. Failures have typed causes with retry rules. Delegating and asking the operator end the turn with outcome waiting, close the session and free the lane; the run continues in a new session on the same workspace when the result arrives, so no waiting task holds a lane.
 
@@ -1634,7 +1689,7 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-27 — The SDLC factory owns git workspaces, copy-back and GitHub delivery
 
-**Status.** Amended by ADR-40 (delivery modes).
+**Status.** Amended by ADR-40 (delivery modes), ADR-49 (proposed, v4.10) (rebasing for the delivery queue, merging in both modes) and ADR-50 (proposed, v4.10) (`adopt` for person-made subjects).
 
 **Decision.** Bare mirrors, worktrees, branches, copy-back path tiers, the CI-suite check method and the GitHub pull-request adapter are SDLC factory code behind kernel ports. The control plane commits with hooks disabled from private clones and is the only place that pushes, using a GitHub App installation token. Each delivery posts one verification status that the repository ruleset requires for merge. The workspace provider returns, with the subject, the extra checks its path policy requires and a permission request for each protected path, so path rules stay in the factory while the kernel enforces them. The kernel knows `git_commit` only as a subject kind.
 
@@ -1644,11 +1699,15 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-28 — Every question to a person is one typed decision
 
+**Status.** Amended by ADR-51 (proposed, v4.10) (answers record their principal) and ADR-52 (proposed, v4.10) (an orchestrator may answer under a charter, and may recommend).
+
 **Decision.** Approvals, agent questions, permission requests, manual checks, deliveries, suggestions, escalations and scope questions are all one decision record, shown identically in the UI, REST, VS Code and the operator plugin. Kinds are registry entries with an eligibility class, an answer schema and a recommendation source (fixed default, asking agent, or advisor). Flags set by the kernel mark what needs a person at every level. An answer is refused if the decision was superseded or its context changed; a decision superseded three times becomes an escalation. Related decisions are batched; a decision blocks only its scope; only permission requests expire, to deny. Waiting workflows park on typed continuations.
 
 **Why.** One queue the operator can trust and one place to automate. **Rejected:** ad-hoc prompts per feature (untraceable, unautomatable); timeouts that approve (silent authority).
 
 #### ADR-29 — An advisor recommends; change classes have computed floors
+
+**Status.** Amended by ADR-52 (proposed, v4.10): under a charter the orchestrator may answer, not only recommend; an architectural change stays with a person unless the charter names that exact case.
 
 **Decision.** For approvals and questions that need judgment, an advisor capability — on the most capable configured model and never the author of the work — gives at least a minimal and a right option, plus a staged path when they differ. Each option carries its change class (local, design adjustment, design change, architectural), its impact and a short evidence-based assessment. It recommends the option that leaves the product and codebase in the best lasting state within the approved scope, even at substantial effort; effort decides only between equivalent outcomes. Grindstone computes a class floor from what an option changes and how far it reaches; the advisor cannot go below it. Scope expansion is flagged; architectural changes are always decided by a person.
 
@@ -1656,11 +1715,15 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-30 — Autonomy is decided by fixed rules, with a tripwire
 
+**Status.** Amended by ADR-52 (proposed, v4.10) (the orchestrator answers under a charter, bounded by decision class) and ADR-53 (proposed, v4.10) (the routine delivery class is `l2`-eligible from R2).
+
 **Decision.** Each decision kind belongs to an eligibility class (`never`, `l2`, `l3`); factories cannot place a kernel kind lower. A project starts at L1 under an instance ceiling; the operator raises the level; the tripwire or the operator lowers it. L0 answers nothing; L1 pre-selects and batches; L2 lets policy answer unflagged `l2` decisions whose recommendation matches a written rule; L3 (R2) adds `l3` kinds such as delivery. Every policy answer records the rule it matched and can be reverted. The tripwire — a reverted policy answer, two failed deliveries in a row, a high-severity security finding, a budget overflow or a principle-flagged decision — drops the project to L1. Pause stops dispatch and policy answers.
 
 **Why.** Delegation the operator can predict and audit. **Rejected:** confidence- or agreement-based eligibility (unpredictable, gameable).
 
 #### ADR-31 — Project memory is principles and learnings; search only suggests
+
+**Status.** Amended by ADR-52 (proposed, v4.10): principles an orchestrator drafts are provisional until a person accepts them.
 
 **Decision.** Memory is two kernel kinds: principles, which people own, and learnings, which agents propose and a fixed rule or a person accepts; a learning that mentions a principle always goes to a person, and a nightly audit flags learnings that contradict principles. Both reach context packs by a fixed retrieval rule. Search is full-text in Postgres over items, findings, learnings and report summaries — never source code; vector search follows in R2. Search results, similarity and unlinked mentions are suggestions only.
 
@@ -1692,6 +1755,8 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-36 — The MVP is SDLC on the kernel, with cooperation
 
+**Status.** Amended by ADR-50 (proposed, v4.10) (person-made subjects and the maker-mix measure are in the MVP) and ADR-52 (proposed, v4.10) (the orchestrator is deferred to R2 and R5, and the MVP lays its ground).
+
 **Decision.** The MVP delivers the kernel, the full SDLC factory, cooperation (`load_skill`, `ask`, `delegate`) used by SDLC reviewers, autonomy up to L2, and the `notes` fixture proving neutrality. Deferred: repository snapshot and restore, vector search, autonomy L3 and auto-merge, the pi agent, baseline generation from an existing codebase (R2); separately installable factories and the RE factory (R1); T2 stations (R3); T3 stations (R4).
 
 **Why.** Makes the kernel general while keeping the MVP to one domain, built and used every day; nothing deferred requires a kernel change. **Rejected:** shipping RE in the MVP (doubles the surface before the kernel is proven); an SDLC-shaped core now with generalisation later (rework of every module). Q-11 confirmed this scope at the M0 kickoff.
@@ -1700,11 +1765,15 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-37 — Limits bound runaway work; cost is recorded, never gating
 
+**Status.** Amended by ADR-48 (proposed, v4.10): a rate limit marks an agent account exhausted and the run continues on another.
+
 **Decision.** Supersedes ADR-20. No task, run or tree has a numeric budget of turns, wall time, tokens or spend. Runaway work is bounded by shape: delegation depth at most two below the root and a live-children cap per task (I-17); a liveness timeout that fails a run `stalled` after a period with no agent activity, paused while a kernel tool call is open; the consult ceiling (ADR-38); storage limits; and provider quota and rate-limit signals, which park the run. One optional project cap — spend where the provider reports it, otherwise turns, per calendar month — is off by default; when enabled and reached, no new run starts in the project, running turns finish, and an escalation flagged `cap_reached` is raised, which also trips the autonomy tripwire. Cost is recorded on every run, rolls up the delegation tree and is shown per command, factory, capability and need. This amends the budget clauses of ADR-14, ADR-23, ADR-24 and ADR-30: where they say budget, read limits.
 
 **Why.** Task size and scope vary too much for any per-task allowance to be right: a fixed ceiling either stops good work midway or is set so high it bounds nothing. The real cost risks of multi-agent work are runaway shapes — loops, stalls and unbounded fan-out — and those are size-independent. Subscription providers report quota exhaustion themselves; pay-per-token providers are covered by the optional project cap. **Consequences.** The budget-tree machinery, the consult allowance and the `budget_exhausted` cause and `budget_overflow` flag are removed; QG-5, QS-10, I-17, M3-05 and SPEC-17 are restated in terms of limits; a stuck session is caught by liveness instead of total wall time, so long productive runs are never cut short. **Rejected:** per-unit tree budgets set at the root (ADR-20; sizes vary too much, and every ceiling is a guess the operator must keep tuning); no guards at all (a delegation loop or a stuck session would run until a quota ends it); a total wall-time limit per run (stops long, productive runs).
 
 #### ADR-38 — A consult holds the call open until it answers, under a ceiling
+
+**Status.** Amended by ADR-52 (proposed, v4.10): a question a charter routes to the orchestrator is held open the same way.
 
 **Decision.** `ask` to a specialist blocks in the open MCP call until the consult child reports, however long that takes, up to a consult ceiling (seed 2 h, owned by SPEC-17, overridable per capability within instance bounds). While the call is open the kernel sends MCP progress notifications as keepalives, each agent's client-side tool timeout is set above the ceiling by its capability's configuration, and the caller's liveness timer is paused. The consult child is a durable task; its answer is cached by `(capability hash, question hash, input hashes)`, and an identical ask joins a consult already in flight, so a session that drops mid-wait re-asks and receives the in-flight or cached answer with no second run. At the ceiling the call returns `consult_ceiling`, the caller's turn suspends with outcome waiting, the consult keeps running, and an escalation offers wait longer, retry or cancel; the answer resumes the caller in a new session. Park-and-resume otherwise remains only as fault recovery, and as the fallback for an agent whose client cannot hold a call open (SPK-5).
 
@@ -1720,13 +1789,15 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-40 — Delivery states whether the remote enforces the gate
 
+**Status.** Amended by ADR-49 (proposed, v4.10): from M3 Grindstone performs the merge in both modes, through the delivery queue.
+
 **Decision.** Amends ADR-27 and I-08. A delivery target is in one of two modes, observed by the adapter and never assumed. **Enforced:** the target branch's rules require the verification status with its source restricted to the Grindstone App, so the remote itself refuses an unverified merge. **Unenforced:** the remote cannot or does not require it — for example, rulesets on a private repository on GitHub's free plans. The adapter observes the mode at project setup and before every delivery, from the API that lists the rules in force on the target branch, and records each observation with its time; the mode is an observed fact, never configuration, and it is shown on the project and on every delivery card. In both modes the adapter opens the pull request and posts the verification status. In unenforced mode Grindstone performs the merge itself after the `delivery` decision, re-checking freshness and passing the head SHA it verified, so a concurrent push fails the merge. `observe` reports any merge of a Grindstone pull request it did not perform, and any change to a published file on the default branch that did not arrive through a delivery, as a high-severity `untrusted` `delivery_bypass` finding, counted against evidence integrity. Plain pull requests that touch no published file stay allowed (ADR-33) and count only against the governed share. A change from enforced to unenforced raises an escalation before the next delivery.
 
 **Why.** One operator on a free plan with private repositories is a core user, and Grindstone's own repository is one. Refusing to deliver there fails the product goal; silently promising a guarantee the remote does not give fails it worse. Grindstone-performed merges plus bypass detection keep evidence integrity measurable and every bypass visible. **Consequences.** In unenforced mode Grindstone detects bypass but cannot prevent it, and says so. The App needs no permission beyond contents write, already granted. SPK-4 settles how the mode is detected. **Rejected:** refusing unenforced targets (excludes the operator's own repository); treating every target as enforced (a false guarantee); requiring a paid plan (a cost the product should not impose on its first user).
 
 #### ADR-41 — Claude Code is the only agent until the operator adds another
 
-**Status.** Amended by ADR-47 (reviewer models are configuration).
+**Status.** Amended by ADR-47 (reviewer models are configuration) and ADR-48 (proposed, v4.10) (several agent accounts, of one provider or several).
 
 **Decision.** Amends ADR-18. Claude Code on the operator's subscription is the only real agent in the MVP. Codex moves from M3 to whenever the operator adds a second provider, joining pi and other model APIs (R2). The abstraction stays whole: every agent runs through ACP behind the same host, a capability's agent is configuration, and the scripted agent (ADR-19) is a second ACP implementation exercised on every commit, so no Claude-specific path may enter the host or the kernel. Reviewer independence in the SDLC factory becomes a different model from the author or implementer, in a fresh read-only session that shares none of their context; it returns to a different model family, by configuration only, once a second agent exists. Make and prove (I-15) is unchanged: provers are still different capabilities, and mechanical proof still runs on the check station.
 
@@ -1759,7 +1830,7 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 
 #### ADR-45 — The delivery port reports the gate and completes deliveries through optional operations
 
-**Status.** Accepted on 18 October 2026, from the first review of the M1 specifications (SPEC-03 architecture review, A2).
+**Status.** Accepted on 18 October 2026, from the first review of the M1 specifications (SPEC-03 architecture review, A2). Amended by ADR-49 (proposed, v4.10): `accept` is used in both modes, through the delivery queue.
 
 **Decision.** Amends ADR-26. The delivery port has six operations. `observe_mode` reports whether the remote enforces the gate (ADR-40). `prepare`, `deliver` and `observe` keep ADR-26's meaning. Two are optional, with no-op defaults, and an adapter declares which it supports: `publish_gate_state` shows the remote the delivery's current verification state, and `accept` completes the delivery on the remote and is called only in unenforced mode, after the kernel re-checks the gate, with the subject it verified. The contract uses these kernel-neutral names; each adapter documents what they mean for its remote (for GitHub, a commit status and a merge with the verified head SHA). The kernel calls the operations in order, re-checks the gate before `deliver` and before `accept`, and holds every idempotency key; adapters only perform.
 
@@ -1780,6 +1851,63 @@ Forty-seven records cover every choice that is expensive to reverse. Each states
 **Decision.** Amends ADR-41. In the SDLC factory a reviewer is independent of the maker when it is a different capability (I-15) running in a fresh read-only session that shares none of the author's or implementer's context. The model each capability runs on is configuration, and a reviewer may run on the same model as the maker: no default requires a different model or model family, and using the same one needs no decision. A project may still require its reviewers to run on a different model, or on a different model family once a second agent exists, by configuration only. Every run records the model it ran on (M1-06), so the choice is visible on the evidence it produced.
 
 **Why.** The operator wants the strongest available model for making and reviewing alike. On a single vendor, a reviewer whose model is chosen only because it differs from the maker's is often a weaker reviewer, trading review quality for diversity. What independence must guarantee is that the reviewer does not inherit the maker's reasoning, which a separate capability in a fresh session with no shared context gives, and that mechanical proof gates the result, which the check station gives. Model diversity reduces correlated blind spots and stays available as configuration. **Consequences.** M3-06 is restated: reviewers run in fresh sessions on models chosen by configuration, and changing a reviewer's model changes no code. The SDLC capability table and independence policy follow; SPEC-09's model slots no longer differ by default; SPEC-18 enforces fresh sessions and context isolation, not a model difference. When one model makes and reviews, their errors are more likely to be correlated, so the mechanical provers and the test reviewer's criterion-by-criterion verdicts carry the gate, as under ADR-41; the risk is revisited at the M3 review from the review findings recorded until then. **Rejected:** keeping a different model as the default (forces a weaker maker or reviewer on a single-vendor operator); requiring a `principle`-flagged decision to use the same model (ceremony for a choice that is plain configuration and recorded on every run); dropping fresh-session isolation as well (the reviewer would inherit the maker's reasoning, which independence exists to prevent).
+
+## Delegation amendments
+
+#### ADR-48 — Agent work runs on a pool of agent accounts placed by quota, and a lost session continues
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-37 and ADR-41.
+
+**Decision.** An agent account — a provider, an agent preset, the models it serves and a credential held only on the agent station — is a registry entry the operator configures. Lanes belong to an account: each account has its own writing lane (seed concurrency 1) and read-only lane (seed 4), so writing work runs in parallel only across accounts, and a single account behaves as before. The kernel knows accounts by ID and quota state, never by secret, and the agent host gives each session only its own account's credential. The kernel places a run by fixed order — the project's pinned account for the capability, then the eligible account whose lane frees first — on an account that serves the capability's agent and model; a run keeps its account for a session and may move between sessions. A `rate_limited` signal marks the account exhausted until the reset time the provider reports, or a configured window when it reports none, and the parked run continues on another eligible account or waits for the reset. A project may keep read-only work (reviews, consults) on different accounts from writing work. A run whose session is lost — after a host restart, a park, a resume after waiting, or `context_exhausted` — continues in a new session: by the agent's native session resume where its adapter supports it, otherwise from a continuation pack the kernel assembles without a model call (the task, the workspace's diff against its base, the run's earlier reports and its latest `progress` notes). A new kernel tool, `progress(note)`, records a checkpoint on the run without ending the turn. `context_exhausted` continues once this way before it blocks the task.
+
+**Why.** Subscription quotas are time windows per account: parallel sessions on one account exhaust it sooner and gain nothing, which is why writing was serial by default. Several accounts, or several providers, give real parallelism without that cost. Parking on quota makes session breaks routine, and a new session that sees only the workspace loses the plan. **Consequences.** The capacity envelope and the lane are per account; the failure model's rate-limit and context rows change; SPEC-17 owns accounts, placement, continuation and `progress` at M3, extending SPEC-02's lanes, SPEC-05's secrets, SPEC-06's failure rules and SPEC-07's tools additively; M1 and M2 run one account. Several personal subscriptions of one provider held to multiply quota may breach its terms, so the operator checks before configuring them (Q-12); separate providers, API keys or seats on a team plan are the default. Make and prove does not change. **Rejected:** parallel sessions on one account (exhausts the window sooner for no gain); rotating one credential across sessions (hides which account did what); a summary written by a model as the continuation (another model call, and it can drop what the diff cannot).
+
+#### ADR-49 — Deliveries to one target pass through a queue, and Grindstone performs the merge in both modes
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-27, ADR-40 and ADR-45.
+
+**Decision.** Every delivery to a target — for SDLC, a branch of a repository — joins one queue per target, served one at a time in the order its `delivery` decisions were answered. Before performing a delivery the queue re-checks the gate at the target's current head; when the base has moved, the factory's workspace provider updates the subject onto it (for SDLC, a rebase in the private clone with hooks disabled), the kernel re-runs only the checks whose freshness the move changed, and then delivers. A conflict the factory cannot resolve by its own rule raises its conflict decision (`sdlc.merge_conflict`) instead of a merge. After the `delivery` decision Grindstone completes the delivery itself through the port's `accept`, in enforced as in unenforced mode, passing the verified head so a concurrent change fails it. In enforced mode a merge a person makes on the remote stays legitimate, because the remote enforced the gate; it only bypasses the queue. A person's `delivery` decision followed by Grindstone's merge is not auto-merge: policy answering `delivery` stays as ADR-30 and ADR-53 state.
+
+**Why.** With parallel writing (ADR-48), each merge leaves every other open delivery behind its base; re-verifying all of them after each merge grows with the square of their number on one check station, and merging by hand on the remote costs the operator a context switch per pull request. One queue per target bounds re-checks to one delivery at a time and to the checks the move made stale. **Consequences.** SPEC-28 (M3, kernel) owns the queue and `accept` in both modes, extending SPEC-08; SPEC-18 adds the SDLC rebase and its conflict rule; SPEC-09's DEC-0904 holds for M1 and M2. **Rejected:** re-verifying every open delivery after each merge (quadratic check load); the remote's own merge queue (not available on every plan and repository type an operator uses, and it orders merges outside Grindstone's gate); leaving merges to the operator on the remote (no ordering, and no path to policy delivery).
+
+#### ADR-50 — A person can make a subject; others prove it
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-12, ADR-14 and ADR-36.
+
+**Decision.** A subject's makers are a set — capabilities, the operator, or both — recorded on the subject and on every evidence record that proves it. A `work` task can be made by the operator: the operator claims a ready task, or takes over a run whose escalation offers it, and the factory's workspace provider hands the work over (for SDLC, it pushes the run's branch). The operator returns the result with the authenticated `submit` command naming the subject. A submission is collected exactly as an agent's output: the provider's `adopt(ref)` fetches it without running repository hooks, refuses one that does not descend from the task's pinned base, and returns a collect outcome with the same path policy, extra checks and permission requests. Make and prove applies unchanged: no prover may be among the makers, so a person who made a subject cannot satisfy its `manual` check, and capabilities in fresh sessions prove the person's work. A push to a remote never makes anyone a maker; only `submit` through the authenticated API does.
+
+**Why.** People work with agents far more often than they hand whole tasks to them. When only fully delegated work is governed, the rest goes around Grindstone as plain pull requests, unproven and untraced; the commonest case is an agent most of the way there. **Consequences.** I-15 is stated for a set of makers; the task concept gains person-made tasks with no station run; the delegation-rate measure becomes the maker mix, a scope change; S7 joins the SDLC scenarios; SPEC-17 owns person-made tasks and maker sets and SPEC-18 the SDLC `adopt` hook and take-over (M3). **Rejected:** treating commits pushed to a ticket branch as the operator's (remote content is untrusted, B3); exempting a person's work from checks (its evidence would mean nothing); plain pull requests as the only path for human work (they stay possible, but unproven).
+
+#### ADR-51 — Every caller is a principal with grants; answers record the principal
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-06 and ADR-28.
+
+**Decision.** Every call to the REST API, the operator MCP endpoint and the event stream is made by a principal: the `operator`, `policy` (internal only), or an `agent` principal naming a capability and its run. A principal's token carries grants — the operations it may call and the decision kinds it may answer — and the API refuses anything outside them. Every answer records its principal as well as its channel. The operator's own clients (web, VS Code, the operator plugin) act as the operator, with tokens the operator may scope down; an agent that drives Grindstone uses an agent principal of its own, never the operator's token. In the MVP only the operator and policy answer.
+
+**Why.** The orchestrator (ADR-52) needs a way to act that is not the operator's identity, or its answers would be recorded as the operator's. Principals are cheap to add before the second and third client exist, and costly to retrofit after. **Consequences.** SPEC-15 records the principal on answers (M3), extending SPEC-04's `answered_by`; SPEC-22 introduces client tokens with grants (M4) and SPEC-26 the plugin's (M5); SPEC-10's single operator session holds for M1 and M2. **Rejected:** one operator token for every client (an agent holding it is indistinguishable from the operator); a separate API for agents (two surfaces to secure and keep in step).
+
+#### ADR-52 — An orchestrator can drive the work under a charter, in three delegation modes
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-08, ADR-28, ADR-29, ADR-30, ADR-31, ADR-36 and ADR-38. Built after the MVP: Assist and Checkpointed in R2, Autonomous in R5.
+
+**Decision.**
+
+- **What it is.** The orchestrator is a capability offering the kernel need `core.orchestrate`, served by a factory (SDLC first), running on an agent station as an agent principal (ADR-51), in `work` mode with a read-only workspace and no subject to produce. It drives: it starts commands within approved scope, chooses what runs next among ready work, retries, reassigns and cancels, splits stuck work through the factory's small-change path, and answers or recommends on decisions. It never makes or proves a subject, and never reviews work it directed. The kernel still decides when and where work runs; matching stays deterministic.
+- **Charter.** The operator delegates through a charter: a written, versioned grant naming the delegation mode, the decision kinds the orchestrator may answer, the checkpoints where it must ask and those where it only notifies, the irreversible actions it may take (each named exactly, as a runbook item under I-20), and its limits — the project cap is required, and a time limit may be set. The charter is configuration the orchestrator cannot change (I-14).
+- **Modes.** The mode bounds what a charter can grant. *Assist*: `escalation` decisions; it recommends every other answer. *Checkpointed*: also unflagged `l2` kinds within approved scope, except at the charter's checkpoints. *Autonomous*: also `l3` kinds; where it would have asked the operator it records a `core.assumption` — the question, the options, its choice, its reason and the evidence it relied on — and proceeds, and it stops only at the charter's limits. In every mode a `never`-class or flagged decision, a `permission` decision and an architectural change stay with a person unless the charter names that exact case, and anything `untrusted` always does (I-07, I-21). Overturning an assumption is an ordinary ChangeSet.
+- **Judging questions.** From M3 an agent's `ask(need="operator")` may carry options, each with its approach, tradeoffs, affected files and estimated change class, beside its recommendation. When a charter routes a question to the orchestrator, the kernel snapshots the asking run's workspace to a scratch reference, and the orchestrator studies it read-only in a fresh session with the pinned items, principles and learnings, and may consult specialists. It answers with one of: an option; an option with adjustments; an alternative with its rationale; one clarifying question; or an escalation to the operator. Every answer cites its evidence, and the change-class floor (ADR-29) applies. An answer that would change intent becomes a ChangeSet, never an instruction; a ChangeSet the orchestrator requested still passes its auditor. The asking agent may object once, with evidence; the orchestrator then decides or escalates. A routed question is held open under the consult ceiling as a consult is (ADR-38); only an escalation to a person suspends the turn.
+- **How it runs.** Events — a decision raised, a task finished or failed, a delivery — and a heartbeat start short ticks. Each tick is a fresh session that reads the root intent, the charter, a state digest the kernel assembles and its own `progress` notes, acts through its tools and ends. Its memory is the ledger.
+- **Autonomous builds.** A project started from a one-shot prompt holds the prompt as an immutable root intent item owned by the operator, and everything derived traces to it. Principles the orchestrator drafts are provisional until a person accepts them. Autonomous mode requires the factory's acceptance phase: acceptance tests written from the product definition, before implementation, by a capability other than the implementer, on protected paths; a fidelity audit by a separate capability comparing derived intent with the root prompt on every change to it; and a build report listing the assumptions ranked by what depends on them. Besides success, it stops at the charter's limits, after a set number of ticks without progress, and on churn — the same item amended back and forth, or the same task reopened.
+
+**Why.** Much of what reaches the operator's queue is judgment an engineer exercises — choosing between options an agent offers, retrying, splitting work — which a capable agent grounded in the code can make. Making it a separate principal under a written charter keeps that authority bounded, recorded and revertible, and keeps every guarantee that rests on make and prove; the ChangeSet, freshness and revert machinery is what makes deciding now and correcting later safe, which full autonomy depends on. **Consequences.** I-21 and the threat model's orchestrator row are added, and `core.assumption` joins the kernel kinds in R5; recommendation sources gain the orchestrator; ADR-29's rule that architectural changes are decided by a person, ADR-31's that people own principles, and ADR-38's that only specialist consults hold a call open each gain the exceptions above; the releases table carries the work in R2 and R5, each starting with its own foundation addendum and specifications. No MVP specification builds the orchestrator; the MVP builds its ground (ADR-48 to ADR-51). **Rejected:** an agent using the operator's token (its answers would be recorded as the operator's, ADR-51); an orchestrator that also writes or reviews code (it would judge work it made or directed, against I-15); eligibility by the orchestrator's confidence (ADR-30's reason holds — grants are by kind, mode and charter); one long-lived orchestrator session (its context grows without bound and its state lives outside the ledger); answering on a timeout when the person is slow (silent authority, ADR-28).
+
+#### ADR-53 — Deliveries are classified by a fixed risk rule; routine ones are batched, and policy may deliver them from R2
+
+**Status.** Proposed on 21 October 2026 with foundation v4.10. Amends ADR-30.
+
+**Decision.** A factory's collect outcome carries the facts a delivery's risk class is computed from, and the kernel computes the class by a fixed rule. A delivery is `routine` only when every changed path is within the task's declared paths, no path policy added a check, no finding was raised by the task or its checks, no flag is set, the change is under the project's size threshold, every required check is fresh and passing at the head the queue will deliver, and the project declares that delivering does not release; a project whose delivery deploys has no routine class. Every other delivery is `elevated`. A factory may raise a delivery to `elevated`, never lower it. In the MVP the class is shown on every delivery card, and routine deliveries ready together are batched on one card a person answers at once. From R2, `delivery` of the routine class is `l2`-eligible: policy may answer it at L2 once the project has had a set number of routine deliveries approved by a person with none reverted (seed 10); `elevated` deliveries stay `l3`. A delivery made by policy can be undone by a revert delivery the factory prepares (for SDLC, a revert pull request); a reverted policy delivery, or a failing re-check of one, trips the tripwire.
+
+**Why.** A person's review time should go to what can hurt: a documentation fix and an authentication change should not cost the same decision. Computing the class from facts keeps it predictable and outside any model's say (ADR-30). Policy delivery is auto-merge, which the MVP excludes; batching gives most of the saving without it. **Consequences.** SPEC-18 returns the facts from SDLC's collect, SPEC-28 computes the class and SPEC-15 batches the cards (M3); the SDLC decisions table and the R2 row follow. **Rejected:** a model judging risk (unpredictable and gameable); moving all of `delivery` to `l2` (an authentication change merged by policy); delivering after a timeout (silent authority, ADR-28).
 
 # Roadmap
 
@@ -1884,7 +2012,7 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | SPK-4 GitHub mechanics | 1 day | On the test repository with a GitHub App installation and a ruleset: a status set by the App satisfies the required check; a status at an old head stops counting after the branch updates; auto-merge on a behind pull request waits for the update and the status, and disarming works; pull-request lookup by branch finds closed ones (Q-7); the delivery mode is detectable through the API on the public testbed (enforced) and on a private repository (unenforced); a merge with an expected head SHA fails after a concurrent push |
 | SPK-5 Cooperation mechanics | 2 days | With Claude Code (and each further agent when added): an MCP tool call held open with progress keepalives while a child task runs for 2, 10, 30 and 120 minutes — the client, server and model timeouts and how each is raised by configuration (Q-9); a session dropped mid-wait re-asking and joining the in-flight consult; the ceiling suspend; `load_skill` returning instructions inline and adding tools mid-session; cost and latency of a cached and an uncached consult on the fixture project. Fallback: for an agent whose call cannot be held open, consults park and resume |
 
-**Open questions.** The operator answered every open question at the M0 kickoff (17 October 2026). Answers marked *confirm* stand unless the named spike contradicts them; a contradiction is answered by a superseding record, defaulting to the recorded fallback.
+**Open questions.** The operator answered every open question at the M0 kickoff (17 October 2026); Q-12 was opened with foundation v4.10. Answers marked *confirm* stand unless the named spike contradicts them; a contradiction is answered by a superseding record, defaulting to the recorded fallback.
 
 | ID | Question | Answer | Status |
 | --- | --- | --- | --- |
@@ -1899,10 +2027,11 @@ Spikes are time-boxed experiments in M0 that settle facts the design depends on.
 | Q-9 | How long can an agent's MCP tool call stay open? | Redesigned: the call stays open until the consult answers, under a ceiling (ADR-38) | Decided (ADR-38); SPK-5 measures the timeouts to configure |
 | Q-10 | What is the budget unit when providers do not report usage? | Redesigned: no budgets; limits bound runaway work and cost is recorded (ADR-37) | Decided (ADR-37) |
 | Q-11 | Is the MVP scope in ADR-36 right? | Yes, as recorded | Confirmed by the operator |
+| Q-12 | May one operator run agents in parallel on several subscriptions of one provider? | Not assumed: the operator checks the provider's current terms before configuring a second personal account of it; separate providers, API keys or seats on a team plan are the default (ADR-48) | Open; answered by the operator before SPEC-17 |
 
 ## Spec map
 
-Twenty-seven specifications deliver the MVP. Each is either a **kernel** specification (a module in `grindstone`; may not name a factory kind) or a **factory** specification (a package under `factories/`; may use only the kernel SDK). Every exit criterion of M1–M5 is delivered by at least one specification; M0's criteria are milestone work with no specification.
+Twenty-eight specifications deliver the MVP. Each is either a **kernel** specification (a module in `grindstone`; may not name a factory kind) or a **factory** specification (a package under `factories/`; may use only the kernel SDK). Every exit criterion of M1–M5 is delivered by at least one specification; M0's criteria are milestone work with no specification. SPEC-28, and the M3 parts ADR-48 to ADR-53 add to SPEC-15, SPEC-17 and SPEC-18, have no exit criteria yet: M3's detail, including their criteria, is set at the M2 review, when M3 starts.
 
 | Spec | Title | Kind | Owns | Delivers | Cites |
 | --- | --- | --- | --- | --- | --- |
@@ -1923,20 +2052,21 @@ Twenty-seven specifications deliver the MVP. Each is either a **kernel** specifi
 | SPEC-13 | Manifests, rules and the conformance kit | Kernel | `platform` | M2-04, M2-05 | ADR-13, ADR-21; I-18 |
 | SPEC-14 | SDLC specification authoring | Factory | `factories/sdlc`: specification kinds, spec author, auditor, `/plan` specify step | M2-06 | ADR-22, ADR-33; I-15 |
 | **M3** |  |  |  |  |  |
-| SPEC-15 | Decision service | Kernel | `decisions` | M3-02, M3-04 | ADR-28, ADR-30; I-07, I-11 |
+| SPEC-15 | Decision service | Kernel | `decisions` | M3-02, M3-04 | ADR-28, ADR-30, ADR-51, ADR-53; I-07, I-11 |
 | SPEC-16 | Change pipeline | Kernel | `change` | M3-01, M3-02, M3-03 | ADR-10; I-13 |
-| SPEC-17 | Cooperation, matching and limits | Kernel | `work` | M3-05 | ADR-24, ADR-37, ADR-38, ADR-39; I-10, I-16, I-17, I-19 |
-| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41, ADR-47; I-15 |
+| SPEC-17 | Cooperation, matching, limits, agent accounts and people as makers | Kernel | `work`, `stations` (agent accounts) | M3-05 | ADR-24, ADR-37, ADR-38, ADR-39, ADR-48, ADR-50; I-10, I-15, I-16, I-17, I-19 |
+| SPEC-18 | SDLC reviewers | Factory | `factories/sdlc`: impact, code and security reviewers, path policy, reviewer model configuration, `adopt` and take-over, rebasing for the delivery queue, delivery risk facts | M3-01, M3-06, M3-07 | ADR-12, ADR-18, ADR-23, ADR-41, ADR-47, ADR-49, ADR-50, ADR-53; I-15 |
+| SPEC-28 | Delivery queue and risk classes | Kernel | `delivery` | — | ADR-45, ADR-49, ADR-53; I-08 |
 | **M4** |  |  |  |  |  |
 | SPEC-19 | Template and capability engine | Kernel | `work` | M4-04 | ADR-22, ADR-23, ADR-24; I-14 |
 | SPEC-20 | SDLC discovery, planning and patch | Factory | `factories/sdlc`: `/init`, `/discover`, `/plan` break-down, `/patch` | M4-01, M4-02, M4-06, M4-07 | ADR-33; I-07 |
 | SPEC-21 | Advisor | Factory | `factories/sdlc`: advisor capability, change classes | M4-03 | ADR-29; I-10 |
-| SPEC-22 | Planning UI and VS Code | Kernel | web UI, VS Code extension | M4-05 | ADR-06, ADR-15 |
+| SPEC-22 | Planning UI and VS Code | Kernel | web UI, VS Code extension | M4-05 | ADR-06, ADR-15, ADR-51 |
 | **M5** |  |  |  |  |  |
 | SPEC-23 | Memory and full-text search | Kernel | `memory` | M5-01, M5-02 | ADR-31; I-10 |
 | SPEC-24 | Outer loop and `/repair` | Factory | `factories/sdlc`: signal mapping, `/repair`, repairer | M5-03 | ADR-32; I-07 |
 | SPEC-25 | Autonomy L2 and policy | Kernel | `decisions` | M5-04 | ADR-30; I-12 |
-| SPEC-26 | Operator plugin | Kernel | Claude Code operator plugin | M5-05 | ADR-06, ADR-23 |
+| SPEC-26 | Operator plugin | Kernel | Claude Code operator plugin | M5-05 | ADR-06, ADR-23, ADR-51 |
 | SPEC-27 | Operations | Kernel | Backup, upgrade, GC, operations view | M5-06, M5-07 | ADR-01, ADR-03, ADR-04 |
 
 **Kernel or factory.** M5-03's signal mapping is software-specific, so its specification is a factory specification; the kernel parts it relies on — `untrusted` findings and the regression sweep — already exist from SPEC-12 and SPEC-16. The advisor is a factory capability serving the kernel need `core.advise`; another factory can offer its own advisor for the same need.
@@ -1955,19 +2085,24 @@ Vertical slices mean several things appear in thin form before their full form. 
 | Blob store and garbage collection | `store` | SPEC-02 | SPEC-27 |
 | Lanes | `store` | SPEC-02 | SPEC-17 |
 | Station registry | `stations` | SPEC-06 | SPEC-17 |
+| Agent accounts and quota state | `stations` | SPEC-17 | — |
 | Item model, artifacts, references | `intent` | SPEC-04 | SPEC-11 |
 | ChangeSet lifecycle and apply | `change` | SPEC-04 | SPEC-12, SPEC-16 |
 | Impact walk and verdicts | `change` | SPEC-04 (one round, `unaffected` only) | SPEC-12, SPEC-16 |
 | Decision record, kinds, flags and continuations | `decisions` | SPEC-04 | SPEC-15, SPEC-25 |
+| Answer principals | `decisions` | SPEC-15 | SPEC-25 |
 | Autonomy state, policy and tripwire | `decisions` | SPEC-15 | SPEC-25 |
 | Task lifecycle, runs, turns and reports | `work` | SPEC-06 | SPEC-17, SPEC-19 |
+| Person-made tasks, maker sets and continuation | `work` | SPEC-17 | — |
 | Context pack | `work` | SPEC-06 | SPEC-17, SPEC-23 |
 | Matching and limits | `work` | SPEC-17 | SPEC-19 |
 | Kernel MCP tool set | `surface` | SPEC-07 | SPEC-11, SPEC-17, SPEC-23 |
 | REST API and event stream | `surface` | SPEC-10 | SPEC-22, SPEC-26 |
+| Client tokens and grants | `surface` | SPEC-22 | SPEC-26 |
 | Checks, evidence and freshness | `evidence` | SPEC-08 | SPEC-12 |
 | Delivery port and idempotency ledger | `delivery` | SPEC-08 | SPEC-27 |
-| Container topology, users and secrets | Compose deployment | SPEC-05 | SPEC-27 |
+| Delivery queue and risk class | `delivery` | SPEC-28 | SPEC-27 |
+| Container topology, users and secrets | Compose deployment | SPEC-05 | SPEC-17, SPEC-27 |
 | SDLC item kinds and lifecycles | `factories/sdlc` | SPEC-09 | SPEC-14, SPEC-20 |
 | SDLC workspace provider and copy-back tiers | `factories/sdlc` | SPEC-09 | SPEC-18 |
 | SDLC capabilities and skills | `factories/sdlc` | SPEC-09 | SPEC-14, SPEC-18, SPEC-20, SPEC-21, SPEC-24 |
@@ -1982,9 +2117,10 @@ Releases are outcomes, not plans. Each starts with a short foundation addendum �
 | Release | Outcome | Main additions | Kernel change expected | Depends on |
 | --- | --- | --- | --- | --- |
 | R1 — Factories as packages, RE static | A third-party or in-house factory installs as its own package; a reverse-engineering project analyses trusted binaries and delegates code to SDLC (S6) | Factory packaging and release signing, factory-specific UI views, the `re` factory (static analyst with Ghidra headless and rea, finding writer, `reproduce` and `cross_tool` checks, report export) | None; factory views use existing UI extension points | MVP |
-| R2 — Restore, semantic search, L3 | Projects carry a restorable snapshot of intent; search finds by meaning; verified pull requests can merge without a person | Repository snapshot and restore, vector search and near-duplicate merging, autonomy L3 and auto-merge, baseline generation from an existing codebase, the pi agent | None | MVP |
+| R2 — Restore, semantic search, L3, orchestrator | Projects carry a restorable snapshot of intent; search finds by meaning; verified pull requests can merge without a person; an orchestrator drives the work in Assist and Checkpointed modes | Repository snapshot and restore, vector search and near-duplicate merging, autonomy L3 and auto-merge, policy delivery of routine pull requests (ADR-53), baseline generation from an existing codebase, the pi agent, charters and the orchestrator capability (ADR-52) | Additive, recorded in ADR-52: charters and orchestrator answers (I-21) | MVP |
 | R3 — T2 stations | Untrusted code and dynamic analysis run in a fresh microVM per run | microVM station, network sandbox profiles, dynamic RE capabilities, DAST for a `qa` factory | None; tiers are registry entries | R1 |
 | R4 — T3 stations, hardware and computer use | Agents operate desktop applications and attached devices under runbooks | Full-VM station with device passthrough, bench and flashing tools as tool servers, screen-and-input toolbox, runbook items gating irreversible actions, a first hardware-adjacent factory (`pcb` or `cad`) | None; the `irreversible` flag and I-20 already exist | R3 |
+| R5 — Autonomous builds | From a one-shot product idea, an orchestrator under a charter drives the SDLC factory to verified software, and the person reviews its assumptions | Autonomous mode, `core.assumption`, `/build`, the acceptance phase (acceptance-test author, fidelity auditor, build report), stop conditions | Additive, recorded in ADR-52: `core.assumption` | R2; acceptance of GUI products needs R4 |
 
 **What would count as a design failure.** If R1's RE factory needs a new kernel verb, kind or decision class, or if R3 or R4 need the kernel to know a station's internals, the kernel boundary was drawn wrong. The M5 review checks this explicitly against the factory sketches before R1 is planned.
 
@@ -2019,6 +2155,11 @@ Risks are revisited at every milestone review. Each specification lists the risk
 | The implementer weakens the tests it writes | Test reviewer as a required prover; protected and reviewed copy-back tiers; operator reviews pull requests below L3 | M1-05, M1-07 |
 | Ceremony drives the operator around the system, and intent rots | `/patch` for small changes; scope decisions instead of refused copy-backs; mentions notify; group verdicts; governed share is a success measure | M4-06, M3-01 |
 | Verification is slow in a cache-less runner | A job runs only the ticket's criteria; dependencies baked into the toolchain image; a shared build cache stays out because repository code could taint later evidence | M3 review |
+| Several accounts of one provider breach its terms | Q-12; separate providers, API keys or team seats by default (ADR-48) | SPEC-17 |
+| Parallel deliveries stale each other's evidence and swamp the check station | One delivery queue per target; a moved base re-runs only the checks it made stale (ADR-49) | SPEC-28 |
+| Person-made work goes around proof | Submitted work is collected and proven like an agent's; only `submit` makes a maker; makers never prove (ADR-50, I-15) | SPEC-17, SPEC-18 |
+| The orchestrator misreads a one-shot prompt and builds the wrong thing | Root intent item; fidelity audit on every change to derived intent; acceptance tests written before implementation by another capability; assumptions ranked by what depends on them; notify-only checkpoints (ADR-52) | R5 |
+| Text agents wrote steers the orchestrator's authority | Grants bounded by mode and decision class; flagged, `permission`, `untrusted` and irreversible decisions stay with a person unless named exactly; answers cite evidence and can be reverted; the tripwire (I-21) | R2 |
 
 
 # Planning playbook
@@ -2071,7 +2212,7 @@ In scope. Out of scope, each with the specification, milestone or release that c
 Implements: I-nn, ADR-nn, QS-nn — and how.
 Delivers: Mn-nn → AC-nnxx-k, …
 Depends on: SPEC-nn — exactly what is used from each (factory specs: SDK surface only).
-Scenarios: K1–K4 or S1–S6 steps this specification makes true.
+Scenarios: K1–K4 or S1–S7 steps this specification makes true.
 
 ## 4. Requirements
 REQ-nnxx: one testable statement each.
@@ -2167,6 +2308,7 @@ A specification is accepted only when every item holds. The reviewer records the
 
 | Version | Date | Change |
 | --- | --- | --- |
+| 4.10 | 21 October 2026 | Proposed for the operator's acceptance; a scope change. From evaluating Grindstone against current practice in agent-driven development: ADR-48 (agent accounts, placement by quota, continuation of a lost session; amends ADR-37 and ADR-41), ADR-49 (delivery queue, Grindstone merges in both modes; amends ADR-27, ADR-40 and ADR-45), ADR-50 (a person can make a subject; amends ADR-12, ADR-14 and ADR-36), ADR-51 (principals and grants; amends ADR-06 and ADR-28), ADR-52 (the orchestrator, charters and delegation modes, after the MVP; amends ADR-08, ADR-28, ADR-29, ADR-30, ADR-31, ADR-36 and ADR-38), ADR-53 (risk classes and routine delivery; amends ADR-30). The product goal, problems, jobs, division of labour, delegation modes, non-goals and the maker-mix measure; the glossary; the capacity envelope, I-15, I-21, the threat and failure models and the operations view; the station, task, check, kernel kinds, decision, delivery and cooperation concepts; the component, MCP tool, SDK, REST and out-of-process tables; make and prove, the SDLC capabilities, templates, workspaces, delivery, decisions and S7; the spec map (SPEC-28; SPEC-15, SPEC-17, SPEC-18, SPEC-22 and SPEC-26 extended), ownership, R2 and R5, Q-12 and the risks follow. M1 to M5 exit criteria are unchanged; M3's criteria for the new work are set at the M2 review. |
 | 4.9 | 19 October 2026 | M0 closed at its milestone review (`docs/m0/review.md`): M0-01 to M0-04 are met and ticked, the deferral of SPK-1's VS Code half to M4 and of SPK-3 under ADR-41 is accepted, and the scope and order are unchanged. M0's criteria no longer change. |
 | 4.8 | 19 October 2026 | Editorial, before the M0 review: the status of Q-2 and Q-5 states what the spikes actually confirmed. Q-2: SPK-1 confirmed AHP 1.0.0 with a headless client, and VS Code's attach is deferred to M4 (SPEC-22). Q-5: SPK-3 is deferred, so it confirmed nothing; SPK-1 confirmed that workspace skills are not discovered natively, and SPK-5 led to ADR-43. No commitment changes. |
 | 4.7 | 19 October 2026 | Accepted by the operator: ADR-47 (reviewer independence is a separate capability in a fresh, context-free session; each capability's model is configuration and may be the maker's own; amends ADR-41). The make-and-prove section, the SDLC capability table and independence policy, M3-06, the spec map's SPEC-18 row and the risk table follow. |

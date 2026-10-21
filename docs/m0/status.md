@@ -1,6 +1,6 @@
 # M0 status and handover
 
-Updated 19 October 2026. The living handover between sessions: update it when a step finishes.
+Updated 21 October 2026. The living handover between sessions: update it when a step finishes.
 
 ## Done
 - Foundation v4.4: Q-1 to Q-11 answered; ADR-37 limits instead of budgets, ADR-38 consults stay open under a ceiling, ADR-39 skills materialized per session, ADR-40 delivery modes for remotes that do not enforce rulesets, ADR-41 Claude Code is the only agent for now.
@@ -57,6 +57,7 @@ Updated 19 October 2026. The living handover between sessions: update it when a 
 - The `main` ruleset re-imported by the operator; the live rules require all three CI jobs, `fixture` included (checked 19 October 2026).
 - **M0 closed (19 October 2026):** the milestone review in `docs/m0/review.md` is confirmed, and foundation v4.9 ticks M0-01 to M0-04.
 - Gaps closed before the M0 review (19 October 2026): foundation v4.8 corrects the status of Q-2 and Q-5, which claimed confirmations from SPK-1's deferred VS Code half and from the deferred SPK-3; the fitness functions and their tests read and write UTF-8 and report POSIX paths, so the Python suite passes on Windows without `PYTHONUTF8`, and the contract generator writes LF line endings.
+- Foundation v4.10 proposed (21 October 2026), from evaluating Grindstone against current practice in agent-driven development; a scope change awaiting the operator's acceptance. ADR-48 agent accounts, placement by quota and continuation of a lost session; ADR-49 the delivery queue, with Grindstone merging in both modes; ADR-50 a person can make a subject; ADR-51 principals and grants; ADR-52 the orchestrator, charters and the Assist, Checkpointed and Autonomous modes (R2 and R5); ADR-53 risk classes, batching of routine deliveries, and policy delivery of them from R2. New: I-21, S7, SPEC-28, R5, Q-12. Validated against the accepted M1 specifications: every change is additive or lands at M3 or later, and each M1 decision it later extends (lanes, secrets, retry rules, DEC-0702, the port's `accept`, DEC-0904, REQ-1004) carries a forward note in its specification. One conflict found and resolved: policy delivery of routine pull requests would be auto-merge inside the MVP, so the MVP keeps only the classification and batching, and policy delivery moves to R2. M1 to M5 exit criteria are unchanged; M3's criteria for the new work are set at the M2 review.
 
 ## Next, in order
 1. **M1 backlog:** break the section 7 tickets into work in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
@@ -68,6 +69,9 @@ Updated 19 October 2026. The living handover between sessions: update it when a 
 - **SPK-1's VS Code half:** deferred to M4, with SPEC-22, on the operator's machine (M4-05 needs it; M1 does not).
 
 ## Open with the operator
+- Accept, amend or reject ADR-48 to ADR-53 (foundation v4.10). Because the change touches the concepts and an invariant, the playbook asks for an independent architecture review by a session that did not write it before acceptance.
+- Before SPEC-17: Q-12, whether several subscriptions of one provider may run agents in parallel under its current terms.
+- At the M1 review, with OQ-0502: the recommendation is to keep agent egress open at T1 as an accepted risk, and deliver the egress allow-list with R3's network profiles.
 - Before M1-01's live run: choose the models for the `primary` and `secondary` slots in `deploy/grindstone.toml` (SPEC-06, SPEC-09). They may be the same model (ADR-47).
 - Before M1-08: install the GitHub App on `ex1tium/grindstone` and require `grindstone/verification` from it in that repository's ruleset (SPEC-09, OQ-0902).
 - At the M1 review: whether agent egress stays open at T1 (SPEC-05, OQ-0502), and where M1's real delivery runs (default: the operator's machine; SPEC-05, OQ-0501 checks secrets there).

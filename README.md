@@ -1,12 +1,12 @@
 # Grindstone
 
-**Make agent-driven work trustworthy enough to delegate, in any domain.**
+**Make agent-driven work trustworthy enough to delegate, in any domain, from one decision to an entire build.**
 
-Grindstone is a self-hosted orchestrator for agent work with a person in the loop. You state intent; agents do the work; Grindstone keeps the intent typed and versioned, proves every result independently against the exact intent it claims to satisfy, feeds what the work discovers back into the intent, and asks you only what only a person should decide.
+Grindstone is a self-hosted orchestrator for agent work with a person in the loop. You state intent; agents do the work; Grindstone keeps the intent typed and versioned, proves every result independently against the exact intent it claims to satisfy, feeds what the work discovers back into the intent, and asks you only what only a person should decide. You choose how much to delegate: work alongside agents, hand them tickets, or, after the MVP, let an orchestrator drive a whole build from a one-shot idea under a charter you set.
 
 It is built as a small **domain-neutral kernel** with plug-in **factories**. The kernel holds the guarantees: provenance, freshness, independent proof, reviewed change, typed decisions, and durable, bounded execution. A factory teaches it one domain. Software development is the first factory and the reason Grindstone exists. Reverse engineering, testing and security, CAD, PCB, game development and in-house domains are meant to follow on the same kernel, with no change to it.
 
-> **Status: M1, walking skeleton.** M0 closed on 19 October 2026 ([review](docs/m0/review.md)): the repository scaffold, CI with the M0 fitness functions, the four-container stack and the GitHub testbed are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. Foundation v4.9 is accepted, and the ten M1 specifications are accepted; their tickets are being built. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
+> **Status: M1, walking skeleton.** M0 closed on 19 October 2026 ([review](docs/m0/review.md)): the repository scaffold, CI with the M0 fitness functions, the four-container stack and the GitHub testbed are in place, and spikes SPK-1, SPK-2, SPK-4 and SPK-5 have filed their reports. Foundation v4.9 is accepted, and the ten M1 specifications are accepted; their tickets are being built. Foundation v4.10 (ADR-48 to ADR-53: agent accounts, the delivery queue, people as makers, principals, the orchestrator and routine delivery) is proposed and awaits the operator's acceptance. Grindstone is for a single operator, self-hosted, with GitHub only for now. The live handover is [`docs/m0/status.md`](docs/m0/status.md).
 
 ## Why
 
@@ -24,7 +24,7 @@ Grindstone solves these once, in the kernel, so every domain gets the same answe
 | --- | --- |
 | Typed, versioned intent | Everything agreed on is an item with a stable ID and a content hash. It changes only through a ChangeSet whose full impact was reviewed first. |
 | Independent, fresh proof | Work is done only when someone other than its maker has proven it against the exact inputs, subject and environment. Evidence goes stale on its own when any of those change. |
-| Bounded, recorded authority | People answer typed decisions with a recommendation in front of them. Policy answers only what you allowed, and every answer can be reverted. |
+| Bounded, recorded authority | People answer typed decisions with a recommendation in front of them. Policy, and after the MVP an orchestrator under your charter, answers only what you granted, and every answer can be reverted. |
 
 ## The kernel
 
@@ -46,7 +46,19 @@ Three rules keep the grammar safe:
 2. **Agents never talk to each other.** They cooperate only by loading a skill, consulting a specialist or delegating to one. All of this goes through the kernel and is recorded.
 3. **Results travel as pinned references.** Items and files cross task and factory boundaries by revision and hash, never as copied conversation. When the source changes, everything built on it goes stale.
 
-The division of labour follows from these rules. You decide intent, agents propose, the kernel applies, and only independent evidence closes work.
+The division of labour follows from these rules. You decide intent, agents propose, the kernel applies, and only independent evidence closes work. You may make work too: take over a stuck run or submit your own commit, and it is proven by the same pipeline (ADR-50).
+
+## Delegation modes
+
+After the MVP an orchestrator, a capability that drives commands and decisions the way an engineer would and never writes or reviews code itself, works under a charter you write: the mode, the decisions it may answer, the checkpoints where it must ask, and its limits (ADR-52).
+
+| Mode | The orchestrator | You | From |
+| --- | --- | --- | --- |
+| Assist | Drives the work, retries and triages, and recommends every other answer | Answer every other decision | R2 |
+| Checkpointed | Also answers granted decisions within approved scope | Answer at the checkpoints you chose, and everything flagged | R2 |
+| Autonomous | Answers every granted decision; a question it would have asked becomes a recorded assumption | Review the assumptions and the build report | R5 |
+
+When an agent asks a question, the orchestrator studies a snapshot of that agent's workspace, picks the best option, adjusts it or proposes a better way, and cites its evidence. Anything that changes intent still goes through a reviewed ChangeSet, and overturning an assumption later is an ordinary change.
 
 ## Factories
 
@@ -120,20 +132,21 @@ Agents reach Grindstone only through a per-task MCP surface. They never deliver,
 | M0 Foundations (closed) | Repository, CI and four services; spikes settled; M1 specified |
 | M1 Walking skeleton | A hand-written ticket becomes a verified pull request through a skeleton SDLC factory, and Grindstone starts building itself |
 | M2 Traceable intent | Full item model and relation graph; freshness computed; the `notes` factory proves the kernel neutral |
-| M3 Safe change and cooperation | Findings flow back through reviewed ChangeSets; agents consult and delegate |
+| M3 Safe change and cooperation | Findings flow back through reviewed ChangeSets; agents consult and delegate; parallel work across agent accounts, the delivery queue, and people as makers |
 | M4 Discovery and planning | From an idea to approved tickets, decided in the browser |
 | M5 MVP | Project memory, the outer loop, autonomy L2, day-to-day operations |
 
 | Release | Outcome |
 | --- | --- |
 | R1 | Factories as separate packages; static reverse engineering that delegates code to SDLC |
-| R2 | Snapshot and restore, semantic search, autonomy L3 and auto-merge, further agents |
+| R2 | Snapshot and restore, semantic search, autonomy L3 and auto-merge, policy delivery of routine pull requests, further agents; the orchestrator in Assist and Checkpointed modes |
 | R3 | microVM stations for untrusted code and dynamic analysis |
 | R4 | Full-VM stations, hardware and computer use; a first hardware-adjacent factory |
+| R5 | Autonomous builds: from a one-shot product idea to verified software, with acceptance tests written before the implementation and a fidelity audit against the idea |
 
 Each release must close without a breaking change to the kernel SDK. If one needs a new kernel verb, kind or decision class, the kernel boundary was drawn wrong.
 
-**Out of scope for the MVP:** more than one operator, any git host other than GitHub, Kubernetes or message brokers, separate vector or graph databases, a factory marketplace, agents talking to each other directly, and any merge that bypasses Grindstone's verification.
+**Out of scope for the MVP:** more than one operator, any git host other than GitHub, Kubernetes or message brokers, separate vector or graph databases, a factory marketplace, agents talking to each other directly, and any merge that bypasses Grindstone's verification. The orchestrator comes after the MVP; the MVP lays its ground.
 
 ## Quality bars
 
