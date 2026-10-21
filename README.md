@@ -50,7 +50,9 @@ The division of labour follows from these rules. You decide intent, agents propo
 
 ## Delegation modes
 
-After the MVP one orchestrator per project, a capability the kernel ships that drives commands and decisions the way an engineer would and never writes or reviews code itself, works under a charter you write; each factory teaches it its domain through a playbook, and a factory's part of a project can get a narrower sub-charter. A charter states the mode, the decisions it may answer, the checkpoints where it must ask, and its limits (ADR-52).
+After the MVP one orchestrator per project, a capability the kernel ships that drives commands and decisions the way an engineer would and never writes or reviews code itself, works under a charter you write; each factory teaches it its domain through a playbook. A charter states the mode, the decisions it may answer, the checkpoints where it must ask, and its limits; only you issue charters, and a part of the project can get a narrower one (ADR-52).
+
+Work nests in the item graph, not in agents: a goal can use any mix of factories and contain sub-goals in any of them, in any direction, so an SDLC build can spin off a reverse-engineering goal that spins off a parser build. Factories stay flat peers, and a project can lend one factory's skills to another's specialists. ADR-52 fixes this shape; the R2 and R5 foundation addenda design the details against real code.
 
 | Mode | The orchestrator | You | From |
 | --- | --- | --- | --- |
