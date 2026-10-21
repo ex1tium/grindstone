@@ -32,6 +32,7 @@ In scope:
 - **The agent host core:** control API server, backend wrapper, event signer, the scripted preset (ADR-19).
 
 Out of scope:
+- **Agent accounts and placement by quota** (ADR-48, foundation v4.10): SPEC-17 (M3). In M1 the station serves one account; with more accounts the agent-user pool (OQ-0604) grows with the lanes.
 - **Tasks, runs, turns, reports, matching, templates, context packs, liveness rules, failure causes, suspension:** part 2.
 - **Users, file modes, secrets, the helper that runs commands as an agent user, the Claude preset's launcher:** SPEC-05.
 - **The runner's executors and the meaning of job payloads:** SPEC-08.

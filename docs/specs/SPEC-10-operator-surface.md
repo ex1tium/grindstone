@@ -37,6 +37,7 @@ In scope:
 - **The generated TypeScript REST client.**
 
 Out of scope:
+- **Principals** (ADR-51, foundation v4.10): client tokens with grants, SPEC-22 and SPEC-26; answer principals, SPEC-15. REQ-1004's reliance on the client header holds while every caller is the operator.
 - **Other clients.** Per-client tokens for VS Code and the operator plugin: SPEC-22 and SPEC-26.
 - **Other views.** Item pages with graphs, revision diffs across artifacts, and the operations view: SPEC-11, SPEC-22 and SPEC-27.
 - **Live sessions.** Viewing, steering and AHP attach in the browser: SPEC-22 (M4).
