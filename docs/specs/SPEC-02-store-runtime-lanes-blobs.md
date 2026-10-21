@@ -26,7 +26,7 @@ In scope:
 - The crash harness and the coverage check that every external step has a crash-and-resume test (FF-10).
 
 Out of scope:
-- **Lanes per agent account** (ADR-48, proposed in foundation v4.10): SPEC-17 (M3) adds an optional account to `LaneSpec`. M1 and M2 run one account, so the lanes here are that account's.
+- **Lanes per agent account** (ADR-48, foundation v4.10): SPEC-17 (M3) adds an optional account to `LaneSpec`. M1 and M2 run one account, so the lanes here are that account's.
 - Blob garbage collection, the `blob.stored` and `blob.collected` events, backup, restore and upgrade runbooks: SPEC-27 (M5). In M1 the store never deletes a blob.
 - The station registry's sessions, jobs and workspaces, and dispatch onto lanes: SPEC-06.
 - Instance configuration files and their validation: SPEC-03, which hands the store its settings.

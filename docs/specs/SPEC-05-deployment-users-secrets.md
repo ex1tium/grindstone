@@ -29,7 +29,7 @@ In scope:
 - The M1-05 security tests.
 
 Out of scope:
-- **Several agent accounts** (ADR-48, proposed in foundation v4.10): SPEC-17 (M3) adds one credential secret per account and gives each session only its own. M1 provisions the one `claude_oauth_token`.
+- **Several agent accounts** (ADR-48, foundation v4.10): SPEC-17 (M3) adds one credential secret per account and gives each session only its own. M1 provisions the one `claude_oauth_token`.
 - The host's control API, backend wrapper, sessions, events and the scripted agent preset: SPEC-06.
 - How grindstone writes and reads workspaces through the workspace provider, copy-back tiers and hooks in the control plane: SPEC-06 and SPEC-09.
 - The operator login flow: SPEC-10. This specification provisions its secret.

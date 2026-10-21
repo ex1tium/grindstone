@@ -28,7 +28,7 @@ In scope:
 - **Live runs.** M1-01, M1-02 and M1-08.
 
 Out of scope:
-- **Delivery upkeep and person-made subjects** (ADR-49, ADR-50, proposed in foundation v4.10): rebasing for the delivery queue, `adopt` and take-over: SPEC-18 (M3). DEC-0904 holds for M1 and M2; from SPEC-28, Grindstone merges after a person's `delivery` decision in both modes, which is still not auto-merge.
+- **Delivery upkeep and person-made subjects** (ADR-49, ADR-50, foundation v4.10): rebasing for the delivery queue, `adopt` and take-over: SPEC-18 (M3). DEC-0904 holds for M1 and M2; from SPEC-28, Grindstone merges after a person's `delivery` decision in both modes, which is still not auto-merge.
 - **Other kinds and work.** Product, feature, milestone, exit criterion, spec header, design decision, ADR kinds and specification authoring: SPEC-14 (M2) and SPEC-20 (M4).
 - **Reviewers.** Code, security and impact reviewers, the security path policy, reviewer-model enforcement, findings and learnings from `/implement`, and rework rounds: SPEC-18 (M3).
 - **Lifecycle writers.** Transitions after the initial state (ticket `in_progress` … `done`, requirement `implemented` and `verified`), which S1's last step names: SPEC-11 and SPEC-12 add the writers.

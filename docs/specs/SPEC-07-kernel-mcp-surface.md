@@ -23,7 +23,7 @@ In scope:
 - **Wrapper and versioning:** the tool wrapper (scoping by mode and pins, structured errors, open-call counting, progress keepalives); generated tool schemas and the tool-set version.
 
 Out of scope:
-- **`progress` and options on `ask` to the operator** (ADR-48, ADR-52, proposed in foundation v4.10): SPEC-17 (M3). A question a charter routes to the orchestrator, answered in the open call, and the orchestrator's charter-scoped tools, ADR-16's one exception, come after the MVP; DEC-0702 holds for every question a person answers.
+- **`progress` and options on `ask` to the operator** (ADR-48, ADR-52, foundation v4.10): SPEC-17 (M3). A question a charter routes to the orchestrator, answered in the open call, and the orchestrator's charter-scoped tools, ADR-16's one exception, come after the MVP; DEC-0702 holds for every question a person answers.
 - `ask` to a specialist, `delegate`, `load_skill` and skill tools listed from session start (ADR-43): SPEC-17 (M3). In M1, `ask` with any need but `operator` returns `not_available`.
 - `search`: SPEC-23 (M5).
 - `read_items(query)` over the item graph: SPEC-11 (M2). In M1, `read_items` takes a list of IDs.

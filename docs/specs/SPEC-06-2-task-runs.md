@@ -24,7 +24,7 @@ In scope:
 - **Collect into verifying.** The collect outcome, output files, proposals as a draft request, permission requests at collect, check tasks for review checks, and the hand-over to delivery.
 
 Out of scope:
-- **Continuation and people as makers** (ADR-48, ADR-50, proposed in foundation v4.10): continuing a lost session from a continuation pack, `context_exhausted` continuing once, moving a rate-limited run to another account, person-made tasks and take-over: SPEC-17 (M3). REQ-0613's retry rules hold until then.
+- **Continuation and people as makers** (ADR-48, ADR-50, foundation v4.10): continuing a lost session from a continuation pack, `context_exhausted` continuing once, moving a rate-limited run to another account, person-made tasks and take-over: SPEC-17 (M3). REQ-0613's retry rules hold until then.
 - **Station services:** part 1.
 - **Kernel MCP tools themselves:** SPEC-07. This part provides the work services they call.
 - **Proof and delivery:** check plans, evidence, the gate and the delivery port, SPEC-08. This part moves the task on SPEC-08's results and events.

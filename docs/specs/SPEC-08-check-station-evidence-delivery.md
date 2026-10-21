@@ -29,7 +29,7 @@ In scope:
 - **Ports.** The SDK ports `CheckMethod` and `DeliveryAdapter`. `SubjectResolver` is SPEC-06 part 1's.
 
 Out of scope:
-- **The delivery queue and risk classes** (ADR-49, ADR-53, proposed in foundation v4.10): SPEC-28 (M3) serializes deliveries per target and calls `accept` in both modes. In M1 and M2 a person merges on the remote in enforced mode, as here.
+- **The delivery queue and risk classes** (ADR-49, ADR-53, foundation v4.10): SPEC-28 (M3) serializes deliveries per target and calls `accept` in both modes. In M1 and M2 a person merges on the remote in enforced mode, as here.
 - **Other shapes.** `reproduce` and `cross_tool` execution: R1. The `manual` method and its decision: SPEC-15 (M3).
 - **Staleness at scale.** The regression sweep, re-check tasks, reopening done tasks, and freshness property tests over every subject kind: SPEC-12 (M2). M1's freshness covers the M1 subject kinds and is the function SPEC-12 extends.
 - **Advisory checks** raising `suggestion` decisions: SPEC-15.
