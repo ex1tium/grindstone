@@ -50,7 +50,7 @@ The division of labour follows from these rules. You decide intent, agents propo
 
 ## Delegation modes
 
-After the MVP an orchestrator, a capability that drives commands and decisions the way an engineer would and never writes or reviews code itself, works under a charter you write: the mode, the decisions it may answer, the checkpoints where it must ask, and its limits (ADR-52).
+After the MVP one orchestrator per project, a capability the kernel ships that drives commands and decisions the way an engineer would and never writes or reviews code itself, works under a charter you write; each factory teaches it its domain through a playbook, and a factory's part of a project can get a narrower sub-charter. A charter states the mode, the decisions it may answer, the checkpoints where it must ask, and its limits (ADR-52).
 
 | Mode | The orchestrator | You | From |
 | --- | --- | --- | --- |
