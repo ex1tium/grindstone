@@ -9,6 +9,11 @@ export type AuthorKind = "person" | "agent" | "policy" | "system";
  * Overall state of a service or one of its dependencies.
  */
 export type HealthStatus = "ok" | "degraded" | "down";
+/**
+ * How an error is handled, and by whom.
+ */
+export type ErrorClass = "validation" | "rule" | "authority" | "limit" | "transient" | "internal";
+export type JsonValue = unknown;
 
 export interface GrindstoneContracts {
   AuthorKind: AuthorKind;
@@ -16,10 +21,13 @@ export interface GrindstoneContracts {
   BlobSetSubject: BlobSetSubject;
   BlobSubject: BlobSubject;
   DependencyHealth: DependencyHealth;
+  ErrorClass: ErrorClass;
+  ErrorEnvelope: ErrorEnvelope;
   GitCommitSubject: GitCommitSubject;
   HealthStatus: HealthStatus;
   ItemRef: ItemRef;
   ItemRevisionSubject: ItemRevisionSubject;
+  JsonValue: JsonValue;
   Provenance: Provenance;
   RunManifest: RunManifest;
   ServiceHealth: ServiceHealth;
@@ -62,6 +70,19 @@ export interface DependencyHealth {
    */
   name: string;
   status: HealthStatus;
+}
+/**
+ * One service error, in the shape every interface returns.
+ */
+export interface ErrorEnvelope {
+  code: string;
+  detail: {
+    [k: string]: JsonValue | undefined;
+  };
+  error_class: ErrorClass;
+  message: string;
+  retryable: boolean;
+  schema_version: 1;
 }
 /**
  * A commit in a repository.
