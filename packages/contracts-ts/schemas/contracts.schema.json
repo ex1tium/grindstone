@@ -1,5 +1,83 @@
 {
   "$defs": {
+    "AuthorKind": {
+      "description": "The kind of principal that authored a revision.",
+      "enum": ["person", "agent", "policy", "system"],
+      "title": "AuthorKind",
+      "type": "string"
+    },
+    "BlobRef": {
+      "additionalProperties": false,
+      "description": "Content in the blob store, addressed by the hash of its bytes.",
+      "properties": {
+        "media_type": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "size": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "sha256", "media_type", "size"],
+      "title": "BlobRef",
+      "type": "object"
+    },
+    "BlobSetSubject": {
+      "additionalProperties": false,
+      "description": "A set of blobs, held sorted and unique by content hash.",
+      "properties": {
+        "kind": {
+          "const": "blob_set",
+          "default": "blob_set",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/BlobRef"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "kind", "members"],
+      "title": "BlobSetSubject",
+      "type": "object"
+    },
+    "BlobSubject": {
+      "additionalProperties": false,
+      "description": "A single blob.",
+      "properties": {
+        "blob": {
+          "$ref": "#/$defs/BlobRef"
+        },
+        "kind": {
+          "const": "blob",
+          "default": "blob",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "kind", "blob"],
+      "title": "BlobSubject",
+      "type": "object"
+    },
     "DependencyHealth": {
       "additionalProperties": false,
       "description": "The state of one thing a service needs, such as its database.",
@@ -29,11 +107,275 @@
       "title": "DependencyHealth",
       "type": "object"
     },
+    "GitCommitSubject": {
+      "additionalProperties": false,
+      "description": "A commit in a repository.",
+      "properties": {
+        "kind": {
+          "const": "git_commit",
+          "default": "git_commit",
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "sha": {
+          "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "kind", "repo", "sha"],
+      "title": "GitCommitSubject",
+      "type": "object"
+    },
     "HealthStatus": {
       "description": "Overall state of a service or one of its dependencies.",
       "enum": ["ok", "degraded", "down"],
       "title": "HealthStatus",
       "type": "string"
+    },
+    "ItemRef": {
+      "additionalProperties": false,
+      "description": "One item revision, pinned by its semantic hash.",
+      "properties": {
+        "hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "id", "hash"],
+      "title": "ItemRef",
+      "type": "object"
+    },
+    "ItemRevisionSubject": {
+      "additionalProperties": false,
+      "description": "An item revision, proven as an object in its own right.",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/ItemRef"
+        },
+        "kind": {
+          "const": "item_revision",
+          "default": "item_revision",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "kind", "item"],
+      "title": "ItemRevisionSubject",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Carried by every revision: the author, what it came through, and the reason.",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "author_kind": {
+          "$ref": "#/$defs/AuthorKind"
+        },
+        "changeset": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decision": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "finding": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "task": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "schema_version",
+        "author_kind",
+        "author",
+        "changeset",
+        "task",
+        "finding",
+        "decision",
+        "reason"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RunManifest": {
+      "additionalProperties": false,
+      "description": "The pinned inputs, configuration and prompts of one task run.",
+      "properties": {
+        "capability": {
+          "type": "string"
+        },
+        "capability_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "context_pack_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "factory": {
+          "type": "string"
+        },
+        "factory_version": {
+          "type": "string"
+        },
+        "instance_config_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ItemRef"
+          },
+          "type": "array"
+        },
+        "model": {
+          "type": "string"
+        },
+        "project_config_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "prompts": {
+          "items": {
+            "$ref": "#/$defs/BlobRef"
+          },
+          "type": "array"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "run": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "blob": "#/$defs/BlobSubject",
+                  "blob_set": "#/$defs/BlobSetSubject",
+                  "git_commit": "#/$defs/GitCommitSubject",
+                  "item_revision": "#/$defs/ItemRevisionSubject"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/GitCommitSubject"
+                },
+                {
+                  "$ref": "#/$defs/BlobSubject"
+                },
+                {
+                  "$ref": "#/$defs/BlobSetSubject"
+                },
+                {
+                  "$ref": "#/$defs/ItemRevisionSubject"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "task": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "run",
+        "task",
+        "items",
+        "capability",
+        "capability_hash",
+        "factory",
+        "factory_version",
+        "provider",
+        "model",
+        "subject",
+        "context_pack_hash",
+        "instance_config_hash",
+        "project_config_hash",
+        "prompts"
+      ],
+      "title": "RunManifest",
+      "type": "object"
     },
     "ServiceHealth": {
       "additionalProperties": false,
