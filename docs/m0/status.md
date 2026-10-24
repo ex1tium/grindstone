@@ -63,7 +63,7 @@ Updated 24 October 2026. The living handover between sessions: update it when a 
 - **Foundation v4.11 accepted (24 October 2026)** from the operator's decisions below: ADR-55, agent egress open at T1 and web search and fetch through a `web` permission the SDLC implementer holds (reviewers not by default), a capability holding it exposed from M3 (amends ADR-54); ADR-56, a lost session resumes natively only within an hour of its last activity, in M1 after a host restart (amends ADR-48). SPEC-05, SPEC-06 parts 1 and 2 and SPEC-09 are amended to match (REQ-0630, AC-0630-1).
 
 ## Next, in order
-1. **M1 backlog:** break the section 7 tickets into work in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
+1. **M1 backlog:** tracked in `docs/m1/backlog.md` (51 tickets in nine dependency layers; layer 0 is TKT-0101 and TKT-0201). Build the section 7 tickets in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
 
 ## Decided by the operator (24 October 2026), before M1's build
 - **Models:** Opus 5.5 for both `primary` (implementer) and `secondary` (test reviewer), set in `deploy/grindstone.toml` when its ticket creates it (ADR-47 allows the same model).
