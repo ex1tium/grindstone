@@ -35,6 +35,9 @@ from enum import IntEnum
 from pathlib import Path
 from typing import cast
 
+PRESENTATION_KEY = "x-grindstone-presentation"
+"""The schema mark `grindstone.contracts.base.PRESENTATION_SCHEMA_KEY` writes."""
+
 BUNDLE = "packages/contracts-ts/schemas/contracts.schema.json"
 UPGRADES = "docs/upgrades.md"
 VERSION_FIELD = "schema_version"
@@ -92,12 +95,10 @@ def _version(model: Schema) -> int | None:
 def _is_presentation(prop: Schema) -> bool:
     """Whether a field is presentation, so outside the semantic hash.
 
-    No field carries a mark yet: `Presentation` arrives with TKT-0103, and the
-    marker it writes into the generated schema is read here once it exists.
-    Until then every field is semantic, as an unmarked field is.
+    `Presentation` (TKT-0103) writes `x-grindstone-presentation: true` into a
+    marked field's schema; an unmarked field is semantic.
     """
-    del prop
-    return False
+    return prop.get(PRESENTATION_KEY) is True
 
 
 def _strip(value: object) -> object:
