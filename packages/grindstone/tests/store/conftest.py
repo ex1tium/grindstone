@@ -1,0 +1,85 @@
+"""Fixtures for the store's integration tests.
+
+They need PostgreSQL: `GRINDSTONE_TEST_DATABASE_URL` names a server and a role
+that may create databases (CI runs a `postgres` service). Each test gets a
+fresh database, dropped afterwards. Without the variable the tests are skipped.
+"""
+
+import os
+import uuid
+from collections.abc import Iterator
+
+import psycopg
+import pytest
+from dbos import DBOS
+from psycopg import sql
+from sqlalchemy import Engine, make_url
+
+from grindstone.store import Database, close_database, create_engine, open_database
+
+TEST_DATABASE_ENV = "GRINDSTONE_TEST_DATABASE_URL"
+
+
+def _libpq_url(url: str) -> str:
+    """The same URL in the form psycopg accepts."""
+    return make_url(url).set(drivername="postgresql").render_as_string(hide_password=False)
+
+
+@pytest.fixture
+def database_url() -> Iterator[str]:
+    """A fresh, empty database on the test server, as a SQLAlchemy URL string."""
+    server = os.environ.get(TEST_DATABASE_ENV)
+    if not server:
+        pytest.skip(f"{TEST_DATABASE_ENV} is not set; integration tests need PostgreSQL")
+    name = f"gs_test_{uuid.uuid4().hex[:16]}"
+    with psycopg.connect(_libpq_url(server), autocommit=True) as conn:
+        conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
+    try:
+        yield (
+            make_url(server)
+            .set(drivername="postgresql+psycopg", database=name)
+            .render_as_string(hide_password=False)
+        )
+    finally:
+        with psycopg.connect(_libpq_url(server), autocommit=True) as conn:
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(name))
+            )
+
+
+@pytest.fixture
+def engine(database_url: str) -> Iterator[Engine]:
+    """An engine of the test's own, for setting up and inspecting the database."""
+    test_engine = create_engine(database_url)
+    try:
+        yield test_engine
+    finally:
+        test_engine.dispose()
+
+
+@pytest.fixture
+def store(database_url: str) -> Iterator[Database]:
+    """The store opened on the fresh database, as start-up opens it."""
+    database = open_database(database_url)
+    try:
+        yield database
+    finally:
+        close_database()
+
+
+@pytest.fixture
+def dbos_store(store: Database, database_url: str) -> Iterator[Database]:
+    """The store with DBOS launched on the same database, system tables in `dbos`."""
+    DBOS(
+        config={
+            "name": "grindstone-test",
+            "system_database_url": database_url,
+            "dbos_system_schema": "dbos",
+            "application_version": "test",
+        }
+    )
+    DBOS.launch()
+    try:
+        yield store
+    finally:
+        DBOS.destroy()

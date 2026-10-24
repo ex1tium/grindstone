@@ -24,6 +24,21 @@ jobs:
     name: Lint, types, tests, fitness functions
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # The store's integration tests (pytest marker `integration`) create a
+    # database per test on this server; the image is the one compose runs.
+    services:
+      postgres:
+        image: postgres:18.6-trixie@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+        env:
+          POSTGRES_USER: grindstone
+          POSTGRES_PASSWORD: grindstone-ci
+          POSTGRES_DB: grindstone
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U grindstone -d grindstone"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      GRINDSTONE_TEST_DATABASE_URL: postgresql://grindstone:grindstone-ci@localhost:5432/grindstone
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

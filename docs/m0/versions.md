@@ -23,6 +23,8 @@ Resolved on 17 October 2026 from the primary sources named below: the PyPI JSON 
 | fastapi | 0.143.3 | 2026-10-16 | REST API and health |
 | uvicorn | 0.54.0 | 2026-09-25 | ASGI server |
 | psycopg[binary] | 3.3.6 | 2026-09-18 | PostgreSQL driver |
+| dbos | 3.3.0 | 2026-10-15 | Workflows and datasource transactions (ADR-03, SPEC-02); pinned by TKT-0201, re-checked on the PyPI JSON API on 24 October 2026 |
+| sqlalchemy | 2.1.6 | 2026-10-21 | SQLAlchemy Core over psycopg 3, shared with DBOS's datasource (SPEC-02, DEC-0201). DEC-0201 named 2.1.5, the latest when SPEC-02 was written; 2.1.6 is the latest compatible release on 24 October 2026 (ADR-46) |
 | pytest | 9.1.1 | 2026-06-19 | Tests |
 | hypothesis | 6.170.1 | 2026-10-16 | Property tests (from M1) |
 | httpx2 | 2.13.1 | 2026-09-23 | Starlette's test client; `httpx` with the test client is deprecated in Starlette 1.x |
@@ -57,7 +59,7 @@ These are what the spikes start from. Each is pinned in a manifest only when the
 | `@agentclientprotocol/sdk` | 1.9.0 | 2026-10-16 | SPK-1 | ACP client library, maintained by the ACP project |
 | `@agentclientprotocol/claude-agent-acp` | 0.93.0 | 2026-10-16 | SPK-1 | The Claude ACP adapter the foundation calls "the vendored ACP agent plugin"; it superseded `@zed-industries/claude-code-acp`, last released March 2026 |
 | `@modelcontextprotocol/sdk` | 1.32.1 | 2026-10-05 | SPK-1 | Stub MCP clients in tests |
-| dbos | 3.3.0 | 2026-10-15 | SPK-2 | Declares Python up to 3.14 |
+| dbos | 3.3.0 | 2026-10-15 | SPK-2 | Declares Python up to 3.14. Pinned since TKT-0201 (above) |
 | fastmcp | 4.1.0 | 2026-10-08 | SPK-1 (Q-6) | Kernel MCP surface |
 | mcp | 2.3.0 | 2026-10-02 | SPK-1 (Q-6) | Official MCP Python SDK, the fallback |
 
@@ -69,7 +71,7 @@ Checked on 17 October 2026 against the PyPI JSON API and the npm registry while 
 
 | Package | Latest | Released | Specification | Observation |
 | --- | --- | --- | --- | --- |
-| sqlalchemy | 2.1.5 | 2026-10-16 | SPEC-02 | Already in the lockfile through DBOS; pinned directly for DBOS datasource transactions |
+| sqlalchemy | 2.1.5 | 2026-10-16 | SPEC-02 | Already in the lockfile through DBOS; pinned directly for DBOS datasource transactions. Pinned at 2.1.6 since TKT-0201 (above) |
 | pyyaml | 6.0.3 | 2025-09-25 | SPEC-03 | Safe loader only; CPython 3.14 wheels |
 | packaging | 26.3 | 2026-08-04 | SPEC-03 | SDK range checks; already in the lockfile |
 | argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-05 (written by `make secrets`), SPEC-10 (verified) | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels |
