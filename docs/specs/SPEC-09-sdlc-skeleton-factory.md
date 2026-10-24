@@ -1,5 +1,5 @@
 # SPEC-09 — SDLC skeleton factory
-Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`); amended 24 October 2026 with the operator's decisions in foundation v4.11 (ADR-55: the implementer holds `web`; OQ-0902 answered) · Milestone: M1
 Kind: factory `sdlc` · Owns, in `factories/sdlc/`:
 - the kinds `sdlc.requirement`, `sdlc.criterion` and `sdlc.ticket` with their edges and lifecycles;
 - the capabilities `sdlc.implementer` and `sdlc.test_reviewer`;
@@ -158,7 +158,7 @@ A protected path is in the commit while its permission is pending, and the kerne
 | Offers | `sdlc.implement` · `delegate`; accepts `sdlc.ticket` | `sdlc.review.tests` · `check` |
 | Agent | preset `claude`, model slot `primary`, high effort | preset `claude`, model slot `secondary` |
 | Workspace | `write`, provider `sdlc.git` | `read_only` |
-| Permissions | `read`, `write`, `shell`; otherwise `deny` (no web tools) | `read`, `shell`; otherwise `deny` |
+| Permissions | `read`, `write`, `shell`, `web` (search and fetch, ADR-55); otherwise `deny` | `read`, `shell`; otherwise `deny` (no web tools unless the project grants `web`) |
 | Produces | Report `implementation_report.json`: `summary`, `criteria` (IDs addressed), `tests` (paths added or changed), `notes`; no kinds in M1 | Report `test_review.json`: SPEC-08's `ReviewVerdict`, with per-test notes |
 | May check | — | `review` on `git_commit` |
 | Tier | T1 | T0 |
@@ -328,7 +328,7 @@ AC-0922-1: Live run: the stable instance executes a Grindstone ticket for M2 on 
 ## 9. Open items and risks
 
 OQ-0901: Which Grindstone ticket for M2 is M1-08's? · Default: a small M2 ticket whose criteria have unit tests that run without Postgres or Docker, so the CI suite runs `pytest -m "not integration"` in Grindstone's own toolchain image, which the operator builds with the locked dependencies, because the runner has no network (SPEC-05, DEC-0505); a ticket that changes dependencies is not M1-08's · Resolved at the M1 review, when M2's specifications exist.
-OQ-0902: Before M1-08, is the GitHub App installed on `ex1tium/grindstone`, with `grindstone/verification` required from it in that repository's ruleset? · Default: the operator installs it and adds the check to `.github/rulesets/grindstone-main.json` before the run · Resolved by the operator at the M1 close.
+OQ-0902: Before M1-08, is the GitHub App installed on `ex1tium/grindstone`, with `grindstone/verification` required from it in that repository's ruleset? · Default: the operator installs it and adds the check to `.github/rulesets/grindstone-main.json` before the run · The App was installed on `ex1tium/grindstone` by the operator (24 October 2026); the required check is added just before M1-08, because nothing posts it earlier and requiring it sooner would block every pull request.
 OQ-0903: Should a behind pull request be updated and re-verified automatically? · Default: no in M1; it waits with its status as posted (Q-7 confirmed that auto-merge waits too) · Resolved by SPEC-12 and SPEC-24.
 
 Risks mitigated: repository-borne execution in the control plane (hygiene, copy-out collect, tests with hostile fixtures); forged test claims (annotations read from the commit; reviewer acknowledgement); duplicate pushes, pull requests and statuses (lookups by head branch and existing statuses); unseen bypass in unenforced mode (activity and merge observation).

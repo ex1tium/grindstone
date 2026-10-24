@@ -1,5 +1,5 @@
 # SPEC-06 part 1 — Stations and the agent host
-Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`); amended 24 October 2026 with the operator's decisions in foundation v4.11 (ADR-55, ADR-56: the `web` category, REQ-0630, OQ-0601 resolved) · Milestone: M1
 Kind: kernel · Owns:
 - `grindstone.stations`: agent-user bindings, sessions, workspace lifecycle, the host adapter and its event intake, reconciliation, the activity registry, the runner job envelope and dispatch;
 - the SDK ports `WorkspaceProvider` and `SubjectResolver`, with `RunContext`, `Materialization` and `CollectOutcome`;
@@ -75,8 +75,9 @@ REQ-0621: Runner jobs are written as job directories with a typed envelope, pick
 REQ-0623: A run is bound to one agent user from the station's pool when its workspace is prepared, every session of the run runs as that user, no two unfinished runs share a user, and the binding is released only when the run's workspace is discarded.
 REQ-0624: The SDK ports, protocols in `grindstone.contracts.ports` (SPEC-03, DEC-0308), `WorkspaceProvider` (`prepare`, `collect`, `discard`) and `SubjectResolver` (`materialize`, `read_file`) take a kernel-built `RunContext` or `Context`, and `collect` returns a `CollectOutcome` with the subject, extra checks, permission requests and prover context, or a typed refusal.
 REQ-0625: The host delivers each session's events one at a time in sequence order and does not send the next until the current one is acknowledged, so a refused event never sits behind a later one.
-REQ-0626: Per-session options are agent-neutral (model, effort, permission categories, tool timeout, read-only); each preset maps them to its agent's own settings, and nothing in `stations` or the host core names an agent-specific setting.
+REQ-0626: Per-session options are agent-neutral (model, effort, permission categories `read`, `write`, `shell` and `web`, tool timeout, read-only); each preset maps them to its agent's own settings, and nothing in `stations` or the host core names an agent-specific setting.
 REQ-0629: Before a run's collect, and before its agent user is released, every process of that user is stopped and the host confirms that none remains; collect and release do not proceed until it has.
+REQ-0630: A session reported `host_lost` whose last host event is less than the instance's resume window old (seed 60 minutes) is resumed natively: `stations` asks the new host to create the run's next session resuming the lost one, as the same agent user and account and with the same configuration directory, which the host keeps until the session is resumed or the window passes and then disposes; past the window, or when the resume fails, the next session is new, and the run records which it was (ADR-56).
 
 ## 5. Design
 
@@ -215,9 +216,9 @@ DEC-0610: Stop every process of a run's agent user before collect and before rel
 
 ## 7. Tickets and acceptance criteria
 
-TKT-0602: Stations: agent-user bindings, sessions, workspaces, host client, host event intake, reconciliation, activity registry, runner job dispatch · implements REQ-0606, REQ-0609, REQ-0616, REQ-0619, REQ-0621, REQ-0623, REQ-0629 · depends on TKT-0204, TKT-0205, TKT-0303 · paths `packages/grindstone/src/grindstone/stations/`, `packages/grindstone/src/grindstone/contracts/stations.py`, `packages/grindstone/tests/stations/`.
+TKT-0602: Stations: agent-user bindings, sessions, workspaces, host client, host event intake, reconciliation, activity registry, runner job dispatch · implements REQ-0606, REQ-0609, REQ-0616, REQ-0619, REQ-0621, REQ-0623, REQ-0629, REQ-0630 · depends on TKT-0204, TKT-0205, TKT-0303 · paths `packages/grindstone/src/grindstone/stations/`, `packages/grindstone/src/grindstone/contracts/stations.py`, `packages/grindstone/tests/stations/`.
 TKT-0604: Scripted preset · implements REQ-0620 · depends on TKT-0605 · paths `agent-host/presets/scripted/`, `agent-host/test/`.
-TKT-0605: Agent host core: control API, backend wrapper, preset option mapping, ordered signed events · implements REQ-0617, REQ-0618, REQ-0625, REQ-0626 · depends on TKT-0502, TKT-0504 · paths `agent-host/src/`, `agent-host/package.json`, `packages/contracts-ts/`.
+TKT-0605: Agent host core: control API, backend wrapper, preset option mapping, ordered signed events · implements REQ-0617, REQ-0618, REQ-0625, REQ-0626, REQ-0630 · depends on TKT-0502, TKT-0504 · paths `agent-host/src/`, `agent-host/package.json`, `packages/contracts-ts/`.
 TKT-0607: SDK ports `WorkspaceProvider` and `SubjectResolver`, their contracts and the kernel's `blob`, `blob_set` and `item_revision` resolvers · implements REQ-0624 · depends on TKT-0301 · paths `packages/grindstone/src/grindstone/contracts/ports.py` (the protocols), `packages/grindstone/src/grindstone/contracts/stations.py` (`RunContext`, `Materialization`, `CollectOutcome`), the SDK's export list in `packages/grindstone/src/grindstone/sdk/`, `packages/grindstone/src/grindstone/stations/`.
 
 AC-0606-1: Two runs of one task get different workspaces under their users' subtrees, and a read-only run's workspace is materialized from its subject by the resolver, not from the maker's workspace · verifies REQ-0606 · integration · `test_fresh_workspace_per_run`.
@@ -233,11 +234,12 @@ AC-0624-1: A fixture provider and resolver in the `notes` style implement the po
 AC-0625-1: With intake refusing one event, the host does not send that session's next event until the first is accepted, while another session's events keep flowing · verifies REQ-0625 · integration · `test_host_events_in_order_per_session`.
 AC-0626-1: A grep of `packages/grindstone/src/grindstone/stations/` and `agent-host/src/` for the Claude preset's setting names finds none, and the Claude preset maps `tool_timeout_seconds` to its timeout variable · verifies REQ-0626 · contract · `test_no_agent_specific_settings_in_core`.
 AC-0629-1: With the real host, a scripted session that starts a detached process (`setsid sleep`) and ends: collect and discard each find no process of that user alive before the provider runs or the user is released, and the next run bound to the same user sees no process from the previous one · verifies REQ-0629 · security · `test_agent_user_processes_stopped_before_collect_and_release`.
+AC-0630-1: With the real host and the Claude preset, killing the host mid-turn and restarting it within the window resumes the lost session with its transcript, as the same user; with the last event older than the window, or with the configuration directory removed, the run gets a new session and records why; a directory past the window is disposed · verifies REQ-0630 · integration · `test_host_lost_resumes_within_window`.
 
 ## 8. Test plan
 
 - **Unit:** AC-0624-1.
-- **Integration**, on real Postgres and DBOS with a fake host speaking the control API, or the real host where named: AC-0606-1, AC-0618-1, AC-0619-1, AC-0623-1, AC-0625-1.
+- **Integration**, on real Postgres and DBOS with a fake host speaking the control API, or the real host where named: AC-0606-1, AC-0618-1, AC-0619-1, AC-0623-1, AC-0625-1, AC-0630-1.
 - **Scripted agent**, through the real host in its container (ADR-19): AC-0620-1.
 - **Crash-and-resume:** AC-0609-1, AC-0616-1, AC-0621-1.
 - **Security**, with the real host in its container: AC-0629-1.
@@ -245,8 +247,8 @@ AC-0629-1: With the real host, a scripted session that starts a detached process
 
 ## 9. Open items and risks
 
-OQ-0601: Should a host restart mid-turn resume Claude Code's own session from the transcript in its configuration directory, rather than start a new one? · Default: new session; SPK-1 did not test resume, and the workspace carries the state that matters · Resolved at the M1 review from the live run's host-loss behaviour.
-OQ-0603: How large may a turn's transcript grow before it is truncated? · Default: tool outputs truncated to 64 KiB each in events; the full transcript is kept only as the agent wrote it in its configuration directory, which is discarded with the session · Resolved by TKT-0602.
+OQ-0601: Should a host restart mid-turn resume Claude Code's own session from the transcript in its configuration directory, rather than start a new one? · Resolved by the operator (24 October 2026, ADR-56): resume when the session's last activity is under an hour old, while the prompt cache is warm; otherwise a new session (REQ-0630). SPK-1 did not test resume, so AC-0630-1 proves it, and a failed resume falls back to a new session.
+OQ-0603: How large may a turn's transcript grow before it is truncated? · Default: tool outputs truncated to 64 KiB each in events; the full transcript is kept only as the agent wrote it in its configuration directory, which is discarded with the session, or after a host loss when the resume window passes (REQ-0630) · Resolved by TKT-0602.
 OQ-0604: Is a pool of eight agent users enough? · Default: yes for one writing and four read-only lane slots with a few runs waiting on the operator; the wait is visible as `agent_user_unavailable` · Resolved at the M1 review from the live runs.
 
 Risks mitigated: duplicate sessions, prompts and jobs across crashes (keys); a lost host costing correctness (reconciliation); forged or replayed events (signature, IDs, ordering); a run's workspace becoming unreachable after a resume (one user per run).
