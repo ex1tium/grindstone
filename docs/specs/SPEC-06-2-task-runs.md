@@ -1,5 +1,5 @@
 # SPEC-06 part 2 — Task runs
-Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`); amended 24 October 2026 with foundation v4.11 and v4.12 (ADR-56, ADR-58: `host_lost` resumes when part 1 can) · Milestone: M1
 Kind: kernel · Owns: `grindstone.work`: tasks, runs, turns, reports, thin matching, thin template runs, context packs, run manifests, liveness, failure causes, the suspend-and-resume mechanism, collect into verifying
 
 Compact walking-skeleton specification (Planning playbook). Part 2 of SPEC-06; part 1 (`SPEC-06-1-stations-agent-host.md`) owns `stations` and the agent host. Review: by a session that did not write it, then the operator.
@@ -34,6 +34,7 @@ Out of scope:
 ## 3. Foundation links
 
 Implements:
+- **ADR-56, as amended by ADR-58.** After a host loss the run continues once, resumed where part 1 can, otherwise in a new session.
 - **ADR-14.** One task model with modes, pinned inputs, an output contract, a check plan, a tier and a parent; runs in fresh workspaces; Grindstone-numbered turns, each ending with exactly one validated report; typed failure causes with retry rules. Asking the operator ends the turn with outcome waiting, closes the session and frees the lane.
 - **ADR-03.** Agent sessions run as child workflows on the station lanes; waits on people park as decision continuations.
 - **ADR-37 (liveness).** A run with no agent activity for the liveness timeout fails `stalled`; an open kernel tool call pauses the timer (SPK-5, experiment 5).
@@ -76,7 +77,7 @@ REQ-0608: A turn ends only when its report is accepted, its session reports turn
 REQ-0610: A report is validated against the task's output contract; an invalid report returns structured errors and leaves the turn open, so the agent can submit a corrected report in the same turn.
 REQ-0611: `ask(need="operator")` and `request_permission` record the turn's report with outcome `waiting`, raise a `question` or `permission` decision with the agent's recommended answer and a continuation, end the turn, suspend the run, dispose the session and free the lane; the answer resumes the run in a new session on the same workspace, with the answer at the top of the next prompt.
 REQ-0612: A run with no host activity for the liveness timeout and no open kernel tool call fails `stalled`; a run with an open kernel tool call is never failed for inactivity.
-REQ-0613: Each failure cause follows its retry rule: `host_lost` continues once, resuming the lost session within the resume window or in a new session otherwise (part 1, REQ-0630; ADR-56), and then retries the run once; `rate_limited` and `provider_error` park the run and retry with backoff; `stalled`, `missing_report`, `context_exhausted`, `storage_limit` and `checks_failed` block the task and raise an escalation offering retry and cancel.
+REQ-0613: Each failure cause follows its retry rule: `host_lost` continues once, resuming the lost session within the resume window or in a new session otherwise (part 1, REQ-0630; ADR-56, ADR-58), where a refused resume and its fallback new session are that one continuation, not a second loss, and then retries the run once; `rate_limited` and `provider_error` park the run and retry with backoff; `stalled`, `missing_report`, `context_exhausted`, `storage_limit` and `checks_failed` block the task and raise an escalation offering retry and cancel.
 REQ-0614: An agent's own permission request through its session is answered `deny` at once in M1, because SPEC-03 refuses a capability whose permissions name `decision` until SPEC-15 adds expiry; a kernel-level permission is asked through `request_permission`, which suspends.
 REQ-0615: When the maker reports `done`, the run collects its outcome through part 1; reads the output contract's declared files from the collected subject through its resolver and stores them as blobs with a lease root for the run; emits one `change.draft_requested` for the run's proposals; puts the task in `waiting` while the collect outcome's permission decisions are open; and moves the task to `verifying` with the extra checks added only when all are allowed.
 REQ-0622: A task's maker never sees its own later checks' sessions: review checks run as separate tasks in `check` mode with their own runs, workspaces and agent users.
@@ -141,8 +142,8 @@ Exactly one remaining is the match. Otherwise the task is `blocked` with an `esc
 
 **A turn** (the workflow `turn-<run>-<k>`, on the lane):
 1. Mint the per-task MCP token for run and turn through the minting function the composition root registers with `work` from SPEC-07 (`work` may not import `surface`).
-2. `stations.open_session` (key `<run>:s<k>`) as the run's agent user, with agent-neutral `SessionOptions` from the capability and the instance (part 1): model, effort, permission categories, `tool_timeout_seconds` above the consult ceiling as SPK-5 advises, `read_only` for a read-only workspace, and `notify` = this workflow.
-3. `stations.prompt` (key `<run>:t<k>`).
+2. `stations.open_session` (key `<run>:s<k>`) as the run's agent user, with agent-neutral `SessionOptions` from the capability and the instance (part 1): model, effort, permission categories, `tool_timeout_seconds` above the consult ceiling as SPK-5 advises, `read_only` for a read-only workspace, and `notify` = this workflow. For the turn after a `host_lost`, `continue_from` names the lost session, and part 1 decides whether it resumes (REQ-0630); the run's timeline shows the session's `resume_reason`.
+3. `stations.prompt` (key `<run>:t<k>`): in a new session, the full initial prompt; in a resumed one, only a continuation notice (the previous turn was interrupted by a host restart; continue the task and end with `report`).
 4. Loop on `DBOS.recv(f"turn-{k}", timeout=60 s)`. Host events arrive as messages keyed by event ID (part 1). Each wake applies the liveness rule: `stations.last_activity(run)` against the timeout, unless `stations.open_calls(run)` is non-zero (REQ-0612).
 5. On `permission.requested`: answer `deny` through `stations.answer_permission` (REQ-0614).
 6. On turn end: with an accepted report, end the turn with its outcome; with none and no corrective prompt sent yet, send one (key `<run>:t<k>c`) naming the missing `report` call and keep waiting; otherwise end the turn and fail `missing_report`.
@@ -164,7 +165,7 @@ The tool returns its confirmation; the turn workflow disposes the session and fr
 
 | Cause | Detected by | M1 handling |
 | --- | --- | --- |
-| `host_lost` | Part 1's reconciliation | Turn `k+1` on the same workspace, in the resumed session within the resume window or a new session otherwise (REQ-0630); a second loss fails the run, and the task retries once with a fresh run, then blocks |
+| `host_lost` | Part 1's reconciliation | Turn `k+1` on the same workspace, in the resumed session within the resume window or a new session otherwise (REQ-0630), a refused resume falling back to a new session without counting as a loss; a second loss fails the run, and the task retries once with a fresh run, then blocks |
 | `rate_limited`, `provider_error` | Host `error` events with that kind | Run `parked`; `DBOS.sleep` with exponential backoff (1, 2, 4 … 30 min); then a new turn; after 6 attempts, block |
 | `context_exhausted` | Host `error` event | Block, with an escalation |
 | `stalled`, `missing_report` | The turn workflow | Block, with an escalation |
@@ -229,7 +230,7 @@ AC-0610-1: Scripted: a report missing a required field is refused with `report_i
 AC-0611-1: Scripted: `ask(need="operator")` leaves the task `waiting`, the run `suspended` and an open `question` decision carrying the agent's recommendation, the session disposed and the lane free; answering it starts a new session on the same workspace whose first prompt begins with the answer, and the agent finds the file it wrote before asking; `request_permission` behaves the same with a `permission` decision · verifies REQ-0611 · scripted agent · `test_ask_operator_suspends_and_resumes`.
 AC-0612-1: With the liveness timeout at 2 minutes, a scripted session that goes silent with no open kernel call fails `stalled` within one check interval after the timeout · verifies REQ-0612 · scripted agent · `test_silent_run_fails_stalled`.
 AC-0612-2: With the same timeout, a scripted session holding a kernel call open for 5 minutes (a test-only slow tool) is not failed · verifies REQ-0612 · scripted agent · `test_open_kernel_call_pauses_liveness`.
-AC-0613-1: Each failure cause, injected through the fake host or a full blob store, follows its retry rule in the table, and `retry` on an escalation starts a run with a fresh workspace · verifies REQ-0613 · integration · `test_failure_causes_follow_rules`.
+AC-0613-1: Each failure cause, injected through the fake host or a full blob store, follows its retry rule in the table, and `retry` on an escalation starts a run with a fresh workspace; a `host_lost` whose resume is refused continues in a new session, and the run is retried at most once in all · verifies REQ-0613 · integration · `test_failure_causes_follow_rules`.
 AC-0614-1: A scripted ACP permission request is answered deny at once, no decision is raised, and the turn continues · verifies REQ-0614 · scripted agent · `test_agent_permission_requests_denied`.
 AC-0615-1: When a scripted maker reports `done`, the fake provider's outcome is applied: the declared file is read from the subject and stored with a lease root for the run, one `change.draft_requested` is emitted for the proposals, the task is `waiting` while the permission decision is open, and it enters `verifying` with the extra check in its plan only after the decision is answered allow · verifies REQ-0615 · integration · `test_collect_hands_over_to_verifying`.
 AC-0622-1: A review check for a maker's subject is a separate task in `check` mode with its own run, workspace, agent user and session · verifies REQ-0622 · integration · `test_checks_run_as_separate_tasks`.
