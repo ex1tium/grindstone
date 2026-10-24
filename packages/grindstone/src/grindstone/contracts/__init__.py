@@ -10,6 +10,13 @@ drift in CI (FF-02).
 from pydantic import BaseModel
 
 from grindstone.contracts.base import Contract, bundle_schema
+from grindstone.contracts.errors import (
+    KERNEL_ERROR_CODES,
+    ErrorClass,
+    ErrorEnvelope,
+    error_class_of,
+    register_error_codes,
+)
 from grindstone.contracts.health import DependencyHealth, HealthStatus, ServiceHealth
 from grindstone.contracts.ids import (
     ITEM_ID_GRAMMAR,
@@ -46,11 +53,13 @@ EXPORTED: tuple[type[BaseModel], ...] = (
     ItemRevisionSubject,
     Provenance,
     RunManifest,
+    ErrorEnvelope,
 )
 
 __all__ = [
     "EXPORTED",
     "ITEM_ID_GRAMMAR",
+    "KERNEL_ERROR_CODES",
     "AuthorKind",
     "BlobHash",
     "BlobRef",
@@ -60,6 +69,8 @@ __all__ = [
     "Contract",
     "DecisionId",
     "DependencyHealth",
+    "ErrorClass",
+    "ErrorEnvelope",
     "GitCommitSubject",
     "GitObjectName",
     "HealthStatus",
@@ -74,6 +85,8 @@ __all__ = [
     "SubjectRef",
     "TaskId",
     "bundle_schema",
+    "error_class_of",
     "item_id_type",
     "new_record_id",
+    "register_error_codes",
 ]

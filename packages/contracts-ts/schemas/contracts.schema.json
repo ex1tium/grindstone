@@ -107,6 +107,45 @@
       "title": "DependencyHealth",
       "type": "object"
     },
+    "ErrorClass": {
+      "description": "How an error is handled, and by whom.",
+      "enum": ["validation", "rule", "authority", "limit", "transient", "internal"],
+      "title": "ErrorClass",
+      "type": "string"
+    },
+    "ErrorEnvelope": {
+      "additionalProperties": false,
+      "description": "One service error, in the shape every interface returns.",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "detail": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "error_class": {
+          "$ref": "#/$defs/ErrorClass"
+        },
+        "message": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "code", "error_class", "message", "detail", "retryable"],
+      "title": "ErrorEnvelope",
+      "type": "object"
+    },
     "GitCommitSubject": {
       "additionalProperties": false,
       "description": "A commit in a repository.",
@@ -183,6 +222,7 @@
       "title": "ItemRevisionSubject",
       "type": "object"
     },
+    "JsonValue": {},
     "Provenance": {
       "additionalProperties": false,
       "description": "Carried by every revision: the author, what it came through, and the reason.",
