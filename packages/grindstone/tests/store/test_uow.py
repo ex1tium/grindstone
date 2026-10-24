@@ -2,7 +2,8 @@
 
 Each conflict is a write skew forced with a barrier: both transactions read
 `scratch.ledger`, wait for each other, then insert, so SERIALIZABLE must fail
-one of them. Only first attempts wait at the barrier, so a retry runs through.
+one of them. Only first attempts wait at the barrier, so a retry runs through;
+it may conflict again until the winner commits, so the retry count varies.
 """
 
 import os
@@ -74,6 +75,17 @@ def _ledger_rows(engine: Engine) -> list[str]:
         return sorted(conn.execute(text("SELECT who FROM scratch.ledger")).scalars())
 
 
+def _assert_one_side_retried() -> None:
+    """One transaction commits first time; the other retries until it commits.
+
+    How often it retries depends on timing: a retry that starts before the
+    winner commits conflicts again, so only "at least once" is stable.
+    """
+    first, second = sorted(_race.attempts.values())
+    assert first == 1
+    assert second >= 2
+
+
 def _in_parallel[R](calls: list[Callable[[], R]]) -> list[R]:
     with ThreadPoolExecutor(len(calls)) as pool:
         return [f.result() for f in [pool.submit(call) for call in calls]]
@@ -89,7 +101,7 @@ def test_unit_of_work_retries_serialization_failures(store: Database, engine: En
         return lambda: unit_of_work(lambda uow: _read_wait_insert(uow, who))
 
     assert sorted(_in_parallel([run("a"), run("b")])) == ["serializable", "serializable"]
-    assert sorted(_race.attempts.values()) == [1, 2]
+    _assert_one_side_retried()
     assert _ledger_rows(engine) == ["a", "b"]
 
 
@@ -108,7 +120,7 @@ def test_datasource_transaction_isolation_and_retry(dbos_store: Database, engine
         return start
 
     assert _in_parallel([run("a"), run("b")]) == ["serializable", "serializable"]
-    assert sorted(_race.attempts.values()) == [1, 2]
+    _assert_one_side_retried()
     assert _ledger_rows(engine) == ["a", "b"]
     for who in ("a", "b"):
         steps = DBOS.list_workflow_steps(f"isolation-{who}")
