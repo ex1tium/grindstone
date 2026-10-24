@@ -108,13 +108,17 @@ Run directories are named by run ID (UUIDv7) under the subtree of the agent user
 
 **`runs`.** `root:gs-runs` 2770. The control plane writes job directories (subject 0750 and read-only to the runner by mode; `out/` 2770). This follows the M0 runner image and M0-04's fixture check.
 
-**Session configuration area** (agent host only): the volume `sessions` at `/var/lib/grindstone/sessions`, mounted in `agent-host` alone, with one directory per agent user (`<agent>`, 0700). It survives a host restart, which restarts the container, so a lost session can be resumed within the resume window; the host removes a session's directory with the session and sweeps any older than the window (SPEC-06 part 1, ADR-58). Under it the host's helper creates, as the agent user, `<run>/<session>/` as that session's `CLAUDE_CONFIG_DIR` and `HOME` (ADR-39), so a restarted host finds a run's directories by its run ID.
+**Session configuration area** (agent host only): the volume `sessions` at `/var/lib/grindstone/sessions`, mounted in `agent-host` alone, with one directory per agent user (`<agent>`, 0700). It survives a host restart, which restarts the container, so a lost session can be resumed within the resume window; the host removes a session's directory with the session and sweeps lost sessions' directories whose last event is older than the window (REQ-0631, ADR-58). Under it the host's helper creates, as the agent user, `<run>/<session>/` as that session's `CLAUDE_CONFIG_DIR` and `HOME` (ADR-39), so a restarted host finds a run's directories by its run ID.
 
 | Path | Owner : group | Mode | Who writes |
 | --- | --- | --- | --- |
-| `/var/lib/grindstone/sessions` | `root:root` | 0711 | Nobody lists |
+| `/var/lib/grindstone/sessions` | `root:root` | 0711 | The agent-host entrypoint sets the mode; no agent user can list it |
+| `…/.host/` | `gs-host:gs-host` | 0700 | Created by the agent-host entrypoint; the host's event markers (SPEC-06 part 1) |
 | `…/<agent>/` | `<agent>:<agent>` | 0700 | Created by the agent-host entrypoint |
-| `…/<agent>/<run>/<session>/` | `<agent>:<agent>` | 0700 | The agent, through the host's helper; removed as the agent user | Start skills are copied there read-only (files 0444, directories 0555). M1 capabilities have none.
+| `…/<agent>/<run>/` | `<agent>:<agent>` | 0700 | The host's helper, as the agent user |
+| `…/<agent>/<run>/<session>/` | `<agent>:<agent>` | 0700 | The agent, through the host's helper; removed as the agent user |
+
+Start skills are copied into a session's directory read-only (files 0444, directories 0555). M1 capabilities have none.
 
 **Capabilities and entrypoints.** Every container keeps `no-new-privileges`. Every container but `postgres` also keeps a read-only root, `cap_drop: ALL` and `/tmp` on tmpfs. `postgres` is the one exception: its official entrypoint needs its default capabilities to read its operator-owned secret and to own its data directory, so it keeps the image defaults with a writable root and its data volume, as in M0. It runs no work content and is reachable only on `db`.
 
@@ -122,7 +126,7 @@ Run directories are named by run ID (UUIDv7) under the subtree of the agent user
 | --- | --- | --- | --- |
 | `postgres` | The official image's entrypoint (unchanged) | `postgres` | Image default |
 | `grindstone` | `DAC_READ_SEARCH`, `SETUID`, `SETGID`: copy secrets into `/run/gs` (tmpfs, `grindstone`, 0700), then `setpriv` to `grindstone` with an empty bounding set | `grindstone` | Nothing |
-| `agent-host` | `DAC_READ_SEARCH`, `CHOWN`, `SETUID`, `SETGID`: copy secrets into `/run/gs-host` (tmpfs, `gs-host`, 0700); create `agents/<agent>/` and `/var/lib/grindstone/sessions/<agent>/`; check that no process of an agent user runs; then `setpriv` to `gs-host` with bounding, inheritable and ambient sets of `SETUID` and `SETGID` only | `gs-host` | `CAP_SETUID`, `CAP_SETGID` (SPK-1) |
+| `agent-host` | `DAC_READ_SEARCH`, `CHOWN`, `SETUID`, `SETGID`: copy secrets into `/run/gs-host` (tmpfs, `gs-host`, 0700); create `agents/<agent>/`, `/var/lib/grindstone/sessions/<agent>/` and `sessions/.host/`; check that no process of an agent user runs; then `setpriv` to `gs-host` with bounding, inheritable and ambient sets of `SETUID` and `SETGID` only | `gs-host` | `CAP_SETUID`, `CAP_SETGID` (SPK-1) |
 | `runner` | None: no secrets | `gs-runner` | Nothing |
 
 The entrypoints are POSIX shell scripts of a few lines in `docker/entrypoints/`. `agent-host` runs with `init: true`, Docker's init as PID 1 with the entrypoint and then the host as its only child, so the container stops when the host exits, killing every agent with it (REQ-0507). The host's helper also starts each agent with `setpriv --pdeathsig=KILL`. The start-up check for leftover agent processes finds none in a fresh PID namespace; it guards against a future change that drops the init.

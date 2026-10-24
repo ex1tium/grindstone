@@ -16,3 +16,18 @@
 | D10 | All applied: the comma, OQ-0601's wording, the Toolboxes line ("from M3, if the project adds `web`"), ADR-55 in the SPEC-06 map row, REQ-0617 names the optional `resume`, REQ-0515 in numeric order, "not" in AC-0906-2. ADR-57 also amends ADR-23, which gains a status pointer. |
 
 FF-13 reports no violations. The reviewer asked for a short re-check of D1 to D6 before the operator accepts v4.12.
+
+## Answers to re-check 1
+
+`foundation-v4-12-recheck-1.md` approved after minor changes and asked for no further pass if the changes stay as described.
+
+| Finding | Change |
+| --- | --- |
+| E1 | One marker per directory at `.host/<agent>/<run>/<directory>` on the `sessions` volume (`gs-host`, 0700, created by the entrypoint, unreachable to agent users); the host sets its time to each event's `at`, the timestamp `stations` ages from; the sweep enumerates the markers and removes directories through the helper as the agent user; a directory without a marker counts as expired. REQ-0631, the design, the SPEC-05 layout and entrypoint, and ADR-58 say so; AC-0631-1 asserts agent users cannot reach a marker. |
+| E2 | Liveness and age belong to the directory, not the session ID, so a resumed session keeps its predecessor's directory; AC-0631-1 asserts it. |
+| E3 | REQ-0630 and ADR-58: the choice is recorded by a checkpointed step before any create; the create and its fallback are separate keyed steps. |
+| E4 | `open_session` is called from the workflow body, never inside a step (SPEC-06-1 design, SPEC-06-2 step 2, which names both keys); FF-10 lists "session create fallback". |
+| E5 | Index rows 23 and 53 and the SPEC-28 row cite ADR-57. The optional glossary and ADR-54 fact list are left for SPEC-28, which owns the routine facts. |
+| E6 | Layout table: the start-skills sentence moved below it; rows for `.host/` and `<agent>/<run>/`; the root row says the entrypoint sets the mode; the prose names REQ-0631's rule. |
+| E7 | (a) ADR-58's consequence matches the risk tab. (b) AC-0906-2 reworded. (c) Not taken: the error model's wording is a foundation-wide table, and SPEC-06-1 already states how this code is handled. |
+| E8 | ADR-57: a kernel-raised escalation's payload holds only kernel facts, and the retried run is exposed as before; stated as a reading of ADR-54, not a change to it. |
