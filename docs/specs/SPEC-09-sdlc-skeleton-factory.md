@@ -1,5 +1,5 @@
 # SPEC-09 — SDLC skeleton factory
-Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`); amended 24 October 2026 with the operator's decisions in foundation v4.11 (ADR-55: the implementer holds `web`; OQ-0902 answered) · Milestone: M1
+Status: accepted (by the operator, 19 October 2026, after the reviews in `docs/specs/reviews/`); amended 24 October 2026 with foundation v4.11 and v4.12 (ADR-55, ADR-57: the implementer holds `web`, REQ-0906 and AC-0906-2; OQ-0902 answered) · Milestone: M1
 Kind: factory `sdlc` · Owns, in `factories/sdlc/`:
 - the kinds `sdlc.requirement`, `sdlc.criterion` and `sdlc.ticket` with their edges and lifecycles;
 - the capabilities `sdlc.implementer` and `sdlc.test_reviewer`;
@@ -39,6 +39,7 @@ Out of scope:
 ## 3. Foundation links
 
 Implements:
+- **ADR-55, as amended by ADR-57.** The implementer holds the `web` permission; the test reviewer does not.
 - **ADR-27, as amended by ADR-40.** Bare mirrors, worktrees, branches, copy-back path tiers, the CI-suite method and the GitHub pull-request adapter are factory code behind kernel ports. The control plane commits with hooks disabled from private clones and is the only place that pushes, with a GitHub App installation token. Each delivery posts one verification status the ruleset requires. The provider returns extra checks and permission requests with the subject.
 - **ADR-40.** The mode is observed from the rules in force on the target branch at setup and before every delivery. In unenforced mode Grindstone merges with the verified head SHA and reports outside merges.
 - **ADR-41, as amended by ADR-47.** The implementer and the test reviewer run Claude Code on models chosen by configuration, which may be the same model; the test reviewer runs in a fresh read-only session that shares none of the implementer's context. Reviewer independence beyond make and prove is SPEC-18's to enforce.
@@ -71,7 +72,7 @@ REQ-0902: A criterion's `verifies` edge to its requirement has impact `review` a
 REQ-0903: An applied requirement enters `approved` and an applied ticket enters `ready`; no M1 code path writes another SDLC lifecycle state.
 REQ-0904: `/implement <ticket>` refuses a ticket with a criterion whose method M1 cannot check (`manual`, or `command`), naming it; otherwise it creates one task with need `sdlc.implement`, whose inputs are the ticket, the requirements it implements and every criterion verifying them, pinned at their current revisions.
 REQ-0905: The task's check plan requires `sdlc.ci_suite` on the check station for every input criterion with method `test`, and a `review` by need `sdlc.review.tests` for every input criterion.
-REQ-0906: The implementer's workspace is writable and may make; the test reviewer's is read-only, it offers only `check` mode, and it may perform only `review` on `git_commit` subjects.
+REQ-0906: The implementer's workspace is writable and may make; the test reviewer's is read-only, it offers only `check` mode, and it may perform only `review` on `git_commit` subjects; the implementer holds the `web` permission category and the test reviewer does not (ADR-55, ADR-57).
 REQ-0907: The status of a delivery cannot be `success` until the test reviewer's check has a fresh pass for every criterion and every reviewed-tier path it was asked to acknowledge.
 REQ-0908: The CI suite runs the project's declared gate commands and test command on the check station from a fresh materialization of the subject, and fails every target if a gate fails.
 REQ-0909: The CI suite maps JUnit test outcomes to criteria through `@verifies <criterion ID>` annotations in the subject's test files; a target criterion passes only if it has at least one annotated test and every annotated test passed, and fails otherwise, naming why.
@@ -158,7 +159,7 @@ A protected path is in the commit while its permission is pending, and the kerne
 | Offers | `sdlc.implement` · `delegate`; accepts `sdlc.ticket` | `sdlc.review.tests` · `check` |
 | Agent | preset `claude`, model slot `primary`, high effort | preset `claude`, model slot `secondary` |
 | Workspace | `write`, provider `sdlc.git` | `read_only` |
-| Permissions | `read`, `write`, `shell`, `web` (search and fetch, ADR-55); otherwise `deny` | `read`, `shell`; otherwise `deny` (no web tools unless the project grants `web`) |
+| Permissions | `read`, `write`, `shell`, `web` (search and fetch, ADR-55); otherwise `deny` | `read`, `shell`; otherwise `deny` (no web tools; from SPEC-17 a project may add `web`, ADR-57) |
 | Produces | Report `implementation_report.json`: `summary`, `criteria` (IDs addressed), `tests` (paths added or changed), `notes`; no kinds in M1 | Report `test_review.json`: SPEC-08's `ReviewVerdict`, with per-test notes |
 | May check | — | `review` on `git_commit` |
 | Tier | T1 | T0 |
@@ -293,6 +294,7 @@ AC-0903-1: Applying the testbed bundle leaves REQ-0101 `approved` and TKT-0001 `
 AC-0904-1: `/implement TKT-0001` on the testbed bundle creates one task with need `sdlc.implement` pinning TKT-0001, REQ-0101 and AC-0101-1 at their current hashes · verifies REQ-0904 · integration · `test_implement_pins_ticket_closure`.
 AC-0905-1: That task's plan has a required `sdlc.ci_suite` check targeting AC-0101-1 and a required review by `sdlc.review.tests` targeting it, resolved to `sdlc.test_reviewer` · verifies REQ-0905 · integration · `test_implement_check_plan`.
 AC-0906-1: The test reviewer's capability is read-only, offers only `check`, and may check only `review` on `git_commit`; a variant manifest giving the implementer `sdlc.review.tests` is refused at load · verifies REQ-0906 · unit · `test_reviewer_capability_shape`.
+AC-0906-2: The shipped manifest gives `sdlc.implementer` the `web` category and does not give it to `sdlc.test_reviewer` · verifies REQ-0906 · unit · `test_web_permission_only_on_implementer`.
 AC-0907-1: Scripted: with the CI suite passing and a deleted assertion in the subject's diff, the scripted test reviewer fails AC-0101-1 citing the deleted assertion it saw in the prover context, the gate fails, and the posted state is never `success` · verifies REQ-0907 · scripted agent · `test_test_reviewer_gates_status`.
 AC-0907-2: Scripted: with a reviewed-tier path collected and the reviewer passing every criterion but not acknowledging the path, its report is refused; acknowledging it lets the gate pass · verifies REQ-0907 · scripted agent · `test_reviewed_paths_need_acknowledgement`.
 AC-0908-1: In the runner image, a failing gate command fails AC-0101-1 with the gate's log cited, even though the tests pass · verifies REQ-0908 · integration · `test_ci_suite_gates_fail_targets`.
@@ -318,7 +320,7 @@ AC-0922-1: Live run: the stable instance executes a Grindstone ticket for M2 on 
 
 ## 8. Test plan
 
-- **Unit:** AC-0901-1, AC-0904-2, AC-0906-1, AC-0909-1, AC-0914-1, AC-0917-1, AC-0923-1.
+- **Unit:** AC-0901-1, AC-0904-2, AC-0906-1, AC-0906-2, AC-0909-1, AC-0914-1, AC-0917-1, AC-0923-1.
 - **Integration**, the kernel with the factory, the runner image and a fake GitHub: AC-0902-1, AC-0903-1, AC-0904-1, AC-0905-1, AC-0908-1, AC-0910-1, AC-0913-1, AC-0916-1, AC-0918-1, AC-0919-1.
 - **Crash-and-resume:** AC-0912-1, AC-0915-1.
 - **Security:** AC-0911-1, AC-0912-2, AC-0912-3, AC-0912-4.

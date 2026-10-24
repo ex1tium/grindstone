@@ -21,3 +21,6 @@ build/
 .svelte-kit/
 
 .DS_Store
+
+# Agent worktrees created inside the repository
+.claude/worktrees/
