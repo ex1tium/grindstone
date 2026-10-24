@@ -22,6 +22,7 @@ from grindstone.contracts import (
     item_id_type,
     new_record_id,
 )
+from grindstone.contracts.hashing import semantic_hash
 
 H1 = "sha256:" + "1" * 64
 H2 = "sha256:" + "2" * 64
@@ -107,12 +108,12 @@ def test_run_manifest_fields_and_round_trip() -> None:
 
 
 def test_run_manifest_hash_is_order_independent() -> None:
-    # TKT-0103 adds the semantic-hash assertion; equal serialized forms are what it hashes.
     a = ItemRef(id="REQ-0101", hash=H1)
     b = ItemRef(id="AC-0101-1", hash=H2)
     first, second = _manifest([a, b]), _manifest([b, a])
     assert first == second
     assert first.model_dump_json() == second.model_dump_json()
+    assert semantic_hash(first) == semantic_hash(second)
     assert [i.id for i in first.items] == ["AC-0101-1", "REQ-0101"]
     assert _manifest([a, a, b]) == first
     with pytest.raises(ValidationError, match="one revision of each item"):

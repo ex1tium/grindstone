@@ -59,7 +59,7 @@ minversion = "9.0"
 addopts = ["-ra", "--strict-markers", "--strict-config", "--import-mode=importlib"]
 pythonpath = ["."]
 testpaths = ["packages/grindstone/tests", "factories", "runner/tests", "tests"]
-norecursedirs = ["fixtures", "node_modules", ".venv"]
+norecursedirs = [".*", "fixtures", "node_modules"]
 xfail_strict = true
 filterwarnings = ["error"]
 markers = [

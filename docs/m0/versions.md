@@ -24,6 +24,7 @@ Resolved on 17 October 2026 from the primary sources named below: the PyPI JSON 
 | uvicorn | 0.54.0 | 2026-09-25 | ASGI server |
 | psycopg[binary] | 3.3.6 | 2026-09-18 | PostgreSQL driver |
 | dbos | 3.3.0 | 2026-10-15 | Workflows and datasource transactions (ADR-03, SPEC-02); pinned by TKT-0201, re-checked on the PyPI JSON API on 24 October 2026 |
+| rfc8785 | 0.1.4 | 2024-09-27 | RFC 8785 canonical JSON for semantic hashes (SPEC-01, DEC-0103); pinned by TKT-0103, still the latest on the PyPI JSON API on 24 October 2026 |
 | sqlalchemy | 2.1.6 | 2026-10-21 | SQLAlchemy Core over psycopg 3, shared with DBOS's datasource (SPEC-02, DEC-0201). DEC-0201 named 2.1.5, the latest when SPEC-02 was written; 2.1.6 is the latest compatible release on 24 October 2026 (ADR-46) |
 | pytest | 9.1.1 | 2026-06-19 | Tests |
 | hypothesis | 6.170.1 | 2026-10-16 | Property tests (from M1) |

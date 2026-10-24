@@ -178,3 +178,14 @@ def test_reads_the_base_bundle_from_git(tmp_path: Path, capsys: pytest.CaptureFi
     out = capsys.readouterr().out
     assert "FF-03 BlobRef: field `size` removed" in out
     assert out.rstrip().endswith("against main: 1 violation(s)")
+
+
+def test_moving_a_field_to_presentation_is_breaking() -> None:
+    head = _bundle()
+    _model(head, "Provenance")["properties"]["reason"]["x-grindstone-presentation"] = True
+    assert violations(_bundle(), head, "")
+    _bump(head, "Provenance", 2)
+    entry = "## Provenance v2\n\n`reason` is presentation.\n"
+    [found] = violations(_bundle(), head, entry)
+    assert "must say how stored hashes are treated" in found
+    assert violations(_bundle(), head, f"{entry}\n{HASHES} Recomputed on read.\n") == []

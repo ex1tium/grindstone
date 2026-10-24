@@ -9,7 +9,7 @@ drift in CI (FF-02).
 
 from pydantic import BaseModel
 
-from grindstone.contracts.base import Contract, bundle_schema
+from grindstone.contracts.base import MAX_SAFE_INTEGER, Contract, Presentation, bundle_schema
 from grindstone.contracts.errors import (
     KERNEL_ERROR_CODES,
     ErrorClass,
@@ -60,6 +60,7 @@ __all__ = [
     "EXPORTED",
     "ITEM_ID_GRAMMAR",
     "KERNEL_ERROR_CODES",
+    "MAX_SAFE_INTEGER",
     "AuthorKind",
     "BlobHash",
     "BlobRef",
@@ -77,6 +78,7 @@ __all__ = [
     "ItemId",
     "ItemRef",
     "ItemRevisionSubject",
+    "Presentation",
     "Provenance",
     "RunId",
     "RunManifest",
