@@ -20,7 +20,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | Ticket | Spec | Work | Depends on | State | PR |
 | --- | --- | --- | --- | --- | --- |
 | TKT-0101 | [SPEC-01](../specs/SPEC-01-contracts-ids-hashing.md) | Contract base, typed IDs, references, provenance, run manifest | — | review | #16 |
-| TKT-0201 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | Database access, migrations runner, unit of work | — | todo | |
+| TKT-0201 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | Database access, migrations runner, unit of work | — | review | #17 |
 
 ## Layer 1
 
