@@ -1,0 +1,223 @@
+{
+  "description": "Golden semantic-hash vectors (SPEC-01, REQ-0108). `input` is a projected JSON value; each implementation normalises (NFC, LF), canonicalises (RFC 8785) and hashes it. `contract` names a fixture whose projection must equal `input`. In a refusal, `substitute` asks each implementation to place its language's non-JSON value at `pointer`.",
+  "vectors": [
+    {
+      "name": "key order by UTF-16 code units, non-ASCII and astral keys",
+      "input": {
+        "z": 1,
+        "a": 2,
+        "\u00e9": 3,
+        "\ud83d\ude00": 4,
+        "\uff21": 5,
+        "\u00f6": 6
+      },
+      "canonical": "{\"a\":2,\"z\":1,\"\u00e9\":3,\"\u00f6\":6,\"\ud83d\ude00\":4,\"\uff21\":5}",
+      "hash": "sha256:c24c6ed983981e746fc25f0f5671ff9ad433789e0e34f000c7cf89c754cd2f55"
+    },
+    {
+      "name": "NFD text and keys normalise to NFC",
+      "input": {
+        "e\u0301t\u00e9": "cafe\u0301"
+      },
+      "canonical": "{\"\u00e9t\u00e9\":\"caf\u00e9\"}",
+      "hash": "sha256:fbb890f31aebfd6c48955cde4895ac81df05af8f7220bf335b2cd13e90a3e59d"
+    },
+    {
+      "name": "CRLF and lone CR become LF",
+      "input": {
+        "text": "a\r\nb\rc\nd"
+      },
+      "canonical": "{\"text\":\"a\\nb\\nc\\nd\"}",
+      "hash": "sha256:84b9dbdb05df159ebd436bca2942a5473628b9882eab93dfc48d5273071e43a8"
+    },
+    {
+      "name": "integers at the safe bounds",
+      "input": {
+        "max": 9007199254740991,
+        "min": -9007199254740991,
+        "zero": 0
+      },
+      "canonical": "{\"max\":9007199254740991,\"min\":-9007199254740991,\"zero\":0}",
+      "hash": "sha256:b7b2401ddca2165824e98c61890c0aaec470258d3119dd265d02be9438bf47e6"
+    },
+    {
+      "name": "empty containers and strings",
+      "input": {
+        "list": [],
+        "object": {},
+        "string": ""
+      },
+      "canonical": "{\"list\":[],\"object\":{},\"string\":\"\"}",
+      "hash": "sha256:9d6cd994c9447a226f25e97e7851362ee21f0bd9b85c484b1d6d8d7ca5b112c8"
+    },
+    {
+      "name": "every control character U+0000 to U+001F",
+      "input": {
+        "s": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f"
+      },
+      "canonical": "{\"s\":\"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\n\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f\"}",
+      "hash": "sha256:2ec951e7bfd527f6d76712cd9116182a035bcb0341778c2a6051be52f627d200"
+    },
+    {
+      "name": "literals and nesting",
+      "input": {
+        "t": true,
+        "f": false,
+        "n": null,
+        "deep": [
+          [
+            {
+              "b": 1,
+              "a": [2, 3]
+            }
+          ]
+        ]
+      },
+      "canonical": "{\"deep\":[[{\"a\":[2,3],\"b\":1}]],\"f\":false,\"n\":null,\"t\":true}",
+      "hash": "sha256:f2bac76eb47af56c70c11efce1150c58d0502af624eae52d7a7dc8fef87dad19"
+    },
+    {
+      "name": "omitted default",
+      "input": {
+        "name": "x"
+      },
+      "canonical": "{\"name\":\"x\"}",
+      "hash": "sha256:0229d37e33daae149bf40543a5ce1db4459d10f830d5139279aa2bfd5f6485a1",
+      "contract": {
+        "model": "DefaultsFixture",
+        "fields": {
+          "name": "x",
+          "count": 0,
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "set default is kept",
+      "input": {
+        "count": 3,
+        "name": "x"
+      },
+      "canonical": "{\"count\":3,\"name\":\"x\"}",
+      "hash": "sha256:07f1c9ddf4fea3d64f65be55ddd468d11de2a07183bfa387eb3b13fbbfb11ac1",
+      "contract": {
+        "model": "DefaultsFixture",
+        "fields": {
+          "name": "x",
+          "count": 3
+        }
+      }
+    },
+    {
+      "name": "presentation field ignored",
+      "input": {
+        "body": "same"
+      },
+      "canonical": "{\"body\":\"same\"}",
+      "hash": "sha256:42c088b506b39e194dd4d0f3c093db9833d6c05734c48278daa97648b466fbbb",
+      "contract": {
+        "model": "PresentationFixture",
+        "fields": {
+          "body": "same",
+          "title": "any title"
+        }
+      }
+    },
+    {
+      "name": "nested contract",
+      "input": {
+        "inner": {
+          "name": "y"
+        },
+        "label": "outer"
+      },
+      "canonical": "{\"inner\":{\"name\":\"y\"},\"label\":\"outer\"}",
+      "hash": "sha256:4b8a80da19b3900fad25e473b04748ce9074740d3af4504f335a1b43dc79e922",
+      "contract": {
+        "model": "NestedFixture",
+        "fields": {
+          "label": "outer",
+          "inner": {
+            "name": "y",
+            "count": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "blob set version",
+      "input": {
+        "members": [
+          "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        ]
+      },
+      "canonical": "{\"members\":[\"sha256:1111111111111111111111111111111111111111111111111111111111111111\",\"sha256:2222222222222222222222222222222222222222222222222222222222222222\"]}",
+      "hash": "sha256:8cbeee225d2d58d97570104a05c03f1b8ac2392559c47470c480dc17fe0b4fe9",
+      "contract": {
+        "model": "blob_set_version",
+        "fields": {
+          "members": [
+            {
+              "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "media_type": "text/plain",
+              "size": 1
+            },
+            {
+              "sha256": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "media_type": "image/png",
+              "size": 2
+            },
+            {
+              "sha256": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "media_type": "text/markdown",
+              "size": 1
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "refusals": [
+    {
+      "name": "keys colliding after NFC",
+      "input": {
+        "e\u0301": 1,
+        "\u00e9": 2
+      },
+      "code": "hash_input_invalid"
+    },
+    {
+      "name": "float inside a JSON-typed field",
+      "input": {
+        "x": 1.5
+      },
+      "code": "hash_input_invalid"
+    },
+    {
+      "name": "integer above the safe range",
+      "input": {
+        "x": 9007199254740992
+      },
+      "code": "hash_input_invalid"
+    },
+    {
+      "name": "integer below the safe range",
+      "input": {
+        "x": -9007199254740992
+      },
+      "code": "hash_input_invalid"
+    },
+    {
+      "name": "non-JSON value",
+      "input": {
+        "x": null
+      },
+      "code": "hash_input_invalid",
+      "substitute": {
+        "pointer": "/x",
+        "kind": "non_json"
+      }
+    }
+  ]
+}
