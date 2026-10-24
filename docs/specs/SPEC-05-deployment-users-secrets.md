@@ -35,7 +35,7 @@ Out of scope:
 - The operator login flow: SPEC-10. This specification provisions its secret.
 - Exposing AHP to browsers and VS Code: SPEC-22 (M4). In M1 the host's AHP listener serves loopback only.
 - Backup, restore, upgrade and rotation runbooks: SPEC-27. This specification states the rotation rule.
-- Egress restricted to package registries per project: OQ-0502.
+- Egress restricted per project: R3's network profiles (ADR-55 keeps agent egress open at T1).
 
 ## 3. Foundation links
 
@@ -247,7 +247,7 @@ AC-0514-1: An entrypoint given a secret file with mode 0644 exits non-zero namin
 ## 9. Open items and risks
 
 OQ-0501: Does Docker Desktop on WSL2, the default M1 delivery host, present 0600 secret files to containers with their ownership, so that only `DAC_READ_SEARCH` reads them? · Default: yes, when `secrets/` is on the WSL2 Linux filesystem; REQ-0514 fails closed otherwise · Resolved by TKT-0501, run once on the operator's machine.
-OQ-0502: Should agent egress be limited to model providers and the project's granted package registries in M1? · Default: no; `agent-egress` is open, as the Threat model's accepted residual risk allows at T1, and capabilities deny web tools · Resolved at the M1 review; an egress proxy would be a new component and needs its own record.
+OQ-0502: Should agent egress be limited to model providers and the project's granted package registries in M1? · Resolved by the operator (24 October 2026, ADR-55): no; `agent-egress` is open, as the Threat model's accepted residual risk allows at T1, and agents may search and read the web through capabilities holding the `web` permission (SPEC-09's implementer does; reviewers do not by default). The runner keeps no network (DEC-0505).
 OQ-0503: Is a pool of eight agent users per station right? · Default: yes: one writing and four read-only lane slots (the capacity envelope) plus room for three runs suspended on the operator · Resolved by SPEC-06 part 1's OQ-0604 at the M1 review; a larger pool adds users in the image.
 
 Risks mitigated: credential theft from stations (secret table, capability sets, tests on real images); repository-borne execution in sessions (launcher floor); orphaned agents acting after their host died (init and parent-death signal); a viewer answering permission requests (people directory).

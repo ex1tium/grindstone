@@ -76,7 +76,7 @@ REQ-0608: A turn ends only when its report is accepted, its session reports turn
 REQ-0610: A report is validated against the task's output contract; an invalid report returns structured errors and leaves the turn open, so the agent can submit a corrected report in the same turn.
 REQ-0611: `ask(need="operator")` and `request_permission` record the turn's report with outcome `waiting`, raise a `question` or `permission` decision with the agent's recommended answer and a continuation, end the turn, suspend the run, dispose the session and free the lane; the answer resumes the run in a new session on the same workspace, with the answer at the top of the next prompt.
 REQ-0612: A run with no host activity for the liveness timeout and no open kernel tool call fails `stalled`; a run with an open kernel tool call is never failed for inactivity.
-REQ-0613: Each failure cause follows its retry rule: `host_lost` continues once in a new session and then retries the run once; `rate_limited` and `provider_error` park the run and retry with backoff; `stalled`, `missing_report`, `context_exhausted`, `storage_limit` and `checks_failed` block the task and raise an escalation offering retry and cancel.
+REQ-0613: Each failure cause follows its retry rule: `host_lost` continues once, resuming the lost session within the resume window or in a new session otherwise (part 1, REQ-0630; ADR-56), and then retries the run once; `rate_limited` and `provider_error` park the run and retry with backoff; `stalled`, `missing_report`, `context_exhausted`, `storage_limit` and `checks_failed` block the task and raise an escalation offering retry and cancel.
 REQ-0614: An agent's own permission request through its session is answered `deny` at once in M1, because SPEC-03 refuses a capability whose permissions name `decision` until SPEC-15 adds expiry; a kernel-level permission is asked through `request_permission`, which suspends.
 REQ-0615: When the maker reports `done`, the run collects its outcome through part 1; reads the output contract's declared files from the collected subject through its resolver and stores them as blobs with a lease root for the run; emits one `change.draft_requested` for the run's proposals; puts the task in `waiting` while the collect outcome's permission decisions are open; and moves the task to `verifying` with the extra checks added only when all are allowed.
 REQ-0622: A task's maker never sees its own later checks' sessions: review checks run as separate tasks in `check` mode with their own runs, workspaces and agent users.
@@ -164,7 +164,7 @@ The tool returns its confirmation; the turn workflow disposes the session and fr
 
 | Cause | Detected by | M1 handling |
 | --- | --- | --- |
-| `host_lost` | Part 1's reconciliation | Turn `k+1` in a new session on the same workspace; a second loss fails the run, and the task retries once with a fresh run, then blocks |
+| `host_lost` | Part 1's reconciliation | Turn `k+1` on the same workspace, in the resumed session within the resume window or a new session otherwise (REQ-0630); a second loss fails the run, and the task retries once with a fresh run, then blocks |
 | `rate_limited`, `provider_error` | Host `error` events with that kind | Run `parked`; `DBOS.sleep` with exponential backoff (1, 2, 4 … 30 min); then a new turn; after 6 attempts, block |
 | `context_exhausted` | Host `error` event | Block, with an escalation |
 | `stalled`, `missing_report` | The turn workflow | Block, with an escalation |
