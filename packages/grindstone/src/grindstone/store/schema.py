@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 
+import psycopg
 from sqlalchemy import Connection, Engine, text
 from sqlalchemy.exc import DBAPIError
 
@@ -193,11 +194,13 @@ def _apply(conn: Connection, migration: Migration) -> None:
                     "sha256": migration.sha256,
                 },
             )
-    except DBAPIError as exc:
-        if exc.connection_invalidated:
-            raise
-        sqlstate = getattr(exc.orig, "sqlstate", None)
+    except (DBAPIError, psycopg.Error) as exc:
+        # The file runs on the driver's cursor, so its errors arrive unwrapped.
+        orig = exc.orig if isinstance(exc, DBAPIError) else exc
+        sqlstate = getattr(orig, "sqlstate", None)
+        if sqlstate is None or str(sqlstate).startswith("08"):
+            raise StoreError("database_unavailable", type(orig).__name__) from None
         raise StoreError(
-            "migration_failed", f"{label} failed: {type(exc.orig).__name__} ({sqlstate})"
+            "migration_failed", f"{label} failed: {type(orig).__name__} ({sqlstate})"
         ) from exc
     _log.info("applied migration %s", label)
