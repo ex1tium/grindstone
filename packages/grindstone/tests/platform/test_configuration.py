@@ -33,6 +33,7 @@ from grindstone.platform.configuration import (
     read_instance_config,
     startup_instance_config,
 )
+from grindstone.platform.events import events_after
 from grindstone.platform.loader import FactorySource, LoadReport, load_factories
 from grindstone.platform.secrets import SecretNotGrantedError
 from grindstone.store import Database, DatabaseSettings, unit_of_work
@@ -210,6 +211,11 @@ def test_project_config_is_versioned_and_validated(tmp_path: Path, store: Databa
     status = unit_of_work(lambda uow: platform.project_status(uow, project))
     assert not status.paused
     assert status.version == 2
+    announced = unit_of_work(lambda uow: events_after(uow, project, 0))
+    assert [(e.type, e.payload["version"]) for e in announced] == [
+        ("project.configured", 1),
+        ("project.configured", 2),
+    ]
 
 
 def test_grindstone_check_cli(

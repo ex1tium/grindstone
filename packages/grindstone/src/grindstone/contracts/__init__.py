@@ -17,6 +17,15 @@ from grindstone.contracts.errors import (
     error_class_of,
     register_error_codes,
 )
+from grindstone.contracts.events import (
+    INSTANCE_STREAM,
+    ConfigInvalid,
+    EventEnvelope,
+    FactoryLoaded,
+    FactoryRefused,
+    KernelEvent,
+    ProjectConfigured,
+)
 from grindstone.contracts.health import DependencyHealth, HealthStatus, ServiceHealth
 from grindstone.contracts.ids import (
     ITEM_ID_GRAMMAR,
@@ -54,10 +63,16 @@ EXPORTED: tuple[type[BaseModel], ...] = (
     Provenance,
     RunManifest,
     ErrorEnvelope,
+    EventEnvelope,
+    FactoryLoaded,
+    FactoryRefused,
+    ProjectConfigured,
+    ConfigInvalid,
 )
 
 __all__ = [
     "EXPORTED",
+    "INSTANCE_STREAM",
     "ITEM_ID_GRAMMAR",
     "KERNEL_ERROR_CODES",
     "MAX_SAFE_INTEGER",
@@ -67,18 +82,24 @@ __all__ = [
     "BlobSetSubject",
     "BlobSubject",
     "ChangeSetId",
+    "ConfigInvalid",
     "Contract",
     "DecisionId",
     "DependencyHealth",
     "ErrorClass",
     "ErrorEnvelope",
+    "EventEnvelope",
+    "FactoryLoaded",
+    "FactoryRefused",
     "GitCommitSubject",
     "GitObjectName",
     "HealthStatus",
     "ItemId",
     "ItemRef",
     "ItemRevisionSubject",
+    "KernelEvent",
     "Presentation",
+    "ProjectConfigured",
     "Provenance",
     "RunId",
     "RunManifest",

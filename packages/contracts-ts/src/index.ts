@@ -20,14 +20,19 @@ export interface GrindstoneContracts {
   BlobRef: BlobRef;
   BlobSetSubject: BlobSetSubject;
   BlobSubject: BlobSubject;
+  ConfigInvalid: ConfigInvalid;
   DependencyHealth: DependencyHealth;
   ErrorClass: ErrorClass;
   ErrorEnvelope: ErrorEnvelope;
+  EventEnvelope: EventEnvelope;
+  FactoryLoaded: FactoryLoaded;
+  FactoryRefused: FactoryRefused;
   GitCommitSubject: GitCommitSubject;
   HealthStatus: HealthStatus;
   ItemRef: ItemRef;
   ItemRevisionSubject: ItemRevisionSubject;
   JsonValue: JsonValue;
+  ProjectConfigured: ProjectConfigured;
   Provenance: Provenance;
   RunManifest: RunManifest;
   ServiceHealth: ServiceHealth;
@@ -58,6 +63,14 @@ export interface BlobSubject {
   schema_version: 1;
 }
 /**
+ * A project's current configuration is invalid, so the project is paused.
+ */
+export interface ConfigInvalid {
+  problems: string[];
+  schema_version: 1;
+  type: "config.invalid";
+}
+/**
  * The state of one thing a service needs, such as its database.
  */
 export interface DependencyHealth {
@@ -85,6 +98,44 @@ export interface ErrorEnvelope {
   schema_version: 1;
 }
 /**
+ * One recorded event: its stream, its place in it, and the event model's fields.
+ *
+ * `type` and `event_version` are the event model's `type` and
+ * `schema_version`; `payload` holds its other fields, so the envelope
+ * round-trips to the model.
+ */
+export interface EventEnvelope {
+  event_id: string;
+  event_version: number;
+  occurred_at: string;
+  payload: {
+    [k: string]: JsonValue | undefined;
+  };
+  project: string;
+  schema_version: 1;
+  seq: number;
+  type: string;
+}
+/**
+ * A factory passed its load at start-up.
+ */
+export interface FactoryLoaded {
+  factory: string;
+  manifest_hash: string;
+  schema_version: 1;
+  type: "factory.loaded";
+  version: string;
+}
+/**
+ * A factory was refused at start-up, with the `file:field: rule` lines that failed.
+ */
+export interface FactoryRefused {
+  factory: string;
+  problems: string[];
+  schema_version: 1;
+  type: "factory.refused";
+}
+/**
  * A commit in a repository.
  */
 export interface GitCommitSubject {
@@ -108,6 +159,15 @@ export interface ItemRevisionSubject {
   item: ItemRef;
   kind: "item_revision";
   schema_version: 1;
+}
+/**
+ * A project's configuration gained a version.
+ */
+export interface ProjectConfigured {
+  hash: string;
+  schema_version: 1;
+  type: "project.configured";
+  version: number;
 }
 /**
  * Carried by every revision: the author, what it came through, and the reason.
