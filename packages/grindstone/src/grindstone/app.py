@@ -22,6 +22,8 @@ from grindstone.stations import kernel_resolvers
 from grindstone.store import (
     DatabaseSettings,
     Schedule,
+    close_blob_store,
+    open_blob_store,
     ping,
     start_runtime,
     stop_runtime,
@@ -78,8 +80,9 @@ def create_app(
     """Build the control-plane ASGI application.
 
     Its lifespan opens the store and launches DBOS before the first request,
-    loads the factories into frozen registries, starts the event dispatcher,
-    and stops both after the last request (SPEC-02, REQ-0201; SPEC-03). An
+    sets up the blob store from `[store]`, loads the factories into frozen
+    registries, starts the event dispatcher, and stops both after the last
+    request (SPEC-02, REQ-0201; SPEC-03). An
     invalid instance configuration stops start-up before anything opens
     (REQ-0310).
     """
@@ -90,6 +93,7 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         instance: InstanceConfig = startup_instance_config()
         app.state.runtime = await start_runtime(db.url(), schedules=schedules)
+        app.state.blobs = open_blob_store(instance.store)
         try:
             loaded = await asyncio.to_thread(load_platform)
             app.state.registries, app.state.factories, app.state.kinds = loaded
@@ -103,6 +107,7 @@ def create_app(
             finally:
                 await asyncio.to_thread(dispatching.stop)
         finally:
+            close_blob_store()
             await stop_runtime()
 
     app = FastAPI(

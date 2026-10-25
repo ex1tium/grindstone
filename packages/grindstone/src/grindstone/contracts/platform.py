@@ -15,6 +15,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, Field, JsonValue
 
 from grindstone.contracts.base import Contract
+from grindstone.contracts.store import StoreSettings
 
 
 class FieldType(StrEnum):
@@ -330,8 +331,7 @@ class InstanceConfig(Contract):
     """
 
     schema_version: Literal[1] = 1
-    store: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
-    """SPEC-02's `StoreSettings`: `database`, `blobs_dir`, `max_blob_bytes`, `max_project_bytes`."""
+    store: StoreSettings = StoreSettings()
     stations: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
     """SPEC-06 part 1: `[stations.<id>]` with `kind`, `tier`, `control_url` or `runs_dir`."""
     agents: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
