@@ -23,6 +23,8 @@ dev = [
   "grindstone-sdlc",
   "grindstone-notes",
   "grindstone-runner",
+  # `make secrets` hashes the operator password (SPEC-05); SPEC-10 verifies with it.
+  "argon2-cffi==25.1.0",
   "httpx2==2.13.1",
   "hypothesis==6.170.1",
   "import-linter==2.15",

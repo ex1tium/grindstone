@@ -162,16 +162,12 @@ def read_instance_config(path: Path | None = None) -> InstanceConfig:
 
 
 def startup_instance_config() -> InstanceConfig:
-    """The instance configuration start-up uses; an invalid file stops the process.
+    """The instance configuration start-up uses; a missing or invalid file stops the process.
 
-    A file named by `GRINDSTONE_CONFIG` must exist. Until the Compose
-    deployment ships its instance file (TKT-0501), a missing default file
-    means an empty configuration, with a warning.
+    The file is `GRINDSTONE_CONFIG`, else the default the Compose deployment
+    mounts from `deploy/grindstone.toml` (SPEC-05).
     """
     path = instance_config_path()
-    if CONFIG_ENV not in os.environ and not path.exists():
-        _log.warning("no instance configuration at %s; starting with an empty one", path)
-        return InstanceConfig()
     try:
         config = read_instance_config(path)
     except ConfigInvalidError as exc:

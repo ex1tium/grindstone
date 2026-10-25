@@ -23,7 +23,7 @@ from grindstone.contracts.ids import ProjectId, new_record_id
 from grindstone.contracts.platform import InstanceConfig
 from grindstone.contracts.provenance import AuthorKind, Provenance
 from grindstone.platform import check as check_module
-from grindstone.platform import core_registries
+from grindstone.platform import configuration, core_registries
 from grindstone.platform.configuration import (
     CONFIG_ENV,
     ConfigInvalidError,
@@ -160,6 +160,14 @@ def test_instance_config_validation(
     with pytest.raises(ConfigInvalidError) as raised:
         startup_instance_config()
     assert raised.value.problems[0].field == "-"
+
+    # Without the variable, the deployment's default file is required too (SPEC-05).
+    monkeypatch.delenv(CONFIG_ENV)
+    default = tmp_path / "etc" / "grindstone.toml"
+    monkeypatch.setattr(configuration, "DEFAULT_INSTANCE_CONFIG", default)
+    with pytest.raises(ConfigInvalidError) as raised:
+        startup_instance_config()
+    assert raised.value.problems[0].file == str(default)
 
 
 def read_instance_config_text(tmp: Path, text: str) -> InstanceConfig:

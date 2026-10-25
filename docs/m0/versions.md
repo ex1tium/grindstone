@@ -34,6 +34,7 @@ Resolved on 17 October 2026 from the primary sources named below: the PyPI JSON 
 | httpx2 | 2.13.1 | 2026-09-23 | Starlette's test client; `httpx` with the test client is deprecated in Starlette 1.x |
 | import-linter | 2.15 | 2026-09-04 | FF-01 |
 | ruff | 0.17.1 | 2026-10-15 | Lint and format |
+| argon2-cffi | 25.1.0 | 2025-06-03 | Argon2id hash of the operator password, written by `make secrets` through `scripts/hash_password.py` (SPEC-05, REQ-0513) and verified by SPEC-10; a development dependency until SPEC-10 adds it to the control plane. Pinned by TKT-0501, still the latest on the PyPI JSON API on 25 October 2026; it brings `argon2-cffi-bindings` 26.1.0 (abi3 wheels), `cffi` 2.1.1 and `pycparser` 3.12, locked in `uv.lock` |
 
 ## Node packages
 
@@ -79,7 +80,7 @@ Checked on 17 October 2026 against the PyPI JSON API and the npm registry while 
 | sqlalchemy | 2.1.5 | 2026-10-16 | SPEC-02 | Already in the lockfile through DBOS; pinned directly for DBOS datasource transactions. Pinned at 2.1.6 since TKT-0201 (above) |
 | pyyaml | 6.0.3 | 2025-09-25 | SPEC-03 | Safe loader only; CPython 3.14 wheels. Pinned since TKT-0302 (above) |
 | packaging | 26.3 | 2026-08-04 | SPEC-03 | SDK range checks; already in the lockfile. Pinned since TKT-0302 (above) |
-| argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-05 (written by `make secrets`), SPEC-10 (verified) | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels |
+| argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-05 (written by `make secrets`), SPEC-10 (verified) | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels. Pinned since TKT-0501 (above) |
 | pyjwt | 2.15.1 | 2026-09-28 | SPEC-09 | The GitHub App's RS256 JWT, as SPK-4 used it |
 | cryptography | 50.0.2 | 2026-09-30 | SPEC-09 | RS256 for PyJWT |
 | fastmcp, mcp | 4.1.0, 2.3.0 | 2026-10-08, 2026-10-02 | SPEC-07 | As SPK-1 ran them |

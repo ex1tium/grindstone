@@ -2,9 +2,11 @@
 
 Checks that the four services are healthy; that each container mounts
 exactly the volumes ADR-01 allows and nothing else (no host paths beyond its
-secrets, never the Docker socket); that the control plane is ready; and that
-the networks isolate the stations: neither station can reach PostgreSQL, the
-runner cannot reach the control plane, and the agent host can.
+secrets and, for the control plane, the instance file; never the Docker
+socket); that the control plane is ready; and that the networks isolate the
+stations: neither station can reach PostgreSQL, the runner reaches nothing,
+and the agent host reaches the control plane's station listener. SPEC-05's
+security tests follow in `tests/deployment/test_stack.py`.
 """
 
 import json
@@ -17,15 +19,28 @@ PROJECT = "grindstone"
 ALLOWED_VOLUMES: dict[str, set[str]] = {
     "postgres": {"pgdata"},
     "grindstone": {"blobs", "repos", "workspaces", "runs"},
-    "agent-host": {"workspaces"},
+    "agent-host": {"workspaces", "sessions"},
     "runner": {"runs"},
 }
-SECRET_TARGETS: dict[str, set[str]] = {
-    "postgres": {"/run/secrets/postgres_password"},
-    "grindstone": {"/run/secrets/postgres_password"},
-    "agent-host": set(),
+SECRETS: dict[str, set[str]] = {
+    "postgres": {"postgres_password"},
+    "grindstone": {
+        "postgres_password",
+        "mcp_token_key",
+        "host_control_key",
+        "host_event_key",
+        "session_key",
+        "operator_password_hash",
+        "github_app_key",
+    },
+    "agent-host": {"host_control_key", "host_event_key", "claude_oauth_token"},
     "runner": set(),
 }
+"""SPEC-05's secret table."""
+BIND_TARGETS: dict[str, set[str]] = {
+    service: {f"/run/secrets/{name}" for name in names} for service, names in SECRETS.items()
+}
+BIND_TARGETS["grindstone"].add("/etc/grindstone/grindstone.toml")
 
 
 class Probe(NamedTuple):
@@ -49,9 +64,10 @@ class Probe(NamedTuple):
 
 PROBES = [
     Probe("agent-host", "postgres", 5432, should_reach=False),
-    Probe("agent-host", "grindstone", 8080, should_reach=True),
+    Probe("agent-host", "grindstone", 8081, should_reach=True),
     Probe("runner", "postgres", 5432, should_reach=False),
     Probe("runner", "grindstone", 8080, should_reach=False),
+    Probe("runner", "grindstone", 8081, should_reach=False),
 ]
 
 
@@ -79,7 +95,7 @@ def _container_problems(service: str, container: dict[str, Any]) -> list[str]:
             problems.append(f"{service}: mounts the Docker socket")
         if mount["Type"] == "volume":
             volumes.add(mount["Name"].removeprefix(f"{PROJECT}_"))
-        elif mount["Type"] == "bind" and mount["Destination"] not in SECRET_TARGETS[service]:
+        elif mount["Type"] == "bind" and mount["Destination"] not in BIND_TARGETS[service]:
             problems.append(f"{service}: unexpected bind mount {mount['Destination']}")
     if volumes != ALLOWED_VOLUMES[service]:
         problems.append(
