@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "[factories.sdlc]",
+  "description": "The sdlc factory's project section (SPEC-09, 'Project configuration'). The project grants the secret sdlc.github_app_key separately, under [grants].",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["repository", "target_branch", "app_id", "installation_id", "commands"],
+  "properties": {
+    "repository": {
+      "description": "The GitHub repository as owner/name.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$"
+    },
+    "target_branch": { "type": "string", "minLength": 1, "maxLength": 255 },
+    "app_id": { "description": "The GitHub App's ID.", "type": "integer", "minimum": 1 },
+    "installation_id": {
+      "description": "The App's installation ID on the repository's owner.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "merge_method": {
+      "description": "How Grindstone merges in unenforced mode (ADR-40).",
+      "enum": ["squash", "merge", "rebase"],
+      "default": "squash"
+    },
+    "commands": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test"],
+      "properties": {
+        "gates": {
+          "description": "Commands run before the tests, in order; a failing gate fails every target.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "argv"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,63}$" },
+              "argv": { "$ref": "#/$defs/argv" }
+            }
+          }
+        },
+        "test": {
+          "description": "The test command; it writes JUnit XML under $GRINDSTONE_OUT.",
+          "$ref": "#/$defs/argv"
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "glob": {
+          "description": "The subject's test files, read for @verifies annotations.",
+          "type": "string",
+          "minLength": 1,
+          "default": "**/test_*.py"
+        },
+        "def_pattern": {
+          "description": "A line defining a test; its first group is the test's name.",
+          "type": "string",
+          "minLength": 1,
+          "default": "^\\s*def (test_\\w+)\\("
+        }
+      }
+    },
+    "toolchain": {
+      "description": "The subject's environment fingerprint for test evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "package_manager", "lockfile"],
+      "properties": {
+        "runtime": { "type": "string", "minLength": 1 },
+        "package_manager": { "type": "string", "minLength": 1 },
+        "lockfile": { "type": "string", "minLength": 1 }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protected": {
+          "description": "Globs added to the protected tier at copy-back.",
+          "$ref": "#/$defs/globs"
+        },
+        "reviewed": {
+          "description": "Globs added to the reviewed tier at copy-back.",
+          "$ref": "#/$defs/globs"
+        }
+      }
+    },
+    "published_paths": {
+      "description": "Paths whose change on the target branch outside a delivery is a bypass.",
+      "$ref": "#/$defs/globs",
+      "default": [".grindstone/**"]
+    },
+    "diff_max_bytes": {
+      "description": "The size at which the reviewer's diff is truncated, with the truncation stated.",
+      "type": "integer",
+      "minimum": 1024,
+      "default": 1048576
+    }
+  },
+  "$defs": {
+    "argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "globs": {
+      "type": "array",
+      "default": [],
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

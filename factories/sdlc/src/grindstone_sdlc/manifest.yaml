@@ -1,0 +1,161 @@
+# The `sdlc` factory's manifest (SPEC-09, section 5F). Validated by the kernel's
+# loader before any of this package's code runs (SPEC-03).
+#
+# Template inputs, outputs and check targets are strings in SDK 0.1.0
+# (`TaskStep.inputs`, `TaskStep.output`, `CheckDecl.targets`). Until the
+# template runner (SPEC-06 part 2) and `plan_checks` (SPEC-08) fix their
+# grammar, they are written as follows:
+# - an input is the argument the closure starts from (`args.ticket`), then
+#   `follow <edge>` for each edge followed from the items reached so far
+#   (`~` follows an edge from its target back to its source), then
+#   `refuse <selection>` for input items the template refuses, naming them;
+# - a selection is a kind, optionally with field values in brackets:
+#   `sdlc.criterion[method=test]`, or `[method=manual|command]` for either;
+# - an output names the report schema the step's capability submits.
+name: sdlc
+version: 0.1.0
+sdk: ">=0.1.0,<0.2.0"
+code: adapters
+config_schema: config.schema.json
+
+kinds:
+  - name: sdlc.requirement
+    id: {pattern: "^REQ-[0-9]{4}$", examples: ["REQ-0101"]}
+    fields:
+      statement: {type: text}
+      priority: {type: enum, values: [must, should, could]}
+      rationale: {type: text, required: false}
+    # A requirement is a draft only as a revision in an unapproved ChangeDraft
+    # (SPEC-04), so an applied one enters `approved`. M1 writes only that state.
+    lifecycle:
+      states: [approved, implemented, verified, retired]
+      initial: approved
+      transitions:
+        - {from: approved, to: implemented, writer: task}
+        - {from: implemented, to: verified, writer: evidence}
+        - {from: approved, to: retired, writer: changeset}
+        - {from: implemented, to: retired, writer: changeset}
+        - {from: verified, to: retired, writer: changeset}
+
+  - name: sdlc.criterion
+    id: {pattern: "^AC-[0-9]{4}-[0-9]+$", examples: ["AC-0101-1"]}
+    fields:
+      condition: {type: text}
+      method: {type: enum, values: [test, review, manual, command]}
+      required: {type: boolean, required: false, default: true}
+      verifies:
+        type: ref
+        kinds: [sdlc.requirement]
+        edge: sdlc.verifies
+        cardinality: one
+
+  - name: sdlc.ticket
+    id: {pattern: "^TKT-[0-9]{4}$", examples: ["TKT-0001"]}
+    fields:
+      goal: {type: text}
+      declared_paths: {type: list, of: {type: string}, required: false, default: []}
+      estimate:
+        type: enum
+        values: [small, medium, large]
+        presentation: true
+        required: false
+      implements:
+        type: ref
+        kinds: [sdlc.requirement]
+        edge: sdlc.implements
+        cardinality: many
+        required: false
+        default: []
+      after:
+        type: ref
+        kinds: [sdlc.ticket]
+        edge: sdlc.after
+        cardinality: many
+        required: false
+        default: []
+    # As with requirements, a ticket is `proposed` only as a revision in an
+    # unapproved ChangeDraft, so an applied one enters `ready`.
+    lifecycle:
+      states: [ready, in_progress, in_review, done, blocked, cancelled]
+      initial: ready
+      transitions:
+        - {from: ready, to: in_progress, writer: task}
+        - {from: in_progress, to: in_review, writer: task}
+        - {from: in_review, to: done, writer: delivery}
+        - {from: ready, to: blocked, writer: task}
+        - {from: in_progress, to: blocked, writer: task}
+        - {from: in_review, to: blocked, writer: task}
+        - {from: ready, to: cancelled, writer: task}
+        - {from: in_progress, to: cancelled, writer: task}
+        - {from: in_review, to: cancelled, writer: task}
+        - {from: blocked, to: cancelled, writer: task}
+
+edges:
+  # A semantic change to the requirement stales its criteria's evidence
+  # (REQ-0902): the edge is one of the criterion's check dependencies.
+  - name: sdlc.verifies
+    inverse: sdlc.verified_by
+    from_kinds: [sdlc.criterion]
+    to_kinds: [sdlc.requirement]
+    impact: review
+    check_dependency: true
+  # A ticket changes scope, not what a criterion means (DEC-0907).
+  - name: sdlc.implements
+    inverse: sdlc.implemented_by
+    from_kinds: [sdlc.ticket]
+    to_kinds: [sdlc.requirement]
+    impact: review
+  - name: sdlc.after
+    inverse: sdlc.before
+    from_kinds: [sdlc.ticket]
+    to_kinds: [sdlc.ticket]
+    impact: review
+
+capabilities:
+  - capabilities/implementer.yaml
+  - capabilities/test_reviewer.yaml
+
+check_methods:
+  - {name: sdlc.ci_suite, shape: test, env_relevant: true}
+  # The test reviewer's judgment. SDK 0.1.0 registers no kernel method named
+  # after the `review` shape, so the factory names its own.
+  - {name: sdlc.review, shape: review}
+
+templates:
+  - name: sdlc.implement
+    command: /implement
+    args:
+      type: object
+      required: [ticket]
+      additionalProperties: false
+      properties:
+        ticket: {type: string, pattern: "^TKT-[0-9]{4}$"}
+    steps:
+      - type: task
+        name: implement
+        need: sdlc.implement
+        mode: work
+        inputs:
+          - args.ticket
+          - follow sdlc.implements
+          - follow ~sdlc.verifies
+          # M1 cannot check these methods (REQ-0904).
+          - refuse sdlc.criterion[method=manual|command]
+        output: schemas/implementation_report.json
+        checks:
+          - method: sdlc.ci_suite
+            by: station
+            required: true
+            targets: ["sdlc.criterion[method=test]"]
+          - method: sdlc.review
+            by: sdlc.review.tests
+            required: true
+            targets: [sdlc.criterion]
+      - type: deliver
+        name: open_pr
+        adapter: sdlc.github_pr
+        from: implement
+
+workspace_providers: [sdlc.git]
+delivery_adapters: [sdlc.github_pr]
+secrets: [sdlc.github_app_key]
