@@ -47,8 +47,15 @@ SDK_EXPORTS = {
         "SecretReader",
         "register_error_code",
     },
+    "SPEC-06-1": {
+        "WorkspaceProvider",
+        "SubjectResolver",
+        "RunContext",
+        "Materialization",
+        "CollectOutcome",
+    },
 }
-"""SPEC-03's export table, by owner; SPEC-06 part 1 and SPEC-08 add their rows with their ports."""
+"""SPEC-03's export table, by owner; SPEC-08 adds its row with its ports."""
 
 PORT_PROTOCOLS = (
     "Context",
