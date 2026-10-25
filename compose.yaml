@@ -3,7 +3,9 @@
 # runner is on none; nothing mounts the Docker socket (I-09).
 # Start: make up (runs make secrets first). Check: make smoke.
 #
-# Secrets are files under secrets/, 0600 and owned by the operator. Compose
+# Secrets are files under secrets/ (or $GRINDSTONE_SECRETS_DIR), 0600 and
+# owned by the operator, on a Linux filesystem: a Windows drive such as
+# /mnt/p shows every file as 0777, which the entrypoints refuse. Compose
 # bind-mounts them with that owner and mode, so only an entrypoint holding
 # DAC_READ_SEARCH reads one; it copies each into its service user's private
 # tmpfs and drops the capability before the service starts (DEC-0501). Which
@@ -171,18 +173,18 @@ volumes:
 
 secrets:
   postgres_password:
-    file: ./secrets/postgres_password
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/postgres_password
   mcp_token_key:
-    file: ./secrets/mcp_token_key
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/mcp_token_key
   host_control_key:
-    file: ./secrets/host_control_key
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/host_control_key
   host_event_key:
-    file: ./secrets/host_event_key
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/host_event_key
   session_key:
-    file: ./secrets/session_key
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/session_key
   operator_password_hash:
-    file: ./secrets/operator_password_hash
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/operator_password_hash
   github_app_key:
-    file: ./secrets/github_app_key
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/github_app_key
   claude_oauth_token:
-    file: ./secrets/claude_oauth_token
+    file: ${GRINDSTONE_SECRETS_DIR:-./secrets}/claude_oauth_token

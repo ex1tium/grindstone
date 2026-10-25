@@ -69,8 +69,9 @@ Updated 25 October 2026. The living handover between sessions: update it when a 
 1. **M1 backlog:** tracked in `docs/m1/backlog.md` (51 tickets in nine dependency layers; layer 0 is TKT-0101 and TKT-0201). Build the section 7 tickets in the order of the specification graph (SPEC-01, SPEC-02, SPEC-03, then SPEC-04 and SPEC-05, SPEC-06 part 1, SPEC-07 and SPEC-08, SPEC-06 part 2, SPEC-09 and SPEC-10), then the live runs M1-01, M1-02 and M1-08.
 
 ## Decided by the operator (24 October 2026), before M1's build
-- **Models:** Opus 5.5 for both `primary` (implementer) and `secondary` (test reviewer), set in `deploy/grindstone.toml` when its ticket creates it (ADR-47 allows the same model).
+- **Models:** Opus 5.5 for both `primary` (implementer) and `secondary` (test reviewer), set in `deploy/grindstone.toml` (ADR-47 allows the same model). That file is the one place a model identifier is committed; CLAUDE.md states the exception (operator, 25 October 2026).
 - **GitHub App:** installed on `ex1tium/grindstone` (OQ-0902). The `grindstone/verification` requirement goes into that repository's ruleset just before M1-08, not earlier, because nothing posts it yet and it would block every pull request.
+- **Background agents (25 October 2026):** only when asked, at most one beside the lead session, in a different role; M1 tickets are built one at a time.
 - **Agent egress (OQ-0502):** open at T1, an accepted risk; agents may search and read the web for documentation and research (ADR-55).
 - **Session resume after a host restart (OQ-0601):** resume the old session when its last activity is under an hour old (prompt cache warm), otherwise a new session (ADR-56).
 - **The other open questions take their recommended defaults**, revisited only if the live runs contradict them: eight agent users per station (OQ-0503, OQ-0604); error codes in the message text as well as structured content (OQ-0702); one gate-state queue of concurrency 1 (OQ-0804); a line diff on decision cards (OQ-1002); M1-08's ticket is a small M2 ticket whose unit tests need neither Postgres nor Docker, picked when M2's specifications exist (OQ-0901).
@@ -83,7 +84,7 @@ Updated 25 October 2026. The living handover between sessions: update it when a 
 
 ## Open with the operator
 - Just before M1-08: require `grindstone/verification` from the App (integration 5358336) in `.github/rulesets/grindstone-main.json` and re-import the ruleset (OQ-0902).
-- OQ-0501, once on the operator's machine: run the commands in #35's description from WSL Ubuntu with the clone on the Linux filesystem (`make secrets`, `make up`, `GRINDSTONE_COMPOSE_STACK=1` stack tests, and the fail-closed check with a dummy file under `/mnt/c`). It already passes on CI's Linux host and inside Docker Desktop's VM.
+- OQ-0501, once on the operator's machine: from WSL Ubuntu in the usual checkout (`/mnt/p/grindstone`), with secrets on the Linux filesystem: `export GRINDSTONE_SECRETS_DIR=~/.grindstone/secrets`, then `make secrets`, `stat -c '%a %u %n' $GRINDSTONE_SECRETS_DIR/*` (expect 600 and your UID), `make up`, `GRINDSTONE_COMPOSE_STACK=1 uv run --locked pytest -v tests/deployment/test_stack.py`, `make down`; and the fail-closed check from #35 with a dummy file under `/mnt/c`, which the entrypoint must refuse. It already passes on CI's Linux host and inside Docker Desktop's VM. Secrets under `/mnt/p` are refused by design (Windows drives show 0777).
 - At the M1 review: where M1's real delivery runs (default: the operator's machine).
 - Anything that must act as the App runs on the operator's machine (`docs/spikes/SPK-4-local-run.md`).
 - With both repositories public, ADR-40's unenforced mode is still built and tested (SPK-4 flips the testbed private for that experiment), because other operators' private repositories need it.

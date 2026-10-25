@@ -61,7 +61,7 @@ ff: ## Run the fitness functions (FF-01..04, FF-10, FF-13) and the workflow-vers
 check: lint typecheck test ff ## Everything CI runs, except the compose smoke test
 
 .PHONY: secrets
-secrets: ## Create every deployment secret under secrets/, 0600, never overwriting one (never commit them)
+secrets: ## Create every deployment secret under secrets/ or $$GRINDSTONE_SECRETS_DIR, 0600, never overwriting one
 	bash scripts/make_secrets.sh
 
 .PHONY: up
