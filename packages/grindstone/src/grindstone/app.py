@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from grindstone import __version__
+from grindstone import __version__, decisions
 from grindstone.contracts.platform import InstanceConfig
 from grindstone.intent import KindCatalog, sync_lifecycle_states
 from grindstone.platform import CORE_ORIGIN, Category, Registries, core_registries
@@ -34,8 +34,8 @@ _log = logging.getLogger(__name__)
 # Scheduled workflows the modules declare (REQ-0214); M1's arrive with their owners.
 SCHEDULES: tuple[Schedule, ...] = ()
 
-# Event consumers the modules declare (REQ-0314); M1's arrive with their owners.
-CONSUMERS: tuple[Consumer, ...] = ()
+# Event consumers the modules declare (REQ-0314).
+CONSUMERS: tuple[Consumer, ...] = (decisions.CONSUMER,)
 
 
 def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
@@ -94,6 +94,7 @@ def create_app(
             loaded = await asyncio.to_thread(load_platform)
             app.state.registries, app.state.factories, app.state.kinds = loaded
             app.state.platform = Platform(instance, app.state.factories)
+            app.state.decisions = decisions.Decisions(app.state.registries)
             await asyncio.to_thread(report_projects, app.state.platform)
             dispatching = DispatcherThread(dispatcher, db.conninfo())
             dispatching.start()

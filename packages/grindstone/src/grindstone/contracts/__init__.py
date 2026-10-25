@@ -10,6 +10,13 @@ drift in CI (FF-02).
 from pydantic import BaseModel
 
 from grindstone.contracts.base import MAX_SAFE_INTEGER, Contract, Presentation, bundle_schema
+from grindstone.contracts.decisions import (
+    Answer,
+    Decision,
+    DecisionAnswered,
+    DecisionRaised,
+    DecisionSuperseded,
+)
 from grindstone.contracts.errors import (
     KERNEL_ERROR_CODES,
     ErrorClass,
@@ -68,6 +75,11 @@ EXPORTED: tuple[type[BaseModel], ...] = (
     FactoryRefused,
     ProjectConfigured,
     ConfigInvalid,
+    Decision,
+    Answer,
+    DecisionRaised,
+    DecisionAnswered,
+    DecisionSuperseded,
 )
 
 __all__ = [
@@ -76,6 +88,7 @@ __all__ = [
     "ITEM_ID_GRAMMAR",
     "KERNEL_ERROR_CODES",
     "MAX_SAFE_INTEGER",
+    "Answer",
     "AuthorKind",
     "BlobHash",
     "BlobRef",
@@ -84,7 +97,11 @@ __all__ = [
     "ChangeSetId",
     "ConfigInvalid",
     "Contract",
+    "Decision",
+    "DecisionAnswered",
     "DecisionId",
+    "DecisionRaised",
+    "DecisionSuperseded",
     "DependencyHealth",
     "ErrorClass",
     "ErrorEnvelope",
