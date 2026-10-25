@@ -188,7 +188,11 @@ importers:
         specifier: workspace:*
         version: link:../packages/contracts-ts
 
-  packages/contracts-ts: {}
+  packages/contracts-ts:
+    dependencies:
+      canonicalize:
+        specifier: 5.1.0
+        version: 5.1.0
 
 packages:
 
@@ -388,6 +392,11 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
+  canonicalize@5.1.0:
+    resolution: {integrity: sha512-bab9+WefZljqQ8jT0qRwVmTyzAUU63K97QIQD3agynIBrb6sa5M2eAy8Hv8K3p4V9+ONVYZKtGYl4Dg+/5Gumw==}
+    engines: {node: '>=22'}
+    hasBin: true
+
   fdir@6.5.0:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
@@ -561,6 +570,8 @@ snapshots:
     optional: true
 
   argparse@2.0.1: {}
+
+  canonicalize@5.1.0: {}
 
   fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
