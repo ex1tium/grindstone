@@ -1,0 +1,15 @@
+# The maker of a ticket's commit (SPEC-09, "Capabilities"). It holds `web` for
+# documentation search and fetch (ADR-55, as amended by ADR-57).
+id: sdlc.implementer
+version: "1"
+prompt: prompts/implementer.md
+agent: {preset: claude, model: primary, effort: high}
+workspace: {mode: write, provider: sdlc.git}
+permissions:
+  allow: [read, write, shell, web]
+  otherwise: deny
+produces:
+  reports: [schemas/implementation_report.json]
+offers:
+  - {need: sdlc.implement, modes: [delegate], accepts: [sdlc.ticket]}
+tier: T1
