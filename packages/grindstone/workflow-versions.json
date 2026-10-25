@@ -1,6 +1,7 @@
 {
   "workflow_version": "1",
   "workflows": {
+    "change.apply": "009caf2ad7aa37b2f2d5b3f1e26cde902a8da018727f1432e9b7df8a9bb791b7",
     "decisions.continue": "35aa3ca788ea701f25005b7ba15f3ededc1a351c8380d4fd586bf9700e67252d"
   }
 }

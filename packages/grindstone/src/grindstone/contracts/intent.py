@@ -72,3 +72,31 @@ class LifecycleTransition(Contract):
     cause: str
     """The ChangeSet, task, evidence or delivery ID that caused it."""
     at: datetime
+
+
+# Events.
+
+
+class ItemRevised(Contract):
+    """A ChangeSet's apply wrote a new revision of an item."""
+
+    schema_version: Literal[1] = 1
+    type: Literal["item.revised"] = "item.revised"
+    item: ItemId
+    kind: str
+    revision: RevisionId
+    hash: SemanticHash
+    changeset: ChangeSetId
+
+
+class ItemTransitioned(Contract):
+    """An item's lifecycle state changed."""
+
+    schema_version: Literal[1] = 1
+    type: Literal["item.transitioned"] = "item.transitioned"
+    item: ItemId
+    kind: str
+    from_state: str | None
+    to_state: str
+    writer: Literal["changeset", "task", "evidence", "delivery"]
+    cause: str

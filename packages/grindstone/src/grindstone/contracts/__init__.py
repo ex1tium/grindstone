@@ -10,6 +10,16 @@ drift in CI (FF-02).
 from pydantic import BaseModel
 
 from grindstone.contracts.base import MAX_SAFE_INTEGER, Contract, Presentation, bundle_schema
+from grindstone.contracts.change import (
+    ApprovalPayload,
+    ChangeDraft,
+    ChangeSet,
+    ChangeSetApplied,
+    ChangeSetDrafted,
+    ChangeSetRejected,
+    ChangeSetWalked,
+    WalkResult,
+)
 from grindstone.contracts.decisions import (
     Answer,
     Decision,
@@ -44,6 +54,7 @@ from grindstone.contracts.ids import (
     item_id_type,
     new_record_id,
 )
+from grindstone.contracts.intent import ItemRevised, ItemTransitioned
 from grindstone.contracts.provenance import AuthorKind, Provenance
 from grindstone.contracts.refs import (
     BlobHash,
@@ -80,6 +91,16 @@ EXPORTED: tuple[type[BaseModel], ...] = (
     DecisionRaised,
     DecisionAnswered,
     DecisionSuperseded,
+    ItemRevised,
+    ItemTransitioned,
+    ChangeDraft,
+    WalkResult,
+    ChangeSet,
+    ApprovalPayload,
+    ChangeSetDrafted,
+    ChangeSetWalked,
+    ChangeSetApplied,
+    ChangeSetRejected,
 )
 
 __all__ = [
@@ -89,12 +110,19 @@ __all__ = [
     "KERNEL_ERROR_CODES",
     "MAX_SAFE_INTEGER",
     "Answer",
+    "ApprovalPayload",
     "AuthorKind",
     "BlobHash",
     "BlobRef",
     "BlobSetSubject",
     "BlobSubject",
+    "ChangeDraft",
+    "ChangeSet",
+    "ChangeSetApplied",
+    "ChangeSetDrafted",
     "ChangeSetId",
+    "ChangeSetRejected",
+    "ChangeSetWalked",
     "ConfigInvalid",
     "Contract",
     "Decision",
@@ -113,7 +141,9 @@ __all__ = [
     "HealthStatus",
     "ItemId",
     "ItemRef",
+    "ItemRevised",
     "ItemRevisionSubject",
+    "ItemTransitioned",
     "KernelEvent",
     "Presentation",
     "ProjectConfigured",
@@ -124,6 +154,7 @@ __all__ = [
     "ServiceHealth",
     "SubjectRef",
     "TaskId",
+    "WalkResult",
     "bundle_schema",
     "error_class_of",
     "item_id_type",
