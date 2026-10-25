@@ -21,6 +21,7 @@ from grindstone.platform.loader import LoadReport, discover, load_factories, rec
 from grindstone.stations import kernel_resolvers
 from grindstone.store import (
     DatabaseSettings,
+    QueueSpec,
     Schedule,
     close_blob_store,
     open_blob_store,
@@ -35,6 +36,10 @@ _log = logging.getLogger(__name__)
 
 # Scheduled workflows the modules declare (REQ-0214); M1's arrive with their owners.
 SCHEDULES: tuple[Schedule, ...] = ()
+
+# Lanes and the modules' other queues (REQ-0206). Station lanes come from
+# `[stations]` once SPEC-06 part 1 types it (TKT-0602); SPEC-08 adds `delivery.gate`.
+QUEUES: tuple[QueueSpec, ...] = ()
 
 # Event consumers the modules declare (REQ-0314).
 CONSUMERS: tuple[Consumer, ...] = (decisions.CONSUMER,)
@@ -75,6 +80,7 @@ def create_app(
     database: DatabaseSettings | None = None,
     *,
     schedules: Sequence[Schedule] = SCHEDULES,
+    queues: Sequence[QueueSpec] = QUEUES,
     consumers: Sequence[Consumer] = CONSUMERS,
 ) -> FastAPI:
     """Build the control-plane ASGI application.
@@ -92,7 +98,7 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         instance: InstanceConfig = startup_instance_config()
-        app.state.runtime = await start_runtime(db.url(), schedules=schedules)
+        app.state.runtime = await start_runtime(db.url(), schedules=schedules, queues=queues)
         app.state.blobs = open_blob_store(instance.store)
         try:
             loaded = await asyncio.to_thread(load_platform)

@@ -25,6 +25,9 @@ This module is the only place that configures DBOS (SPEC-02, DEC-0204):
   built (REQ-0204, `grindstone.store.steps`).
 - `Schedule` states for every scheduled workflow whether missed periods are
   backfilled; the default skips them (REQ-0214, DEC-0205).
+- Lanes and the modules' other queues are registered at launch
+  (`grindstone.store.lanes`, REQ-0206); `enqueue` puts a workflow on one,
+  under the same ID and record rules as `start`.
 """
 
 import asyncio
@@ -36,13 +39,14 @@ from types import MappingProxyType
 from typing import Any
 
 import sqlalchemy
-from dbos import DBOS, ScheduleInput, SetWorkflowID, WorkflowHandle
+from dbos import DBOS, Queue, ScheduleInput, SetWorkflowID, WorkflowHandle
 from dbos import WorkflowStatus as DBOSWorkflowStatus
 from pydantic import JsonValue
 from sqlalchemy import URL
 
 from grindstone.store.database import close_database, open_database
 from grindstone.store.errors import StoreError
+from grindstone.store.lanes import QueueSpec, register_queues
 from grindstone.store.schema import MigrationSources
 from grindstone.store.steps import bind_record
 
@@ -134,6 +138,8 @@ class Runtime:
 
     version: str
     stranded: tuple[StrandedWorkflow, ...] = field(default=())
+    queues: Mapping[str, Queue] = field(default_factory=lambda: MappingProxyType({}))
+    """The lanes and declared queues, by name."""
 
     @property
     def dispatching(self) -> bool:
@@ -153,13 +159,16 @@ async def start_runtime(
     *,
     application_version: str = WORKFLOW_VERSION,
     schedules: Sequence[Schedule] = (),
+    queues: Sequence[QueueSpec] = (),
     migrations: MigrationSources | None = None,
 ) -> Runtime:
     """Open the store and launch DBOS; call once, from the async lifespan.
 
     Migrations run in a worker thread, so the event loop never blocks on
-    them. When workflows of another version are pending, the guard reports
-    them, schedules are not applied, and `start` refuses new dispatch.
+    them. Every queue (`queue_specs`: the lanes and the modules' declared
+    queues) is registered, so this version's queued workflows resume on them.
+    When workflows of another version are pending, the guard reports them,
+    schedules are not applied, and `start` and `enqueue` refuse new dispatch.
     """
     if _active.runtime is not None:
         raise RuntimeError("the runtime is already started in this process")
@@ -177,7 +186,8 @@ async def start_runtime(
     try:
         await asyncio.to_thread(open_database, url, migrations=migrations)
         DBOS.launch()
-        runtime = Runtime(version=application_version)
+        registered = await register_queues(queues)
+        runtime = Runtime(version=application_version, queues=registered)
         runtime.stranded = _stranded(await _unfinished_async(), application_version)
         if runtime.stranded:
             _report(runtime.stranded, application_version)
@@ -217,14 +227,35 @@ def start[**P, R](
     `workflow_version_mismatch`; a workflow that DBOS recovered may still
     start its children.
     """
+    _check_dispatch(workflow_id, args)
+    with SetWorkflowID(workflow_id):
+        return DBOS.start_workflow(func, *args, **kwargs)
+
+
+def enqueue[**P, R](
+    queue: str, workflow_id: str, func: Callable[P, R], /, *args: P.args, **kwargs: P.kwargs
+) -> WorkflowHandle[R]:
+    """Put `func` on the lane or declared queue `queue`, under `workflow_id`.
+
+    The same rules as `start`: an ID derived from the causing record, that
+    record's ID as the first input, enqueuing the same ID again returns the
+    existing workflow, and no new dispatch while workflows are stranded.
+    """
+    _check_dispatch(workflow_id, args)
+    found = current_runtime().queues.get(queue)
+    if found is None:
+        raise ValueError(f"no lane or queue {queue!r} was registered at start-up")
+    with SetWorkflowID(workflow_id):
+        return found.enqueue(func, *args, **kwargs)
+
+
+def _check_dispatch(workflow_id: str, args: Sequence[object]) -> None:
     _check_id(workflow_id)
     _check_record(args)
     runtime = current_runtime()
     if not runtime.dispatching and DBOS.workflow_id is None:
         runtime.stranded = _stranded(_unfinished(), runtime.version)
         _refuse_if_stranded(runtime)
-    with SetWorkflowID(workflow_id):
-        return DBOS.start_workflow(func, *args, **kwargs)
 
 
 def _check_id(workflow_id: str) -> None:
