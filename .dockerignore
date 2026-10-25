@@ -11,4 +11,5 @@
 !runner/src/**
 !agent-host/package.json
 !agent-host/src/**
+!docker/entrypoints/**
 **/__pycache__

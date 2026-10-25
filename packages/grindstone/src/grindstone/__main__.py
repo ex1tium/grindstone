@@ -5,10 +5,16 @@ marks those stranded under another version; `python -m grindstone workflows
 fork <id>` moves a stranded one onto this version (SPEC-02, REQ-0207).
 `python -m grindstone check` validates instance, factory and project
 configuration together and exits 1 naming every error (SPEC-03, REQ-0312).
+
+With `GRINDSTONE_STATION_PORT` set, the process serves two listeners on
+`GRINDSTONE_HTTP_HOST`: the operator's on `GRINDSTONE_HTTP_PORT`, refusing
+peers in `GRINDSTONE_OPERATOR_REFUSED_NETWORKS`, and the stations' on the
+station port (SPEC-05, REQ-0512).
 """
 
 import argparse
 import os
+import socket
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -20,6 +26,7 @@ from grindstone.app import create_app
 from grindstone.platform.check import check
 from grindstone.platform.configuration import instance_config_path
 from grindstone.store import WORKFLOW_VERSION, DatabaseSettings, fork_workflow, list_workflows
+from grindstone.surface import Listeners, parse_networks, separate_listeners
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -29,14 +36,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _workflows(args)
     if args.command == "check":
         return _check(args)
-    uvicorn.run(
-        create_app(),
-        host=os.environ.get("GRINDSTONE_HTTP_HOST", "127.0.0.1"),
-        port=int(os.environ.get("GRINDSTONE_HTTP_PORT", "8080")),
-        log_config=None,
-        server_header=False,
+    host = os.environ.get("GRINDSTONE_HTTP_HOST", "127.0.0.1")
+    port = int(os.environ.get("GRINDSTONE_HTTP_PORT", "8080"))
+    station = os.environ.get("GRINDSTONE_STATION_PORT")
+    if not station:
+        uvicorn.run(create_app(), host=host, port=port, log_config=None, server_header=False)
+        return 0
+    listeners = Listeners(
+        operator_port=port,
+        station_port=int(station),
+        refused=parse_networks(os.environ.get("GRINDSTONE_OPERATOR_REFUSED_NETWORKS", "")),
     )
+    sockets = [_bind(host, listeners.operator_port), _bind(host, listeners.station_port)]
+    app = separate_listeners(create_app(), listeners)
+    uvicorn.Server(uvicorn.Config(app, log_config=None, server_header=False)).run(sockets=sockets)
     return 0
+
+
+def _bind(host: str, port: int) -> socket.socket:
+    """A listening TCP socket; uvicorn serves both on one event loop and one lifespan."""
+    return socket.create_server((host, port))
 
 
 def _parser() -> argparse.ArgumentParser:

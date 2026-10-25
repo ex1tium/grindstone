@@ -8,6 +8,7 @@ fresh database, dropped afterwards. Without the variable the tests are skipped.
 import os
 import uuid
 from collections.abc import Iterator
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -15,6 +16,7 @@ from dbos import DBOS
 from psycopg import sql
 from sqlalchemy import Engine, make_url
 
+from grindstone.platform.configuration import CONFIG_ENV
 from grindstone.store import Database, close_database, create_engine, open_database
 
 TEST_DATABASE_ENV = "GRINDSTONE_TEST_DATABASE_URL"
@@ -23,6 +25,18 @@ TEST_DATABASE_ENV = "GRINDSTONE_TEST_DATABASE_URL"
 def _libpq_url(url: str) -> str:
     """The same URL in the form psycopg accepts."""
     return make_url(url).set(drivername="postgresql").render_as_string(hide_password=False)
+
+
+@pytest.fixture(autouse=True)
+def instance_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """An empty instance file for start-up, which refuses to run without one (SPEC-05).
+
+    A test that needs another file sets `GRINDSTONE_CONFIG` itself.
+    """
+    path = tmp_path / "grindstone.toml"
+    path.write_text("", encoding="utf-8")
+    monkeypatch.setenv(CONFIG_ENV, str(path))
+    return path
 
 
 @pytest.fixture

@@ -1,0 +1,59 @@
+# Instance configuration for the Compose deployment (SPEC-05). Mounted
+# read-only at /etc/grindstone/grindstone.toml in the `grindstone` container
+# only; no workspace, station or agent can read it (I-14). Only the operator
+# changes it, then restarts `grindstone`. `python -m grindstone check`
+# validates it (SPEC-03, REQ-0312).
+#
+# Each section belongs to the specification named beside it, which types its
+# keys; until then a section is an open table, and the values here are the
+# seeds those specifications state.
+
+schema_version = 1
+
+[platform] # SPEC-03
+factories_allowed = ["sdlc"]
+
+# Secrets are named by the path of their copy in the control plane's private
+# tmpfs, where the entrypoint puts them (SPEC-05, DEC-0501); a value never
+# appears here. The database password is read through GRINDSTONE_DB_PASSWORD_FILE.
+[secrets] # SPEC-03, SPEC-05
+mcp_token_key = "/run/gs/mcp_token_key"
+host_control_key = "/run/gs/host_control_key"
+host_event_key = "/run/gs/host_event_key"
+session_key = "/run/gs/session_key"
+operator_password_hash = "/run/gs/operator_password_hash"
+"sdlc.github_app_key" = "/run/gs/github_app_key"
+
+# Check images a project may choose, pinned by digest. The testbed's
+# toolchain image is added here when it is built (SPEC-09, TKT-0905).
+[images] # SPEC-03
+
+# One agent station and one check station (SPEC-06 part 1).
+[stations.agent-host] # SPEC-06 part 1
+kind = "agent"
+tier = "T1"
+control_url = "http://agent-host:8090"
+agent_users = [
+  "gs-agent-1",
+  "gs-agent-2",
+  "gs-agent-3",
+  "gs-agent-4",
+  "gs-agent-5",
+  "gs-agent-6",
+  "gs-agent-7",
+  "gs-agent-8",
+]
+lanes = { writing = 1, readonly = 4 }
+
+[stations.runner] # SPEC-06 part 1
+kind = "check"
+tier = "T1"
+runs_dir = "/var/lib/grindstone/runs"
+lanes = { check = 1 }
+
+# The operator's choice for M1 (docs/m0/status.md, 24 October 2026): the
+# implementer's and the test reviewer's slots both name the same model,
+# which ADR-47 allows.
+[agents.claude.models] # SPEC-06 part 2
+primary = "claude-opus-5-5"
+secondary = "claude-opus-5-5"

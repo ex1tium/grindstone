@@ -1,6 +1,8 @@
 # Control plane: kernel, factories, workflows, APIs, delivery (ADR-01).
 # Holds every authority credential, so it runs non-root with a read-only root
-# filesystem and never executes work content (I-09).
+# filesystem and never executes work content (I-09). The image starts as root
+# only for its entrypoint, which copies the secrets for `grindstone` and drops
+# every capability before the service runs (SPEC-05, DEC-0501).
 
 FROM ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 AS uv
 
@@ -41,11 +43,12 @@ RUN groupadd --system --gid 10100 gs-workspaces \
  && install -d -o root -g gs-workspaces -m 2770 /var/lib/grindstone/workspaces \
  && install -d -o root -g gs-runs -m 2770 /var/lib/grindstone/runs
 COPY --from=build /opt/venv /opt/venv
+COPY --chmod=0555 docker/entrypoints/lib.sh docker/entrypoints/grindstone.sh /usr/local/lib/grindstone/entrypoints/
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     GRINDSTONE_HTTP_HOST=0.0.0.0 \
     GRINDSTONE_HTTP_PORT=8080
-USER grindstone
-EXPOSE 8080
+EXPOSE 8080 8081
+ENTRYPOINT ["/usr/local/lib/grindstone/entrypoints/grindstone.sh"]
 CMD ["python", "-m", "grindstone"]

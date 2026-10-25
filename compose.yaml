@@ -1,7 +1,13 @@
-# Grindstone on one host (ADR-01). Volumes are mounted only where ADR-01
-# allows; networks keep each station away from the database and from the
-# other station; nothing mounts the Docker socket (I-09).
-# Start: make up (creates development secrets first). Check: make smoke.
+# Grindstone on one host (ADR-01, SPEC-05). Volumes are mounted only where
+# ADR-01 allows; networks keep each station away from the database, and the
+# runner is on none; nothing mounts the Docker socket (I-09).
+# Start: make up (runs make secrets first). Check: make smoke.
+#
+# Secrets are files under secrets/, 0600 and owned by the operator. Compose
+# bind-mounts them with that owner and mode, so only an entrypoint holding
+# DAC_READ_SEARCH reads one; it copies each into its service user's private
+# tmpfs and drops the capability before the service starts (DEC-0501). Which
+# container mounts which secret follows SPEC-05's secret table.
 name: grindstone
 
 services:
@@ -20,6 +26,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    # The official entrypoint keeps the image's default capabilities to read
+    # its operator-owned secret and own its data directory (SPEC-05).
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
@@ -31,13 +39,29 @@ services:
       GRINDSTONE_DB_HOST: postgres
       GRINDSTONE_DB_NAME: grindstone
       GRINDSTONE_DB_USER: grindstone
-      GRINDSTONE_DB_PASSWORD_FILE: /run/secrets/postgres_password
-    secrets: [postgres_password]
+      GRINDSTONE_DB_PASSWORD_FILE: /run/gs/postgres_password
+      # Operator listener :8080 (published on loopback) refuses the stations'
+      # and the database's subnets; station listener :8081 is never published
+      # and serves only the kernel MCP surface and host events (REQ-0512).
+      GRINDSTONE_STATION_PORT: "8081"
+      GRINDSTONE_OPERATOR_REFUSED_NETWORKS: 10.89.1.0/24,10.89.2.0/24
+    secrets:
+      - postgres_password
+      - mcp_token_key
+      - host_control_key
+      - host_event_key
+      - session_key
+      - operator_password_hash
+      - github_app_key
     volumes:
       - blobs:/var/lib/grindstone/blobs
       - repos:/var/lib/grindstone/repos
       - workspaces:/var/lib/grindstone/workspaces
       - runs:/var/lib/grindstone/runs
+      - type: bind
+        source: ./deploy/grindstone.toml
+        target: /etc/grindstone/grindstone.toml
+        read_only: true
     # db and agents are internal; control-egress reaches GitHub and carries
     # the published operator port (Docker publishes no ports on internal networks).
     networks: [db, agents, control-egress]
@@ -57,8 +81,13 @@ services:
       timeout: 5s
       retries: 20
     read_only: true
-    tmpfs: [/tmp]
+    tmpfs:
+      - /tmp
+      - /run/gs:uid=10001,gid=10001,mode=0700
     cap_drop: [ALL]
+    # Held by the entrypoint only; the service runs with every set empty.
+    # SETPCAP lets it empty the bounding set as well.
+    cap_add: [DAC_READ_SEARCH, SETUID, SETGID, SETPCAP]
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
@@ -66,11 +95,16 @@ services:
     build:
       context: .
       dockerfile: docker/agent-host.Dockerfile
+    secrets: [host_control_key, host_event_key, claude_oauth_token]
     volumes:
       - workspaces:/var/lib/grindstone/workspaces
-    # agents: reach the control plane's MCP and event endpoints.
-    # egress: reach model providers and package registries.
+      - sessions:/var/lib/grindstone/sessions
+    # agents: reach the control plane's station listener.
+    # agent-egress: open egress at T1 (ADR-55).
     networks: [agents, agent-egress]
+    # Docker's init is PID 1 with the host its only child, so every agent
+    # dies with the host (REQ-0507, DEC-0503).
+    init: true
     healthcheck:
       test:
         - CMD
@@ -81,8 +115,12 @@ services:
       timeout: 5s
       retries: 20
     read_only: true
-    tmpfs: [/tmp]
+    tmpfs:
+      - /tmp
+      - /run/gs-host:uid=10002,gid=10002,mode=0700
     cap_drop: [ALL]
+    # The entrypoint holds these; the host keeps exactly SETUID and SETGID.
+    cap_add: [DAC_READ_SEARCH, CHOWN, SETUID, SETGID, SETPCAP]
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
@@ -92,8 +130,8 @@ services:
       dockerfile: docker/runner.Dockerfile
     volumes:
       - runs:/var/lib/grindstone/runs
-    # Package registries only; no route to the control plane or the database.
-    networks: [runner-egress]
+    # No network in M1: checks depend only on the subject and the image (DEC-0505).
+    network_mode: none
     healthcheck:
       test: ["CMD", "python", "-m", "grindstone_runner", "healthcheck"]
       interval: 5s
@@ -105,14 +143,23 @@ services:
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
+# Fixed subnets, outside Docker's default address pools, so the operator
+# listener can name the ones it refuses.
 networks:
   db:
     internal: true
+    ipam:
+      config: [{subnet: 10.89.1.0/24}]
   agents:
     internal: true
-  control-egress: {}
-  agent-egress: {}
-  runner-egress: {}
+    ipam:
+      config: [{subnet: 10.89.2.0/24}]
+  control-egress:
+    ipam:
+      config: [{subnet: 10.89.3.0/24}]
+  agent-egress:
+    ipam:
+      config: [{subnet: 10.89.4.0/24}]
 
 volumes:
   pgdata: {}
@@ -120,7 +167,22 @@ volumes:
   repos: {}
   workspaces: {}
   runs: {}
+  sessions: {}
 
 secrets:
   postgres_password:
     file: ./secrets/postgres_password
+  mcp_token_key:
+    file: ./secrets/mcp_token_key
+  host_control_key:
+    file: ./secrets/host_control_key
+  host_event_key:
+    file: ./secrets/host_event_key
+  session_key:
+    file: ./secrets/session_key
+  operator_password_hash:
+    file: ./secrets/operator_password_hash
+  github_app_key:
+    file: ./secrets/github_app_key
+  claude_oauth_token:
+    file: ./secrets/claude_oauth_token

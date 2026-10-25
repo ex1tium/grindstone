@@ -61,8 +61,8 @@ ff: ## Run the fitness functions (FF-01..04, FF-10, FF-13) and the workflow-vers
 check: lint typecheck test ff ## Everything CI runs, except the compose smoke test
 
 .PHONY: secrets
-secrets: ## Create local development secrets under secrets/ (never commit them)
-	scripts/dev-secrets.sh
+secrets: ## Create every deployment secret under secrets/, 0600, never overwriting one (never commit them)
+	bash scripts/make_secrets.sh
 
 .PHONY: up
 up: secrets ## Build and start the stack, waiting until every service is healthy
@@ -73,8 +73,9 @@ down: ## Stop the stack (volumes are kept)
 	docker compose down
 
 .PHONY: smoke
-smoke: up ## M0-01: start the stack, verify health and mounts, stop it
+smoke: up ## M0-01 and SPEC-05: start the stack, verify health, mounts and the security tests, stop it
 	uv run --locked python scripts/compose_smoke.py
+	GRINDSTONE_COMPOSE_STACK=1 uv run --locked pytest tests/deployment/test_stack.py
 	docker compose down
 
 FIXTURE ?= ../grindstone-testbed
