@@ -2,7 +2,7 @@
 
 Item IDs (`REQ-0101`, `M1-01`, `N-3`, `PRD`) follow one base grammar; each
 kind narrows it with its own pattern when it registers (SPEC-03). Record IDs
-(runs, tasks, ChangeSets, decisions) are UUIDv7, so they sort by creation time.
+(runs, tasks, ChangeSets, decisions, projects) are UUIDv7, so they sort by creation time.
 """
 
 import re
@@ -52,6 +52,7 @@ RunId = NewType("RunId", uuid.UUID)
 TaskId = NewType("TaskId", uuid.UUID)
 ChangeSetId = NewType("ChangeSetId", uuid.UUID)
 DecisionId = NewType("DecisionId", uuid.UUID)
+ProjectId = NewType("ProjectId", uuid.UUID)
 
 
 def new_record_id() -> uuid.UUID:

@@ -68,7 +68,14 @@ def render() -> str:
         "",
     ]
 
-    def contract(cid: str, name: str, sources: list[str], forbidden: list[str]) -> None:
+    def contract(
+        cid: str,
+        name: str,
+        sources: list[str],
+        forbidden: list[str],
+        *,
+        allow_indirect: bool = False,
+    ) -> None:
         src = "\n".join(f"    {s}" for s in sources)
         fbd = "\n".join(f"    {f}" for f in forbidden)
         out.extend(
@@ -78,6 +85,7 @@ def render() -> str:
                 "type = forbidden",
                 f"source_modules =\n{src}",
                 f"forbidden_modules =\n{fbd}",
+                *(["allow_indirect_imports = True"] if allow_indirect else []),
                 "",
             ]
         )
@@ -101,6 +109,9 @@ def render() -> str:
         list(FACTORIES),
         [f"{KERNEL}.{m}" for m in MODULE_MAP if m != "sdk"]
         + [f"{KERNEL}.{r}" for r in ROOT_MODULES],
+        # The SDK itself imports `contracts` and `platform`; a factory reaches them
+        # only through it, so only a factory's direct imports are refused.
+        allow_indirect=True,
     )
     contract(
         "runner-is-standalone",
