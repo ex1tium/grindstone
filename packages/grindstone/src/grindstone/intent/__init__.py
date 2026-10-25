@@ -2,6 +2,7 @@
 references and edges, lifecycles and rendering (ADR-08, ADR-09).
 """
 
+from grindstone.intent.bundles import parse_bundle
 from grindstone.intent.catalog import KindCatalog
 from grindstone.intent.errors import IntentError
 from grindstone.intent.items import (
@@ -40,6 +41,7 @@ __all__ = [
     "derive_edges",
     "edges_to",
     "materialise",
+    "parse_bundle",
     "read",
     "read_pinned",
     "render",

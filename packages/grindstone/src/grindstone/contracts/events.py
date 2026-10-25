@@ -15,7 +15,14 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue
 
 from grindstone.contracts.base import Contract
+from grindstone.contracts.change import (
+    ChangeSetApplied,
+    ChangeSetDrafted,
+    ChangeSetRejected,
+    ChangeSetWalked,
+)
 from grindstone.contracts.decisions import DecisionAnswered, DecisionRaised, DecisionSuperseded
+from grindstone.contracts.intent import ItemRevised, ItemTransitioned
 from grindstone.contracts.refs import SemanticHash
 
 INSTANCE_STREAM = uuid.UUID(int=0)
@@ -84,7 +91,13 @@ KernelEvent = Annotated[
     | ConfigInvalid
     | DecisionRaised
     | DecisionAnswered
-    | DecisionSuperseded,
+    | DecisionSuperseded
+    | ItemRevised
+    | ItemTransitioned
+    | ChangeSetDrafted
+    | ChangeSetWalked
+    | ChangeSetApplied
+    | ChangeSetRejected,
     Field(discriminator="type"),
 ]
 """Every kernel event model, discriminated on `type`."""
@@ -97,4 +110,10 @@ KERNEL_EVENT_MODELS: tuple[type[Contract], ...] = (
     DecisionRaised,
     DecisionAnswered,
     DecisionSuperseded,
+    ItemRevised,
+    ItemTransitioned,
+    ChangeSetDrafted,
+    ChangeSetWalked,
+    ChangeSetApplied,
+    ChangeSetRejected,
 )

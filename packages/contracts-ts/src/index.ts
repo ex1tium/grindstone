@@ -7,9 +7,21 @@ export type JsonValue = unknown;
  */
 export type Channel = "ui" | "api" | "vscode" | "plugin";
 /**
+ * Whether a draft's content may be treated as instructions (I-07).
+ */
+export type Trust = "trusted" | "untrusted";
+/**
  * The kind of principal that authored a revision.
  */
 export type AuthorKind = "person" | "agent" | "policy" | "system";
+/**
+ * Where a draft came from.
+ */
+export type DraftSource = "operator" | "task_output" | "delegation_result" | "intake" | "revert";
+/**
+ * The ChangeSet lifecycle; `transition_changeset` is its one writer (REQ-0420).
+ */
+export type ChangeSetState = "drafted" | "walked" | "awaiting_approval" | "applied" | "rejected";
 /**
  * How a decision may be answered; set only by the kernel code that raises it (Concepts).
  */
@@ -37,10 +49,18 @@ export type ErrorClass = "validation" | "rule" | "authority" | "limit" | "transi
 
 export interface GrindstoneContracts {
   Answer: Answer;
+  ApprovalPayload: ApprovalPayload;
   AuthorKind: AuthorKind;
   BlobRef: BlobRef;
   BlobSetSubject: BlobSetSubject;
   BlobSubject: BlobSubject;
+  ChangeDraft: ChangeDraft;
+  ChangeSet: ChangeSet;
+  ChangeSetApplied: ChangeSetApplied;
+  ChangeSetDrafted: ChangeSetDrafted;
+  ChangeSetRejected: ChangeSetRejected;
+  ChangeSetState: ChangeSetState;
+  ChangeSetWalked: ChangeSetWalked;
   Channel: Channel;
   ConfigInvalid: ConfigInvalid;
   Decision: Decision;
@@ -51,6 +71,7 @@ export interface GrindstoneContracts {
   DecisionState: DecisionState;
   DecisionSuperseded: DecisionSuperseded;
   DependencyHealth: DependencyHealth;
+  DraftSource: DraftSource;
   ErrorClass: ErrorClass;
   ErrorEnvelope: ErrorEnvelope;
   EventEnvelope: EventEnvelope;
@@ -58,15 +79,23 @@ export interface GrindstoneContracts {
   FactoryRefused: FactoryRefused;
   GitCommitSubject: GitCommitSubject;
   HealthStatus: HealthStatus;
+  ItemBase: ItemBase;
   ItemRef: ItemRef;
+  ItemRevised: ItemRevised;
   ItemRevisionSubject: ItemRevisionSubject;
+  ItemTransitioned: ItemTransitioned;
   JsonValue: JsonValue;
   ProjectConfigured: ProjectConfigured;
+  ProposedRevision: ProposedRevision;
   Provenance: Provenance;
+  Reached: Reached;
   Recommendation: Recommendation;
   RecommendationSource: RecommendationSource;
+  RevisionDiff: RevisionDiff;
   RunManifest: RunManifest;
   ServiceHealth: ServiceHealth;
+  Trust: Trust;
+  WalkResult: WalkResult;
 }
 /**
  * An accepted answer: what, by whom, through which channel and against which context.
@@ -84,6 +113,42 @@ export interface Answer {
   context_hash_seen: string;
   decision: string;
   schema_version: 1;
+}
+/**
+ * The `approval` decision's payload: everything its context hash covers (REQ-0412).
+ */
+export interface ApprovalPayload {
+  changeset: string;
+  informed: Reached[];
+  reached: Reached[];
+  revisions: RevisionDiff[];
+  round: number;
+  schema_version: 1;
+  trust: Trust;
+}
+/**
+ * An item outside the ChangeSet with an edge to a changed item.
+ */
+export interface Reached {
+  item: string;
+  to: string;
+  via_edge: string;
+}
+/**
+ * What applying one proposed revision would change, against its effective base.
+ */
+export interface RevisionDiff {
+  after: {
+    [k: string]: JsonValue | undefined;
+  };
+  base: string | null;
+  before: {
+    [k: string]: JsonValue | undefined;
+  } | null;
+  changed_fields: string[];
+  item: string;
+  kind: string;
+  proposed: string;
 }
 /**
  * Content in the blob store, addressed by the hash of its bytes.
@@ -109,6 +174,83 @@ export interface BlobSubject {
   blob: BlobRef;
   kind: "blob";
   schema_version: 1;
+}
+/**
+ * A recorded draft. Insert-only; a repeated client key in its project returns it.
+ */
+export interface ChangeDraft {
+  client_key: string | null;
+  id: string;
+  project: string;
+  provenance: Provenance;
+  /**
+   * @minItems 1
+   */
+  revisions: [ProposedRevision, ...ProposedRevision[]];
+  schema_version: 1;
+  source: DraftSource;
+  trust: Trust;
+}
+/**
+ * Carried by every revision: the author, what it came through, and the reason.
+ */
+export interface Provenance {
+  author: string;
+  author_kind: AuthorKind;
+  changeset: string | null;
+  decision: string | null;
+  finding: string | null;
+  reason: string;
+  schema_version: 1;
+  task: string | null;
+}
+/**
+ * One revision a draft proposes, with the hash of the revision it was drafted against.
+ */
+export interface ProposedRevision {
+  base: string | null;
+  fields: {
+    [k: string]: JsonValue | undefined;
+  };
+  item: string;
+  kind: string;
+  title: string;
+}
+export interface ChangeSet {
+  decision: string | null;
+  draft: string;
+  id: string;
+  project: string;
+  schema_version: 1;
+  state: ChangeSetState;
+}
+export interface ChangeSetApplied {
+  changeset: string;
+  decision: string;
+  revisions: string[];
+  schema_version: 1;
+  type: "changeset.applied";
+}
+export interface ChangeSetDrafted {
+  changeset: string;
+  draft: string;
+  schema_version: 1;
+  source: DraftSource;
+  trust: Trust;
+  type: "changeset.drafted";
+}
+export interface ChangeSetRejected {
+  changeset: string;
+  decision: string;
+  schema_version: 1;
+  type: "changeset.rejected";
+}
+export interface ChangeSetWalked {
+  changeset: string;
+  reached: string[];
+  round: number;
+  schema_version: 1;
+  type: "changeset.walked";
 }
 /**
  * A project's current configuration is invalid, so the project is paused.
@@ -252,12 +394,31 @@ export interface GitCommitSubject {
   sha: string;
 }
 /**
+ * The base one proposed revision is walked against in a round.
+ */
+export interface ItemBase {
+  base: string | null;
+  item: string;
+}
+/**
  * One item revision, pinned by its semantic hash.
  */
 export interface ItemRef {
   hash: string;
   id: string;
   schema_version: 1;
+}
+/**
+ * A ChangeSet's apply wrote a new revision of an item.
+ */
+export interface ItemRevised {
+  changeset: string;
+  hash: string;
+  item: string;
+  kind: string;
+  revision: string;
+  schema_version: 1;
+  type: "item.revised";
 }
 /**
  * An item revision, proven as an object in its own right.
@@ -268,6 +429,19 @@ export interface ItemRevisionSubject {
   schema_version: 1;
 }
 /**
+ * An item's lifecycle state changed.
+ */
+export interface ItemTransitioned {
+  cause: string;
+  from_state: string | null;
+  item: string;
+  kind: string;
+  schema_version: 1;
+  to_state: string;
+  type: "item.transitioned";
+  writer: "changeset" | "task" | "evidence" | "delivery";
+}
+/**
  * A project's configuration gained a version.
  */
 export interface ProjectConfigured {
@@ -275,19 +449,6 @@ export interface ProjectConfigured {
   schema_version: 1;
   type: "project.configured";
   version: number;
-}
-/**
- * Carried by every revision: the author, what it came through, and the reason.
- */
-export interface Provenance {
-  author: string;
-  author_kind: AuthorKind;
-  changeset: string | null;
-  decision: string | null;
-  finding: string | null;
-  reason: string;
-  schema_version: 1;
-  task: string | null;
 }
 /**
  * The pinned inputs, configuration and prompts of one task run.
@@ -318,4 +479,19 @@ export interface ServiceHealth {
   service: "grindstone" | "agent-host" | "runner";
   status: HealthStatus;
   version: string;
+}
+/**
+ * One walk round: its bases, the changed items, and who they reach.
+ *
+ * `reached` holds the sources of `review` edges, which need a verdict;
+ * `informed` the sources of `notify` and `render` edges, listed for
+ * information only (ADR-09).
+ */
+export interface WalkResult {
+  bases: ItemBase[];
+  changed: string[];
+  informed: Reached[];
+  reached: Reached[];
+  round: number;
+  schema_version: 1;
 }

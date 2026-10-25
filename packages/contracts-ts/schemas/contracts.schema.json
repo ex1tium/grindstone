@@ -51,6 +51,58 @@
       "title": "Answer",
       "type": "object"
     },
+    "ApprovalPayload": {
+      "additionalProperties": false,
+      "description": "The `approval` decision's payload: everything its context hash covers (REQ-0412).",
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "informed": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Reached"
+          },
+          "type": "array"
+        },
+        "reached": {
+          "items": {
+            "$ref": "#/$defs/Reached"
+          },
+          "type": "array"
+        },
+        "revisions": {
+          "items": {
+            "$ref": "#/$defs/RevisionDiff"
+          },
+          "type": "array"
+        },
+        "round": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "trust": {
+          "$ref": "#/$defs/Trust"
+        }
+      },
+      "required": [
+        "schema_version",
+        "changeset",
+        "round",
+        "trust",
+        "revisions",
+        "reached",
+        "informed"
+      ],
+      "title": "ApprovalPayload",
+      "type": "object"
+    },
     "AuthorKind": {
       "description": "The kind of principal that authored a revision.",
       "enum": ["person", "agent", "policy", "system"],
@@ -127,6 +179,235 @@
       },
       "required": ["schema_version", "kind", "blob"],
       "title": "BlobSubject",
+      "type": "object"
+    },
+    "ChangeDraft": {
+      "additionalProperties": false,
+      "description": "A recorded draft. Insert-only; a repeated client key in its project returns it.",
+      "properties": {
+        "client_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "project": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "revisions": {
+          "items": {
+            "$ref": "#/$defs/ProposedRevision"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/DraftSource"
+        },
+        "trust": {
+          "$ref": "#/$defs/Trust"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "project",
+        "source",
+        "trust",
+        "revisions",
+        "provenance",
+        "client_key"
+      ],
+      "title": "ChangeDraft",
+      "type": "object"
+    },
+    "ChangeSet": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "draft": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "project": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "state": {
+          "$ref": "#/$defs/ChangeSetState"
+        }
+      },
+      "required": ["schema_version", "id", "project", "draft", "state", "decision"],
+      "title": "ChangeSet",
+      "type": "object"
+    },
+    "ChangeSetApplied": {
+      "additionalProperties": false,
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "revisions": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "changeset.applied",
+          "default": "changeset.applied",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "changeset", "decision", "revisions"],
+      "title": "ChangeSetApplied",
+      "type": "object"
+    },
+    "ChangeSetDrafted": {
+      "additionalProperties": false,
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "draft": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "source": {
+          "$ref": "#/$defs/DraftSource"
+        },
+        "trust": {
+          "$ref": "#/$defs/Trust"
+        },
+        "type": {
+          "const": "changeset.drafted",
+          "default": "changeset.drafted",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "changeset", "draft", "source", "trust"],
+      "title": "ChangeSetDrafted",
+      "type": "object"
+    },
+    "ChangeSetRejected": {
+      "additionalProperties": false,
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "changeset.rejected",
+          "default": "changeset.rejected",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "changeset", "decision"],
+      "title": "ChangeSetRejected",
+      "type": "object"
+    },
+    "ChangeSetState": {
+      "description": "The ChangeSet lifecycle; `transition_changeset` is its one writer (REQ-0420).",
+      "enum": ["drafted", "walked", "awaiting_approval", "applied", "rejected"],
+      "title": "ChangeSetState",
+      "type": "string"
+    },
+    "ChangeSetWalked": {
+      "additionalProperties": false,
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "reached": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "round": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "changeset.walked",
+          "default": "changeset.walked",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "changeset", "round", "reached"],
+      "title": "ChangeSetWalked",
       "type": "object"
     },
     "Channel": {
@@ -438,6 +719,12 @@
       "title": "DependencyHealth",
       "type": "object"
     },
+    "DraftSource": {
+      "description": "Where a draft came from.",
+      "enum": ["operator", "task_output", "delegation_result", "intake", "revert"],
+      "title": "DraftSource",
+      "type": "string"
+    },
     "ErrorClass": {
       "description": "How an error is handled, and by whom.",
       "enum": ["validation", "rule", "authority", "limit", "transient", "internal"],
@@ -618,6 +905,30 @@
       "title": "HealthStatus",
       "type": "string"
     },
+    "ItemBase": {
+      "additionalProperties": false,
+      "description": "The base one proposed revision is walked against in a round.",
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        }
+      },
+      "required": ["item", "base"],
+      "title": "ItemBase",
+      "type": "object"
+    },
     "ItemRef": {
       "additionalProperties": false,
       "description": "One item revision, pinned by its semantic hash.",
@@ -640,6 +951,44 @@
       "title": "ItemRef",
       "type": "object"
     },
+    "ItemRevised": {
+      "additionalProperties": false,
+      "description": "A ChangeSet's apply wrote a new revision of an item.",
+      "properties": {
+        "changeset": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "revision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "item.revised",
+          "default": "item.revised",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "item", "kind", "revision", "hash", "changeset"],
+      "title": "ItemRevised",
+      "type": "object"
+    },
     "ItemRevisionSubject": {
       "additionalProperties": false,
       "description": "An item revision, proven as an object in its own right.",
@@ -660,6 +1009,61 @@
       },
       "required": ["schema_version", "kind", "item"],
       "title": "ItemRevisionSubject",
+      "type": "object"
+    },
+    "ItemTransitioned": {
+      "additionalProperties": false,
+      "description": "An item's lifecycle state changed.",
+      "properties": {
+        "cause": {
+          "type": "string"
+        },
+        "from_state": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "to_state": {
+          "type": "string"
+        },
+        "type": {
+          "const": "item.transitioned",
+          "default": "item.transitioned",
+          "type": "string"
+        },
+        "writer": {
+          "enum": ["changeset", "task", "evidence", "delivery"],
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "type",
+        "item",
+        "kind",
+        "from_state",
+        "to_state",
+        "writer",
+        "cause"
+      ],
+      "title": "ItemTransitioned",
       "type": "object"
     },
     "JsonValue": {},
@@ -688,6 +1092,44 @@
       },
       "required": ["schema_version", "type", "version", "hash"],
       "title": "ProjectConfigured",
+      "type": "object"
+    },
+    "ProposedRevision": {
+      "additionalProperties": false,
+      "description": "One revision a draft proposes, with the hash of the revision it was drafted against.",
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": ["item", "kind", "base", "title", "fields"],
+      "title": "ProposedRevision",
       "type": "object"
     },
     "Provenance": {
@@ -771,6 +1213,26 @@
       "title": "Provenance",
       "type": "object"
     },
+    "Reached": {
+      "additionalProperties": false,
+      "description": "An item outside the ChangeSet with an edge to a changed item.",
+      "properties": {
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "to": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "via_edge": {
+          "type": "string"
+        }
+      },
+      "required": ["item", "via_edge", "to"],
+      "title": "Reached",
+      "type": "object"
+    },
     "Recommendation": {
       "additionalProperties": false,
       "description": "The recommended answer, why, and who recommends it.",
@@ -797,6 +1259,62 @@
       "enum": ["fixed", "agent", "advisor"],
       "title": "RecommendationSource",
       "type": "string"
+    },
+    "RevisionDiff": {
+      "additionalProperties": false,
+      "description": "What applying one proposed revision would change, against its effective base.",
+      "properties": {
+        "after": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "base": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changed_fields": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "item": {
+          "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "proposed": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": ["item", "kind", "base", "proposed", "before", "after", "changed_fields"],
+      "title": "RevisionDiff",
+      "type": "object"
     },
     "RunManifest": {
       "additionalProperties": false,
@@ -941,6 +1459,56 @@
       },
       "required": ["schema_version", "service", "version", "status", "dependencies"],
       "title": "ServiceHealth",
+      "type": "object"
+    },
+    "Trust": {
+      "description": "Whether a draft's content may be treated as instructions (I-07).",
+      "enum": ["trusted", "untrusted"],
+      "title": "Trust",
+      "type": "string"
+    },
+    "WalkResult": {
+      "additionalProperties": false,
+      "description": "One walk round: its bases, the changed items, and who they reach.\n\n`reached` holds the sources of `review` edges, which need a verdict;\n`informed` the sources of `notify` and `render` edges, listed for\ninformation only (ADR-09).",
+      "properties": {
+        "bases": {
+          "items": {
+            "$ref": "#/$defs/ItemBase"
+          },
+          "type": "array"
+        },
+        "changed": {
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9]{0,7}(-[0-9]+){0,2}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "informed": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Reached"
+          },
+          "type": "array"
+        },
+        "reached": {
+          "items": {
+            "$ref": "#/$defs/Reached"
+          },
+          "type": "array"
+        },
+        "round": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "round", "bases", "changed", "reached", "informed"],
+      "title": "WalkResult",
       "type": "object"
     }
   },

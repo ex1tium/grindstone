@@ -59,7 +59,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 
 | Ticket | Spec | Work | Depends on | State | PR |
 | --- | --- | --- | --- | --- | --- |
-| TKT-0403 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Bundle import, ChangeDrafts, walk, rules, approval, apply | TKT-0401, TKT-0402 | todo | |
+| TKT-0403 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Bundle import, ChangeDrafts, walk, rules, approval, apply | TKT-0401, TKT-0402 | done | #42 |
 | TKT-0404 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | SQL enum generation for kernel lifecycles | TKT-0401 | todo | |
 | TKT-0405 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | FF-08 single-writer check with fixtures | TKT-0401 | todo | |
 | TKT-0501 | [SPEC-05](../specs/SPEC-05-deployment-users-secrets.md) | Images, users, entrypoints, compose (with the runner off every network), `make secrets` and `scripts/hash_password.py`, instance file | TKT-0303 | done | #35 |

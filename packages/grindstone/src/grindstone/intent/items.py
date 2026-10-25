@@ -5,7 +5,9 @@ refuses unless the caller holds `applying(changeset)` for the ChangeSet it
 writes. Edges are derived from typed reference fields as each revision is
 written (REQ-0403). Lifecycle state lives beside the item and changes only
 through `transition`, which records every change with its writer and cause
-(REQ-0405); state never enters a revision, so it never changes a hash.
+(REQ-0405); state never enters a revision, so it never changes a hash. Each
+revision written emits `item.revised`, and each transition `item.transitioned`,
+in the same unit of work.
 """
 
 import json
@@ -28,12 +30,19 @@ from grindstone.contracts.ids import (
     item_id_type,
     new_record_id,
 )
-from grindstone.contracts.intent import Edge, ItemRevision, LifecycleTransition
+from grindstone.contracts.intent import (
+    Edge,
+    ItemRevised,
+    ItemRevision,
+    ItemTransitioned,
+    LifecycleTransition,
+)
 from grindstone.contracts.platform import Cardinality, Lifecycle
 from grindstone.contracts.provenance import Provenance
 from grindstone.contracts.refs import ItemRef, SemanticHash
 from grindstone.intent.catalog import KindCatalog
 from grindstone.intent.errors import IntentError
+from grindstone.platform.events import emit
 from grindstone.store import Uow
 
 type Writer = str
@@ -244,6 +253,13 @@ def write_revisions(uow: Uow, catalog: KindCatalog, batch: RevisionBatch) -> lis
                 " WHERE project = :project AND id = :id",
                 {"project": project, "id": p.item, "revision": revision.id},
             )
+        emit(
+            uow,
+            ItemRevised(
+                item=p.item, kind=p.kind, revision=revision.id, hash=m.hash, changeset=changeset
+            ),
+            project,
+        )
         revisions.append(revision)
     return revisions
 
@@ -399,6 +415,20 @@ def transition(uow: Uow, catalog: KindCatalog, step: Step) -> LifecycleTransitio
             "writer": writer,
             "cause": step.cause,
         },
+    )
+    emit(
+        uow,
+        ItemTransitioned.model_validate(
+            {
+                "item": item,
+                "kind": kind,
+                "from_state": current,
+                "to_state": to,
+                "writer": writer,
+                "cause": step.cause,
+            }
+        ),
+        project,
     )
     return LifecycleTransition.model_validate(
         {
