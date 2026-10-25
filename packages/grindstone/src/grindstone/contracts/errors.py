@@ -40,13 +40,28 @@ KERNEL_ERROR_CODES: Mapping[ErrorClass, frozenset[str]] = MappingProxyType(
                 "config_invalid",  # SPEC-03
                 "name_conflict",  # SPEC-03
                 "secret_not_granted",  # SPEC-03
+                "kind_not_enabled",  # SPEC-04
+                "id_invalid",  # SPEC-04
+                "id_taken",  # SPEC-04
+                "answer_invalid",  # SPEC-04
+                "recommendation_missing",  # SPEC-04
             }
         ),
         ErrorClass.RULE: frozenset(
-            {"transition_illegal", "coverage_missing", "principle_conflict"}
+            {
+                "transition_illegal",
+                "coverage_missing",
+                "principle_conflict",
+                "verdict_missing",  # SPEC-04
+            }
         ),
         ErrorClass.AUTHORITY: frozenset(
-            {"permission_required", "decision_superseded", "context_changed"}
+            {
+                "permission_required",
+                "decision_superseded",
+                "context_changed",
+                "decision_closed",  # SPEC-04
+            }
         ),
         ErrorClass.LIMIT: frozenset(
             {
