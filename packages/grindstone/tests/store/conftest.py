@@ -59,17 +59,12 @@ def engine(database_url: str) -> Iterator[Engine]:
 
 @pytest.fixture
 def store(database_url: str) -> Iterator[Database]:
-    """The store opened on the fresh database, as start-up opens it."""
-    database = open_database(database_url)
-    try:
-        yield database
-    finally:
-        close_database()
+    """The store opened on the fresh database, as start-up opens it.
 
-
-@pytest.fixture
-def dbos_store(store: Database, database_url: str) -> Iterator[Database]:
-    """The store with DBOS launched on the same database, system tables in `dbos`."""
+    DBOS is configured first, not launched, as `start_runtime` does: the
+    datasource registers with the current DBOS instance, which must not be one
+    an earlier test launched and destroyed.
+    """
     DBOS(
         config={
             "name": "grindstone-test",
@@ -78,6 +73,19 @@ def dbos_store(store: Database, database_url: str) -> Iterator[Database]:
             "application_version": "test",
         }
     )
+    try:
+        database = open_database(database_url)
+        try:
+            yield database
+        finally:
+            close_database()
+    finally:
+        DBOS.destroy()
+
+
+@pytest.fixture
+def dbos_store(store: Database) -> Iterator[Database]:
+    """The store with DBOS launched on the same database, system tables in `dbos`."""
     DBOS.launch()
     try:
         yield store
