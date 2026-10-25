@@ -12,7 +12,11 @@ from pydantic import ValidationError
 from sqlalchemy import Engine, text
 
 from grindstone.contracts.hashing import semantic_hash
+from grindstone.contracts.ids import ProjectId
+from grindstone.contracts.platform import InstanceConfig
+from grindstone.contracts.provenance import AuthorKind, Provenance
 from grindstone.platform import Category, Registries, core_registries
+from grindstone.platform.configuration import FactoryState, Platform, create_project
 from grindstone.platform.loader import (
     FactorySource,
     LoadReport,
@@ -311,9 +315,23 @@ def test_load_rules_independent_of_order(tmp_path: Path) -> None:
 def test_refused_factory_does_not_stop_kernel(
     tmp_path: Path, store: Database, engine: Engine
 ) -> None:
-    # `project_status` for projects enabling a refused factory arrives with
-    # project configuration (TKT-0303); this covers the start-up report.
-    broken = _factory(tmp_path, "broken", lambda d: (d / "prompts" / "writer.md").unlink())
+    # Both factories load at an earlier start, when each project is configured.
+    broken = _factory(tmp_path, "broken", lambda d: None)
+    _, earlier = _load(("notes", FIXTURE), ("broken", broken))
+    assert not earlier.refused
+    configure = Platform(InstanceConfig(), earlier)
+    operator = Provenance(author_kind=AuthorKind.PERSON, author="operator", reason="enable")
+    projects: dict[str, ProjectId] = {}
+    for ns in ("notes", "broken"):
+        project = unit_of_work(lambda uow, ns=ns: create_project(uow, f"uses-{ns}"))
+        toml = f'[project]\nname = "{ns}"\n[factories]\n{ns} = "0.1.0"\n'
+        unit_of_work(
+            lambda uow, p=project, t=toml: configure.set_project_config(uow, p, t, operator)
+        )
+        projects[ns] = project
+
+    # At this start `broken` is refused: the kernel and `notes` still start.
+    (broken / "prompts" / "writer.md").unlink()
     registries, report = _load(("notes", FIXTURE), ("broken", broken))
     assert [f.name for f in report.loaded] == ["notes"]
     assert any(
@@ -337,3 +355,12 @@ def test_refused_factory_does_not_stop_kernel(
     entry = registries.require(Category.CAPABILITY, "notes.writer")
     assert entry.origin.manifest_hash == rows[1].manifest_hash  # AC-0317-1, against the table
     assert entry.capability_hash == loaded.capability_hashes["notes.writer"]
+
+    # Pause is derived from configuration validity and this start's loads, never stored.
+    platform = Platform(InstanceConfig(), report)
+    runs = unit_of_work(lambda uow: platform.project_status(uow, projects["notes"]))
+    paused = unit_of_work(lambda uow: platform.project_status(uow, projects["broken"]))
+    assert (runs.paused, dict(runs.factories)) == (False, {"notes": FactoryState.LOADED})
+    assert (paused.paused, dict(paused.factories)) == (True, {"broken": FactoryState.REFUSED})
+    assert [p.field for p in paused.problems] == ["factories.broken"]
+    assert "refused at load" in paused.problems[0].rule

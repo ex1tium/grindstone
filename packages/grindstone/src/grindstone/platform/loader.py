@@ -146,6 +146,8 @@ class LoadedFactory:
     capability_hashes: Mapping[str, SemanticHash]
     kinds: Mapping[str, type[Contract]]
     adapters: Mapping[str, object]
+    config_schema: Mapping[str, Any] | None = None
+    """The JSON Schema for this factory's project section; None accepts no section (OQ-0302)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,6 +171,7 @@ class _Candidate:
     manifest: FactoryManifest | None = None
     capabilities: dict[str, CapabilityDecl] = field(default_factory=dict[str, CapabilityDecl])
     capability_hashes: dict[str, SemanticHash] = field(default_factory=dict[str, SemanticHash])
+    config_schema: dict[str, Any] | None = None
     problems: list[Problem] = field(default_factory=list[Problem])
 
     @property
@@ -272,6 +275,8 @@ def _phase_one(c: _Candidate, sdk_version: str) -> None:
         _template_shape(c, i, template.steps)
     for i, path in enumerate(manifest.capabilities):
         _capability(c, ns, f"capabilities[{i}]", path)
+    if manifest.config_schema is not None:
+        _config_schema(c, manifest.config_schema)
 
 
 def _listed(group: str, values: tuple[str, ...]) -> list[tuple[str, str]]:
@@ -389,6 +394,28 @@ def _report_schema(c: _Candidate, file: str, where: str, relative: str, content:
         Draft202012Validator.check_schema(schema)
     except (ValueError, SchemaError) as exc:
         c.refuse(file, where, f"{relative!r} is not a valid JSON Schema: {_first_line(exc)}")
+
+
+def _config_schema(c: _Candidate, relative: str) -> None:
+    """The project-section schema exists and is a valid JSON Schema object (TKT-0303)."""
+    content = c.source.read(relative)
+    if content is None:
+        c.refuse(MANIFEST, "config_schema", f"{relative!r} does not exist in the factory")
+        return
+    try:
+        schema = json.loads(content)
+        Draft202012Validator.check_schema(schema)
+    except (ValueError, SchemaError) as exc:
+        c.refuse(
+            MANIFEST,
+            "config_schema",
+            f"{relative!r} is not a valid JSON Schema: {_first_line(exc)}",
+        )
+        return
+    if not isinstance(schema, dict):
+        c.refuse(MANIFEST, "config_schema", f"{relative!r} is not a JSON Schema object")
+        return
+    c.config_schema = cast(dict[str, Any], schema)
 
 
 # Phase 2: across factories, to a fixed point.
@@ -627,6 +654,7 @@ def _register(
                 capability_hashes=dict(c.capability_hashes),
                 kinds=kinds,
                 adapters=dict(adapters[c.name]),
+                config_schema=c.config_schema,
             )
         )
     return loaded

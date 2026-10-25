@@ -1,14 +1,18 @@
-"""Factory manifests: what a factory declares, as data (SPEC-03, ADR-21, ADR-23).
+"""Factory manifests and configuration, as data (SPEC-03, ADR-21, ADR-23).
 
 A manifest is validated before any of the factory's code runs. These models
 fix its shape; the loader (TKT-0302) applies the rules that span fields and
 factories: namespaces, references, make and prove, check shapes, templates.
+Instance and project configuration follow (TKT-0303); the rules that span
+them and the loaded factories are `grindstone.platform`'s.
 """
 
+import re
 from enum import StrEnum
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated, Literal
 
-from pydantic import Field, JsonValue
+from pydantic import AfterValidator, Field, JsonValue
 
 from grindstone.contracts.base import Contract
 
@@ -261,5 +265,139 @@ class FactoryManifest(Contract):
     decision_kinds: tuple[str, ...] = ()
     secrets: tuple[str, ...] = ()
     config_schema: str | None = None
+    """Path to a JSON Schema for this factory's project section; without one it accepts none."""
     code: str | None = None
     """A module whose `ADAPTERS` maps adapter and method names to classes."""
+
+
+# Configuration: validated, hashed data that no agent can reach (I-14).
+
+IMAGE_REFERENCE = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
+"""An image pinned by digest: `name@sha256:<64 hex>`, with or without a tag."""
+
+EXACT_VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.+-]+)?$")
+"""An exact version such as `0.1.0`, never a range."""
+
+SECRET_NAME = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)?$")
+"""Unprefixed for the kernel's own secrets (SPEC-05), `<namespace>.<name>` for a factory's."""
+
+
+def _image_reference(value: str) -> str:
+    if not IMAGE_REFERENCE.match(value):
+        raise ValueError("an image is pinned by digest, as name@sha256:<64 hex digits>")
+    return value
+
+
+def _secret_path(value: str) -> str:
+    # The rule never repeats the value: a misplaced secret must not reach a log.
+    absolute = PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()
+    if not absolute or any(c.isspace() for c in value):
+        raise ValueError("a secret is named by the absolute path of its file, never by its value")
+    return value
+
+
+def _secret_name(value: str) -> str:
+    if not SECRET_NAME.match(value):
+        raise ValueError("a secret name is `name` for the kernel or `<namespace>.<name>`")
+    return value
+
+
+def _exact_version(value: str) -> str:
+    if not EXACT_VERSION.match(value):
+        raise ValueError("an exact version such as 0.1.0, never a range")
+    return value
+
+
+ImageReference = Annotated[str, AfterValidator(_image_reference)]
+SecretPath = Annotated[str, AfterValidator(_secret_path)]
+SecretName = Annotated[str, AfterValidator(_secret_name)]
+ExactVersion = Annotated[str, AfterValidator(_exact_version)]
+
+
+class PlatformSection(Contract):
+    """`[platform]`, this specification's own instance section."""
+
+    factories_allowed: tuple[str, ...] | None = None
+    """The factory namespaces a project may enable; unset admits every loaded factory."""
+
+
+class InstanceConfig(Contract):
+    """`grindstone.toml`: one typed contract whose sections their owners contribute.
+
+    Secrets appear only as the paths of their files (REQ-0310). Each section
+    another specification owns stays an open table until that specification's
+    ticket types it; the keys named below are the ones it states.
+    """
+
+    schema_version: Literal[1] = 1
+    store: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-02's `StoreSettings`: `database`, `blobs_dir`, `max_blob_bytes`, `max_project_bytes`."""
+    stations: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-06 part 1: `[stations.<id>]` with `kind`, `tier`, `control_url` or `runs_dir`."""
+    agents: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-06 part 2: `[agents.<preset>].models` (slot to model) and `force_preset`."""
+    limits: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-06 part 2: `liveness_timeout`, `corrective_prompts`, `park_backoff`."""
+    host: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-06 part 1: `transcript_truncate`, `resume_window`."""
+    checks: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-08: `log_truncate`, `junit_max_bytes`."""
+    delivery: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-08: `observe_seconds`."""
+    surface: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+    """SPEC-07's `mcp_*` keys and SPEC-10's session, cookie and rate-limit keys."""
+    platform: PlatformSection = PlatformSection()
+    images: dict[str, ImageReference] = Field(default_factory=dict[str, ImageReference])
+    """Image name to digest-pinned reference; projects choose among these."""
+    secrets: dict[SecretName, SecretPath] = Field(default_factory=dict[SecretName, SecretPath])
+    """Secret name to the path of its file; a value never appears in configuration."""
+
+
+class ProjectSection(Contract):
+    name: str = Field(min_length=1)
+
+
+class FactoryEntry(Contract):
+    """A factory a project enables: its exact version and its project section.
+
+    In TOML, `[factories]` maps a namespace to its version (`notes = "0.1.0"`),
+    or `[factories.<ns>]` holds `version` beside the keys of the factory's own
+    section, which that factory's `config_schema` validates.
+    """
+
+    version: ExactVersion
+    section: dict[str, JsonValue] = Field(default_factory=dict[str, JsonValue])
+
+
+class GrantsSection(Contract):
+    tiers: tuple[str, ...] = ()
+    secrets: tuple[str, ...] = ()
+    """Factory secrets this project lets their own factory read (REQ-0315)."""
+
+
+class ProjectChecks(Contract):
+    image: str | None = None
+    """A name from the instance's `[images]`."""
+
+
+class CapabilityOverride(Contract):
+    """The bounded fields a project may override (Concepts, "Where capabilities come from")."""
+
+    model: str | None = None
+    """A model slot name, as in `CapabilityDecl`, never a model."""
+    effort: str | None = None
+    limits: LimitsDecl | None = None
+    extra_prompt: str | None = None
+
+
+class ProjectConfig(Contract):
+    """A project's configuration, held by the control plane as numbered versions (REQ-0311)."""
+
+    schema_version: Literal[1] = 1
+    project: ProjectSection
+    factories: dict[str, FactoryEntry] = Field(default_factory=dict[str, FactoryEntry])
+    grants: GrantsSection = GrantsSection()
+    checks: ProjectChecks = ProjectChecks()
+    capabilities: dict[str, CapabilityOverride] = Field(
+        default_factory=dict[str, CapabilityOverride]
+    )
