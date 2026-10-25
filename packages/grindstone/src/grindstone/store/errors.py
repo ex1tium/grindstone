@@ -11,7 +11,12 @@ from pydantic import JsonValue
 from grindstone.contracts import ErrorClass, ErrorEnvelope, error_class_of
 
 type StoreErrorCode = Literal[
-    "database_unavailable", "migration_failed", "workflow_version_mismatch"
+    "database_unavailable",
+    "migration_failed",
+    "workflow_version_mismatch",
+    "storage_limit",
+    "reference_unresolved",
+    "invariant_violated",
 ]
 
 
@@ -21,8 +26,11 @@ class StoreError(Exception):
     `database_unavailable` is transient (retry later); `migration_failed` is
     internal and stops start-up; `workflow_version_mismatch` is internal and
     refuses new dispatch while workflows of another version are stranded, with
-    the list in `detail`. Messages name the failing object and the exception
-    class only, never connection details.
+    the list in `detail`. The blob store raises `storage_limit` (a limit),
+    `reference_unresolved` for a blob that is not recorded, and
+    `invariant_violated` for stored bytes that do not match their hash.
+    Messages name the failing object and the exception class only, never
+    connection details.
     """
 
     def __init__(

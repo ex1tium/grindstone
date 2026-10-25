@@ -30,7 +30,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | TKT-0103 | [SPEC-01](../specs/SPEC-01-contracts-ids-hashing.md) | Canonical form, semantic hash, `blob_set_version`, golden and refusal vectors in Python | TKT-0101 | done | #22 |
 | TKT-0105 | [SPEC-01](../specs/SPEC-01-contracts-ids-hashing.md) | FF-03 schema compatibility check | TKT-0101 | done | #21 |
 | TKT-0202 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | DBOS in the lifespan, workflow registry and version check, start-up guard | TKT-0201 | done | #25 |
-| TKT-0205 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | Blob store and roots | TKT-0201 | todo | |
+| TKT-0205 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | Blob store and roots | TKT-0201 | done | #40 |
 | TKT-0206 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | FF-07 table ownership and FF-09 no stored derivations, with fixtures | TKT-0201 | todo | |
 | TKT-0301 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Registries, `core` names, manifest contracts, SDK 0.1.0 surface and contexts | TKT-0101 | done | #24 |
 

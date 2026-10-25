@@ -51,7 +51,13 @@ def test_kernel_sources_follow_the_module_map() -> None:
 
 def test_discovery_orders_by_module_map_then_number(tmp_path: Path) -> None:
     found = [(m.module, m.number) for m in discover(_fixture_sources(tmp_path))]
-    assert found == [("store", 1), ("platform", 1), ("intent", 1), ("intent", 2)]
+    assert found == [
+        ("store", 1),
+        ("store", 2),
+        ("platform", 1),
+        ("intent", 1),
+        ("intent", 2),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -77,7 +83,13 @@ def test_migrations_apply_once_in_order(engine: Engine, tmp_path: Path) -> None:
     sources = _fixture_sources(tmp_path)
 
     applied = migrate(engine, sources)
-    expected = [("store", 1), ("platform", 1), ("intent", 1), ("intent", 2)]
+    expected = [
+        ("store", 1),
+        ("store", 2),
+        ("platform", 1),
+        ("intent", 1),
+        ("intent", 2),
+    ]
     assert [(m.module, m.number) for m in applied] == expected
     with engine.connect() as conn:
         ledger = conn.execute(
