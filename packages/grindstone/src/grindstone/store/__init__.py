@@ -3,6 +3,7 @@ schema and migrations, DBOS setup, lanes as queues, and the content-addressed
 blob store with its garbage collection (ADR-02, ADR-03, ADR-04).
 """
 
+from grindstone.store.admin import WorkflowSummary, fork_workflow, list_workflows
 from grindstone.store.database import (
     Database,
     DatabaseSettings,
@@ -13,6 +14,18 @@ from grindstone.store.database import (
     ping,
 )
 from grindstone.store.errors import StoreError, StoreErrorCode
+from grindstone.store.runtime import (
+    WORKFLOW_VERSION,
+    Runtime,
+    Schedule,
+    StrandedWorkflow,
+    current_runtime,
+    registered_workflows,
+    start,
+    start_runtime,
+    stop_runtime,
+    workflow,
+)
 from grindstone.store.schema import (
     KERNEL_MODULES,
     Migration,
@@ -26,21 +39,34 @@ from grindstone.store.uow import MAX_RETRIES, Uow, transaction, unit_of_work
 __all__ = [
     "KERNEL_MODULES",
     "MAX_RETRIES",
+    "WORKFLOW_VERSION",
     "Database",
     "DatabaseSettings",
     "Migration",
     "MigrationSources",
+    "Runtime",
+    "Schedule",
     "StoreError",
     "StoreErrorCode",
+    "StrandedWorkflow",
     "Uow",
+    "WorkflowSummary",
     "close_database",
     "create_engine",
     "current_database",
+    "current_runtime",
     "discover",
+    "fork_workflow",
     "kernel_migration_sources",
+    "list_workflows",
     "migrate",
     "open_database",
     "ping",
+    "registered_workflows",
+    "start",
+    "start_runtime",
+    "stop_runtime",
     "transaction",
     "unit_of_work",
+    "workflow",
 ]

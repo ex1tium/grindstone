@@ -46,11 +46,12 @@ gen: ## Regenerate JSON Schemas and TypeScript from the Pydantic contracts
 	$(PNPM) exec biome format --write packages/contracts-ts > /dev/null
 
 .PHONY: ff
-ff: ## Run the fitness functions (FF-01..04, FF-13); FF03_BASE=ref sets FF-03's base
+ff: ## Run the fitness functions (FF-01..04, FF-13) and the workflow-version check; FF03_BASE=ref sets their base
 	$(UV) lint-imports
 	$(MAKE) --no-print-directory gen
 	git diff --exit-code -- packages/contracts-ts || { echo "FF-02 generated contracts drifted: run make gen and commit"; exit 1; }
 	$(UV) python -m scripts.ff.schema_compat $(if $(FF03_BASE),--base $(FF03_BASE))
+	$(UV) python -m scripts.ff.workflow_versions $(if $(FF03_BASE),--base $(FF03_BASE))
 	$(UV) python -m scripts.ff.pins
 	uv lock --check
 	$(UV) python -m scripts.ff.traceability
