@@ -3,16 +3,22 @@
 `python -m grindstone workflows list` prints every unfinished workflow and
 marks those stranded under another version; `python -m grindstone workflows
 fork <id>` moves a stranded one onto this version (SPEC-02, REQ-0207).
+`python -m grindstone check` validates instance, factory and project
+configuration together and exits 1 naming every error (SPEC-03, REQ-0312).
 """
 
 import argparse
 import os
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 import uvicorn
+from sqlalchemy import URL
 
 from grindstone.app import create_app
+from grindstone.platform.check import check
+from grindstone.platform.configuration import instance_config_path
 from grindstone.store import WORKFLOW_VERSION, DatabaseSettings, fork_workflow, list_workflows
 
 
@@ -21,6 +27,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "workflows":
         return _workflows(args)
+    if args.command == "check":
+        return _check(args)
     uvicorn.run(
         create_app(),
         host=os.environ.get("GRINDSTONE_HTTP_HOST", "127.0.0.1"),
@@ -46,7 +54,38 @@ def _parser() -> argparse.ArgumentParser:
         action.add_argument(
             "--version", default=WORKFLOW_VERSION, help="the current workflow version"
         )
+    checking = commands.add_parser(
+        "check", help="validate instance, factory and project configuration together"
+    )
+    checking.add_argument(
+        "--config", type=Path, default=None, help="the instance file (default: $GRINDSTONE_CONFIG)"
+    )
+    checking.add_argument(
+        "--project",
+        type=Path,
+        action="append",
+        default=[],
+        metavar="FILE",
+        help="a project configuration file; without any, the database's current versions",
+    )
     return parser
+
+
+def _check(args: argparse.Namespace) -> int:
+    config: Path | None = args.config
+    projects: list[Path] = args.project
+    database: URL | None = None
+    if not projects:
+        try:
+            database = DatabaseSettings.from_env().url()
+        except OSError as exc:
+            sys.stderr.write(f"database settings unreadable ({type(exc).__name__})\n")
+    result = check(config or instance_config_path(), projects, database=database)
+    for line in result.errors:
+        sys.stdout.write(f"{line}\n")
+    for note in result.notes:
+        sys.stderr.write(f"note: {note}\n")
+    return 0 if result.ok else 1
 
 
 def _workflows(args: argparse.Namespace) -> int:

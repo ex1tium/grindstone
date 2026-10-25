@@ -12,8 +12,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from grindstone import __version__
+from grindstone.contracts.platform import InstanceConfig
 from grindstone.intent import KindCatalog, sync_lifecycle_states
 from grindstone.platform import CORE_ORIGIN, Category, Registries, core_registries
+from grindstone.platform.configuration import Platform, startup_instance_config
 from grindstone.platform.loader import LoadReport, discover, load_factories, record_loads
 from grindstone.stations import kernel_resolvers
 from grindstone.store import (
@@ -52,6 +54,16 @@ def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
     return registries, report, catalog
 
 
+def report_projects(platform: Platform) -> None:
+    """Log every project paused by a missing or invalid configuration (REQ-0312).
+
+    Pause is derived, never stored (FF-09): this only reports it.
+    """
+    for status in unit_of_work(platform.project_statuses):
+        for problem in status.problems:
+            _log.warning("project %s paused: %s", status.slug, problem)
+
+
 def create_app(
     database: DatabaseSettings | None = None, *, schedules: Sequence[Schedule] = SCHEDULES
 ) -> FastAPI:
@@ -59,16 +71,20 @@ def create_app(
 
     Its lifespan opens the store and launches DBOS before the first request,
     loads the factories into frozen registries, and shuts DBOS down after the
-    last request (SPEC-02, REQ-0201; SPEC-03).
+    last request (SPEC-02, REQ-0201; SPEC-03). An invalid instance
+    configuration stops start-up before anything opens (REQ-0310).
     """
     db = database or DatabaseSettings.from_env()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        instance: InstanceConfig = startup_instance_config()
         app.state.runtime = await start_runtime(db.url(), schedules=schedules)
         try:
-            platform = await asyncio.to_thread(load_platform)
-            app.state.registries, app.state.factories, app.state.kinds = platform
+            loaded = await asyncio.to_thread(load_platform)
+            app.state.registries, app.state.factories, app.state.kinds = loaded
+            app.state.platform = Platform(instance, app.state.factories)
+            await asyncio.to_thread(report_projects, app.state.platform)
             yield
         finally:
             await stop_runtime()
