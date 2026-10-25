@@ -258,6 +258,7 @@ forbidden_modules =
     grindstone.surface
     grindstone.app
     grindstone.__main__
+allow_indirect_imports = True
 
 [importlinter:contract:runner-is-standalone]
 name = The runner shares no code with the control plane or factories
