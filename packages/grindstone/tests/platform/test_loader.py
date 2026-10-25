@@ -11,12 +11,14 @@ import yaml
 from pydantic import ValidationError
 from sqlalchemy import Engine, text
 
+from grindstone.contracts.events import INSTANCE_STREAM
 from grindstone.contracts.hashing import semantic_hash
 from grindstone.contracts.ids import ProjectId
 from grindstone.contracts.platform import InstanceConfig
 from grindstone.contracts.provenance import AuthorKind, Provenance
 from grindstone.platform import Category, Registries, core_registries
 from grindstone.platform.configuration import FactoryState, Platform, create_project
+from grindstone.platform.events import events_after
 from grindstone.platform.loader import (
     FactorySource,
     LoadReport,
@@ -355,6 +357,11 @@ def test_refused_factory_does_not_stop_kernel(
     entry = registries.require(Category.CAPABILITY, "notes.writer")
     assert entry.origin.manifest_hash == rows[1].manifest_hash  # AC-0317-1, against the table
     assert entry.capability_hash == loaded.capability_hashes["notes.writer"]
+    events = unit_of_work(lambda uow: events_after(uow, INSTANCE_STREAM, 0))
+    assert [(e.type, e.payload["factory"]) for e in events] == [
+        ("factory.loaded", "notes"),
+        ("factory.refused", "broken"),
+    ]
 
     # Pause is derived from configuration validity and this start's loads, never stored.
     platform = Platform(InstanceConfig(), report)
