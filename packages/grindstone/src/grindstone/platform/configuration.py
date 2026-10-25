@@ -34,11 +34,13 @@ from pydantic import ValidationError
 
 from grindstone.contracts.base import Contract
 from grindstone.contracts.errors import ErrorClass, ErrorEnvelope
+from grindstone.contracts.events import ConfigInvalid, ProjectConfigured
 from grindstone.contracts.hashing import HashInputError, semantic_hash
 from grindstone.contracts.ids import ProjectId, new_record_id
 from grindstone.contracts.platform import InstanceConfig, ProjectConfig
 from grindstone.contracts.provenance import Provenance
 from grindstone.contracts.refs import SemanticHash
+from grindstone.platform.events import emit
 from grindstone.platform.loader import LoadedFactory, LoadReport
 from grindstone.platform.secrets import Secrets
 from grindstone.store.uow import Uow
@@ -403,7 +405,8 @@ class Platform:
     ) -> ProjectConfigVersion:
         """Validate and store the next version; on any error nothing is stored (REQ-0311).
 
-        TKT-0304 adds the `project.configured` event to this unit of work.
+        The version is announced as `project.configured` on the project's
+        stream, in the same unit of work (REQ-0313).
         """
         row = uow.fetch_one("SELECT slug FROM platform.projects WHERE id = :id", {"id": project})
         if row is None:
@@ -429,6 +432,7 @@ class Platform:
         stored = project_config(uow, project)
         if stored is None:  # pragma: no cover - inserted just above
             raise RuntimeError(f"{project}: configuration version {version} not stored")
+        emit(uow, ProjectConfigured(version=version, hash=digest), project)
         return stored
 
     def project_status(self, uow: Uow, project: ProjectId) -> ProjectStatus:
@@ -441,6 +445,17 @@ class Platform:
     def project_statuses(self, uow: Uow) -> list[ProjectStatus]:
         """The status of every project, by slug."""
         return [self._status(*latest) for latest in latest_project_configs(uow)]
+
+    def announce_paused(self, uow: Uow) -> list[ProjectStatus]:
+        """Every paused project, each announced as `config.invalid` on its stream (REQ-0312).
+
+        Start-up calls this once, so each start announces the projects it finds paused.
+        """
+        paused = [status for status in self.project_statuses(uow) if status.paused]
+        for status in paused:
+            problems = tuple(str(problem) for problem in status.problems)
+            emit(uow, ConfigInvalid(problems=problems), status.project)
+        return paused
 
     def secrets(self, uow: Uow, project: ProjectId, factory: str) -> Secrets:
         """The secret reader kernel code puts in `factory`'s context for `project`.

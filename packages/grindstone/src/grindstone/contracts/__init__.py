@@ -10,12 +10,28 @@ drift in CI (FF-02).
 from pydantic import BaseModel
 
 from grindstone.contracts.base import MAX_SAFE_INTEGER, Contract, Presentation, bundle_schema
+from grindstone.contracts.decisions import (
+    Answer,
+    Decision,
+    DecisionAnswered,
+    DecisionRaised,
+    DecisionSuperseded,
+)
 from grindstone.contracts.errors import (
     KERNEL_ERROR_CODES,
     ErrorClass,
     ErrorEnvelope,
     error_class_of,
     register_error_codes,
+)
+from grindstone.contracts.events import (
+    INSTANCE_STREAM,
+    ConfigInvalid,
+    EventEnvelope,
+    FactoryLoaded,
+    FactoryRefused,
+    KernelEvent,
+    ProjectConfigured,
 )
 from grindstone.contracts.health import DependencyHealth, HealthStatus, ServiceHealth
 from grindstone.contracts.ids import (
@@ -54,31 +70,53 @@ EXPORTED: tuple[type[BaseModel], ...] = (
     Provenance,
     RunManifest,
     ErrorEnvelope,
+    EventEnvelope,
+    FactoryLoaded,
+    FactoryRefused,
+    ProjectConfigured,
+    ConfigInvalid,
+    Decision,
+    Answer,
+    DecisionRaised,
+    DecisionAnswered,
+    DecisionSuperseded,
 )
 
 __all__ = [
     "EXPORTED",
+    "INSTANCE_STREAM",
     "ITEM_ID_GRAMMAR",
     "KERNEL_ERROR_CODES",
     "MAX_SAFE_INTEGER",
+    "Answer",
     "AuthorKind",
     "BlobHash",
     "BlobRef",
     "BlobSetSubject",
     "BlobSubject",
     "ChangeSetId",
+    "ConfigInvalid",
     "Contract",
+    "Decision",
+    "DecisionAnswered",
     "DecisionId",
+    "DecisionRaised",
+    "DecisionSuperseded",
     "DependencyHealth",
     "ErrorClass",
     "ErrorEnvelope",
+    "EventEnvelope",
+    "FactoryLoaded",
+    "FactoryRefused",
     "GitCommitSubject",
     "GitObjectName",
     "HealthStatus",
     "ItemId",
     "ItemRef",
     "ItemRevisionSubject",
+    "KernelEvent",
     "Presentation",
+    "ProjectConfigured",
     "Provenance",
     "RunId",
     "RunManifest",

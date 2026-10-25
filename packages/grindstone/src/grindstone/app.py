@@ -11,11 +11,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from grindstone import __version__
+from grindstone import __version__, decisions
 from grindstone.contracts.platform import InstanceConfig
 from grindstone.intent import KindCatalog, sync_lifecycle_states
 from grindstone.platform import CORE_ORIGIN, Category, Registries, core_registries
 from grindstone.platform.configuration import Platform, startup_instance_config
+from grindstone.platform.events import Consumer, Dispatcher, DispatcherThread
 from grindstone.platform.loader import LoadReport, discover, load_factories, record_loads
 from grindstone.stations import kernel_resolvers
 from grindstone.store import (
@@ -32,6 +33,9 @@ _log = logging.getLogger(__name__)
 
 # Scheduled workflows the modules declare (REQ-0214); M1's arrive with their owners.
 SCHEDULES: tuple[Schedule, ...] = ()
+
+# Event consumers the modules declare (REQ-0314).
+CONSUMERS: tuple[Consumer, ...] = (decisions.CONSUMER,)
 
 
 def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
@@ -55,26 +59,32 @@ def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
 
 
 def report_projects(platform: Platform) -> None:
-    """Log every project paused by a missing or invalid configuration (REQ-0312).
+    """Log and announce every project paused by a missing or invalid configuration (REQ-0312).
 
-    Pause is derived, never stored (FF-09): this only reports it.
+    Pause is derived, never stored (FF-09): this only reports it, as a log
+    line and a `config.invalid` event.
     """
-    for status in unit_of_work(platform.project_statuses):
+    for status in unit_of_work(platform.announce_paused):
         for problem in status.problems:
             _log.warning("project %s paused: %s", status.slug, problem)
 
 
 def create_app(
-    database: DatabaseSettings | None = None, *, schedules: Sequence[Schedule] = SCHEDULES
+    database: DatabaseSettings | None = None,
+    *,
+    schedules: Sequence[Schedule] = SCHEDULES,
+    consumers: Sequence[Consumer] = CONSUMERS,
 ) -> FastAPI:
     """Build the control-plane ASGI application.
 
     Its lifespan opens the store and launches DBOS before the first request,
-    loads the factories into frozen registries, and shuts DBOS down after the
-    last request (SPEC-02, REQ-0201; SPEC-03). An invalid instance
-    configuration stops start-up before anything opens (REQ-0310).
+    loads the factories into frozen registries, starts the event dispatcher,
+    and stops both after the last request (SPEC-02, REQ-0201; SPEC-03). An
+    invalid instance configuration stops start-up before anything opens
+    (REQ-0310).
     """
     db = database or DatabaseSettings.from_env()
+    dispatcher = Dispatcher(consumers)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
@@ -84,8 +94,14 @@ def create_app(
             loaded = await asyncio.to_thread(load_platform)
             app.state.registries, app.state.factories, app.state.kinds = loaded
             app.state.platform = Platform(instance, app.state.factories)
+            app.state.decisions = decisions.Decisions(app.state.registries)
             await asyncio.to_thread(report_projects, app.state.platform)
-            yield
+            dispatching = DispatcherThread(dispatcher, db.conninfo())
+            dispatching.start()
+            try:
+                yield
+            finally:
+                await asyncio.to_thread(dispatching.stop)
         finally:
             await stop_runtime()
 

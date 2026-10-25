@@ -1,0 +1,19 @@
+# A required prover of the implementer's commit (ADR-12, I-15): a fresh,
+# read-only session that shares none of the implementer's context (ADR-41, as
+# amended by ADR-47). It holds no web tools; from SPEC-17 a project may add
+# them (ADR-57).
+id: sdlc.test_reviewer
+version: "1"
+prompt: prompts/test_reviewer.md
+agent: {preset: claude, model: secondary}
+workspace: {mode: read_only}
+permissions:
+  allow: [read, shell]
+  otherwise: deny
+produces:
+  reports: [schemas/test_review.json]
+offers:
+  - {need: sdlc.review.tests, modes: [check]}
+may_check:
+  - {method: sdlc.review, subjects: [git_commit]}
+tier: T0

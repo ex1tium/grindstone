@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "sdlc.test_reviewer report",
+  "description": "SPEC-08's ReviewVerdict (verdict, targets, acknowledgements) with a note per test judged. The kernel checks that every target and every acknowledgement of the check has a verdict (REQ-0808).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "targets", "acknowledgements"],
+  "properties": {
+    "verdict": { "enum": ["pass", "fail"] },
+    "targets": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item", "verdict", "reason"],
+        "properties": {
+          "item": { "type": "string", "pattern": "^AC-[0-9]{4}-[0-9]+$" },
+          "verdict": { "enum": ["pass", "fail"] },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 4000 },
+          "refs": {
+            "description": "Files, tests or diff hunks the verdict relies on.",
+            "type": "array",
+            "maxItems": 100,
+            "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+          }
+        }
+      }
+    },
+    "acknowledgements": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "verdict", "reason"],
+        "properties": {
+          "key": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "verdict": { "enum": ["pass", "fail"] },
+          "reason": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        }
+      }
+    },
+    "tests": {
+      "description": "A note on each test judged.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "name", "note"],
+        "properties": {
+          "file": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "name": { "type": "string", "minLength": 1, "maxLength": 500 },
+          "note": { "type": "string", "minLength": 1, "maxLength": 4000 }
+        }
+      }
+    }
+  }
+}

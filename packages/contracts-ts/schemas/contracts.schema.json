@@ -1,5 +1,56 @@
 {
   "$defs": {
+    "Answer": {
+      "additionalProperties": false,
+      "description": "An accepted answer: what, by whom, through which channel and against which context.\n\nREQ-0417.",
+      "properties": {
+        "answer": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "answered_by": {
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "channel": {
+          "$ref": "#/$defs/Channel"
+        },
+        "client_key": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "context_hash_seen": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision",
+        "answer",
+        "answered_by",
+        "channel",
+        "context_hash_seen",
+        "client_key",
+        "at"
+      ],
+      "title": "Answer",
+      "type": "object"
+    },
     "AuthorKind": {
       "description": "The kind of principal that authored a revision.",
       "enum": ["person", "agent", "policy", "system"],
@@ -78,6 +129,286 @@
       "title": "BlobSubject",
       "type": "object"
     },
+    "Channel": {
+      "description": "Where an answer was given, from the authenticated session (SPEC-10).",
+      "enum": ["ui", "api", "vscode", "plugin"],
+      "title": "Channel",
+      "type": "string"
+    },
+    "ConfigInvalid": {
+      "additionalProperties": false,
+      "description": "A project's current configuration is invalid, so the project is paused.",
+      "properties": {
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "config.invalid",
+          "default": "config.invalid",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "problems"],
+      "title": "ConfigInvalid",
+      "type": "object"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "description": "One decision record (REQ-0416).",
+      "properties": {
+        "context_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "flags": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DecisionFlag"
+          },
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "project": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "raised_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "raised_by": {
+          "type": "string"
+        },
+        "recommendation": {
+          "$ref": "#/$defs/Recommendation"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "scope": {
+          "$ref": "#/$defs/DecisionScope"
+        },
+        "state": {
+          "$ref": "#/$defs/DecisionState"
+        },
+        "superseded_by": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "id",
+        "project",
+        "kind",
+        "flags",
+        "scope",
+        "context_hash",
+        "title",
+        "payload",
+        "recommendation",
+        "state",
+        "raised_by",
+        "raised_at",
+        "superseded_by"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "DecisionAnswered": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "decision.answered",
+          "default": "decision.answered",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "decision", "kind"],
+      "title": "DecisionAnswered",
+      "type": "object"
+    },
+    "DecisionFlag": {
+      "description": "How a decision may be answered; set only by the kernel code that raises it (Concepts).",
+      "enum": [
+        "scope_expansion",
+        "principle",
+        "untrusted",
+        "rounds_exhausted",
+        "revert_conflict",
+        "cap_reached",
+        "irreversible"
+      ],
+      "title": "DecisionFlag",
+      "type": "string"
+    },
+    "DecisionRaised": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "flags": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/DecisionFlag"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "decision.raised",
+          "default": "decision.raised",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "decision", "kind", "flags"],
+      "title": "DecisionRaised",
+      "type": "object"
+    },
+    "DecisionScope": {
+      "additionalProperties": false,
+      "description": "The records a decision is about.",
+      "properties": {
+        "changeset": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "delivery": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "run": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "task": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": ["task", "changeset", "delivery", "run"],
+      "title": "DecisionScope",
+      "type": "object"
+    },
+    "DecisionState": {
+      "description": "The decision lifecycle; `expired` is reserved for SPEC-15 and has no writer in M1.",
+      "enum": ["open", "answered", "superseded", "expired"],
+      "title": "DecisionState",
+      "type": "string"
+    },
+    "DecisionSuperseded": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "replacement": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "decision.superseded",
+          "default": "decision.superseded",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "decision", "replacement"],
+      "title": "DecisionSuperseded",
+      "type": "object"
+    },
     "DependencyHealth": {
       "additionalProperties": false,
       "description": "The state of one thing a service needs, such as its database.",
@@ -144,6 +475,115 @@
       },
       "required": ["schema_version", "code", "error_class", "message", "detail", "retryable"],
       "title": "ErrorEnvelope",
+      "type": "object"
+    },
+    "EventEnvelope": {
+      "additionalProperties": false,
+      "description": "One recorded event: its stream, its place in it, and the event model's fields.\n\n`type` and `event_version` are the event model's `type` and\n`schema_version`; `payload` holds its other fields, so the envelope\nround-trips to the model.",
+      "properties": {
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "project": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "event_id",
+        "project",
+        "seq",
+        "type",
+        "event_version",
+        "occurred_at",
+        "payload"
+      ],
+      "title": "EventEnvelope",
+      "type": "object"
+    },
+    "FactoryLoaded": {
+      "additionalProperties": false,
+      "description": "A factory passed its load at start-up.",
+      "properties": {
+        "factory": {
+          "type": "string"
+        },
+        "manifest_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "factory.loaded",
+          "default": "factory.loaded",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "factory", "version", "manifest_hash"],
+      "title": "FactoryLoaded",
+      "type": "object"
+    },
+    "FactoryRefused": {
+      "additionalProperties": false,
+      "description": "A factory was refused at start-up, with the `file:field: rule` lines that failed.",
+      "properties": {
+        "factory": {
+          "type": "string"
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "factory.refused",
+          "default": "factory.refused",
+          "type": "string"
+        }
+      },
+      "required": ["schema_version", "type", "factory", "problems"],
+      "title": "FactoryRefused",
       "type": "object"
     },
     "GitCommitSubject": {
@@ -223,6 +663,33 @@
       "type": "object"
     },
     "JsonValue": {},
+    "ProjectConfigured": {
+      "additionalProperties": false,
+      "description": "A project's configuration gained a version.",
+      "properties": {
+        "hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "type": "integer"
+        },
+        "type": {
+          "const": "project.configured",
+          "default": "project.configured",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": ["schema_version", "type", "version", "hash"],
+      "title": "ProjectConfigured",
+      "type": "object"
+    },
     "Provenance": {
       "additionalProperties": false,
       "description": "Carried by every revision: the author, what it came through, and the reason.",
@@ -303,6 +770,33 @@
       ],
       "title": "Provenance",
       "type": "object"
+    },
+    "Recommendation": {
+      "additionalProperties": false,
+      "description": "The recommended answer, why, and who recommends it.",
+      "properties": {
+        "answer": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/RecommendationSource"
+        }
+      },
+      "required": ["answer", "reason", "source"],
+      "title": "Recommendation",
+      "type": "object"
+    },
+    "RecommendationSource": {
+      "enum": ["fixed", "agent", "advisor"],
+      "title": "RecommendationSource",
+      "type": "string"
     },
     "RunManifest": {
       "additionalProperties": false,

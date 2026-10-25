@@ -1,4 +1,6 @@
 {
   "workflow_version": "1",
-  "workflows": {}
+  "workflows": {
+    "decisions.continue": "35aa3ca788ea701f25005b7ba15f3ededc1a351c8380d4fd586bf9700e67252d"
+  }
 }
