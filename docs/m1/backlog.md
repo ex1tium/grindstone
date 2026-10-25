@@ -9,7 +9,7 @@ The M1 tickets from section 7 of the accepted specifications (SPEC-01 to SPEC-10
 3. Resolve any new dependency to its latest compatible release (ADR-46), pin it exactly and record it in `docs/m0/versions.md`.
 4. `make check` passes; one squash-merged pull request per ticket, titled with the ticket ID. Mark the row `done` with the pull request number.
 
-At most two tickets run at once, each in its own worktree, because tickets in a layer often share files (the contracts package's exports, `Makefile`, the CI workflow).
+One ticket is built at a time (the operator, 25 October 2026), in critical-path order: tickets in a layer often share files (the contracts package's exports, `Makefile`, the CI workflow), and parallel sessions cost too much quota.
 
 **States:** `todo` · `doing` · `review` (pull request open) · `done`.
 
