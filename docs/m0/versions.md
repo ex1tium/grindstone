@@ -23,7 +23,10 @@ Resolved on 17 October 2026 from the primary sources named below: the PyPI JSON 
 | fastapi | 0.143.3 | 2026-10-16 | REST API and health |
 | uvicorn | 0.54.0 | 2026-09-25 | ASGI server |
 | psycopg[binary] | 3.3.6 | 2026-09-18 | PostgreSQL driver |
+| pyyaml | 6.0.3 | 2025-09-25 | Factory manifests and capability files, safe loader only (SPEC-03, DEC-0302); pinned by TKT-0302 |
 | dbos | 3.3.0 | 2026-10-15 | Workflows and datasource transactions (ADR-03, SPEC-02); pinned by TKT-0201, re-checked on the PyPI JSON API on 24 October 2026 |
+| jsonschema | 4.26.0 | 2026-01-07 | Validates capability report schemas at load (SPEC-03, REQ-0306) and, from SPEC-06, reports against them; no specification named a validator, so TKT-0302 added the latest release |
+| packaging | 26.3 | 2026-08-04 | PEP 440 SDK ranges in factory manifests (SPEC-03, DEC-0303); pinned by TKT-0302 |
 | rfc8785 | 0.1.4 | 2024-09-27 | RFC 8785 canonical JSON for semantic hashes (SPEC-01, DEC-0103); pinned by TKT-0103, still the latest on the PyPI JSON API on 24 October 2026 |
 | sqlalchemy | 2.1.6 | 2026-10-21 | SQLAlchemy Core over psycopg 3, shared with DBOS's datasource (SPEC-02, DEC-0201). DEC-0201 named 2.1.5, the latest when SPEC-02 was written; 2.1.6 is the latest compatible release on 24 October 2026 (ADR-46) |
 | pytest | 9.1.1 | 2026-06-19 | Tests |
@@ -74,8 +77,8 @@ Checked on 17 October 2026 against the PyPI JSON API and the npm registry while 
 | Package | Latest | Released | Specification | Observation |
 | --- | --- | --- | --- | --- |
 | sqlalchemy | 2.1.5 | 2026-10-16 | SPEC-02 | Already in the lockfile through DBOS; pinned directly for DBOS datasource transactions. Pinned at 2.1.6 since TKT-0201 (above) |
-| pyyaml | 6.0.3 | 2025-09-25 | SPEC-03 | Safe loader only; CPython 3.14 wheels |
-| packaging | 26.3 | 2026-08-04 | SPEC-03 | SDK range checks; already in the lockfile |
+| pyyaml | 6.0.3 | 2025-09-25 | SPEC-03 | Safe loader only; CPython 3.14 wheels. Pinned since TKT-0302 (above) |
+| packaging | 26.3 | 2026-08-04 | SPEC-03 | SDK range checks; already in the lockfile. Pinned since TKT-0302 (above) |
 | argon2-cffi | 25.1.0 | 2025-06-03 | SPEC-05 (written by `make secrets`), SPEC-10 (verified) | Operator password hash; `argon2-cffi-bindings` 26.1.0 ships abi3 wheels |
 | pyjwt | 2.15.1 | 2026-09-28 | SPEC-09 | The GitHub App's RS256 JWT, as SPK-4 used it |
 | cryptography | 50.0.2 | 2026-09-30 | SPEC-09 | RS256 for PyJWT |

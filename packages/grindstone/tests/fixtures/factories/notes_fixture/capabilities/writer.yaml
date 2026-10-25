@@ -1,0 +1,8 @@
+id: notes.writer
+version: "1"
+prompt: prompts/writer.md
+agent: {preset: claude, model: primary}
+workspace: {mode: read_only}
+offers:
+  - {need: notes.write, modes: [delegate]}
+tier: T1
