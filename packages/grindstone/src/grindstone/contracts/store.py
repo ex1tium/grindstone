@@ -1,4 +1,4 @@
-"""The store's contracts: its settings and the root that keeps a blob alive (SPEC-02).
+"""The store's contracts: its settings, station lanes and blob roots (SPEC-02).
 
 A blob is never without a root from the moment it is written (ADR-04): a
 root names the project it counts against and the record that holds it. A
@@ -42,3 +42,24 @@ class BlobRoot(Contract):
     owner_kind: str = Field(min_length=1)
     owner_id: str = Field(min_length=1)
     lease: bool
+
+
+type LaneKind = Literal["writing", "readonly", "check"]
+
+
+class LaneSpec(Contract):
+    """One lane of one station: a queue whose global concurrency bounds the work on it.
+
+    Seeds: writing 1, read-only 4, check 1 (the capacity envelope). SPEC-06
+    decides what runs on each lane; the store only creates and names it.
+    """
+
+    schema_version: Literal[1] = 1
+    station: str = Field(min_length=1, pattern=r"^[a-z0-9][a-z0-9_-]*$")
+    lane: LaneKind
+    concurrency: int = Field(ge=1)
+
+    @property
+    def queue_name(self) -> str:
+        """`lane.<station>.<lane>`, the DBOS queue that is this lane."""
+        return f"lane.{self.station}.{self.lane}"

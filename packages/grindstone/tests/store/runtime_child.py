@@ -27,6 +27,7 @@ from sqlalchemy import Engine, text
 
 from grindstone.store import (
     WORKFLOW_VERSION,
+    QueueSpec,
     Runtime,
     Schedule,
     Uow,
@@ -103,7 +104,10 @@ def _kill_point(name: str) -> None:
 
 @contextmanager
 def running(
-    url: str, version: str = WORKFLOW_VERSION, schedules: Sequence[Schedule] = ()
+    url: str,
+    version: str = WORKFLOW_VERSION,
+    schedules: Sequence[Schedule] = (),
+    queues: Sequence[QueueSpec] = (),
 ) -> Generator[Runtime]:
     """The runtime started as the lifespan starts it, on an event loop kept open.
 
@@ -111,7 +115,9 @@ def running(
     the runtime: closing it would shut the executor down.
     """
     with asyncio.Runner() as runner:
-        runtime = runner.run(start_runtime(url, application_version=version, schedules=schedules))
+        runtime = runner.run(
+            start_runtime(url, application_version=version, schedules=schedules, queues=queues)
+        )
         try:
             yield runtime
         finally:
