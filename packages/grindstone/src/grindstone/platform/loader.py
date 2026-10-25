@@ -33,6 +33,7 @@ from packaging.version import InvalidVersion, Version
 from pydantic import ValidationError
 
 from grindstone.contracts.base import Contract
+from grindstone.contracts.events import FactoryLoaded, FactoryRefused
 from grindstone.contracts.hashing import hash_bytes, semantic_hash
 from grindstone.contracts.platform import (
     CapabilityDecl,
@@ -48,6 +49,7 @@ from grindstone.contracts.platform import (
     TaskStep,
 )
 from grindstone.contracts.refs import SemanticHash
+from grindstone.platform.events import emit
 from grindstone.platform.kinds import compile_kind, kind_problems
 from grindstone.platform.registries import (
     CORE,
@@ -715,10 +717,18 @@ def report_rows(report: LoadReport) -> list[dict[str, Any]]:
 
 
 def record_loads(uow: Uow, report: LoadReport) -> None:
-    """Record one start's loads in `platform.factories`, a history (DEC-0304)."""
+    """Record one start's loads in `platform.factories`, a history (DEC-0304).
+
+    Each load is also an event on the instance's stream: `factory.loaded` or
+    `factory.refused` (REQ-0313).
+    """
     for row in report_rows(report):
         uow.execute(
             "INSERT INTO platform.factories (name, version, manifest_hash, status, report)"
             " VALUES (:name, :version, :manifest_hash, :status, CAST(:report AS jsonb))",
             row,
         )
+    for f in report.loaded:
+        emit(uow, FactoryLoaded(factory=f.name, version=f.version, manifest_hash=f.manifest_hash))
+    for name, problems in sorted(report.refused.items()):
+        emit(uow, FactoryRefused(factory=name, problems=tuple(str(p) for p in problems)))
