@@ -4,11 +4,16 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "description": "TypeScript types generated from the Pydantic contracts. Do not edit: run `make gen` (FF-02).",
+  "description": "TypeScript twin of grindstone.contracts: types generated from the Pydantic contracts (src/index.ts; do not edit, run `make gen`, FF-02) and semantic hashing (src/hashing.ts, SPEC-01).",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./hashing": "./src/hashing.ts"
   },
   "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
     "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "canonicalize": "5.1.0"
   }
 }

@@ -44,6 +44,7 @@ Resolved on 17 October 2026 from the primary sources named below: the PyPI JSON 
 | pyright | 1.1.414 | 2026-09-09 | Python strict type checking, installed from npm so no runtime download happens |
 | json-schema-to-typescript | 16.0.0 | 2026-08-28 | FF-02 TypeScript generation |
 | @types/node | 24.19.2 | 2026-10-09 | Matches the Node 24 runtime |
+| canonicalize | 5.1.0 | 2026-09-18 | RFC 8785 canonical JSON for semantic hashes in `@grindstone/contracts` (SPEC-01, DEC-0103); pinned by TKT-0104, still the latest on the npm registry on 25 October 2026 |
 
 ## GitHub Actions
 
