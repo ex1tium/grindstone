@@ -4,8 +4,8 @@
 2. Omit any field whose value equals its declared default.
 3. Serialise to JSON values: enums by value, UUIDs and dates as strings.
 4. Normalise every string, keys included, to NFC and line endings to LF;
-   refuse keys that collide after normalisation, and any float, unsafe
-   integer or non-JSON value, with `hash_input_invalid`.
+   refuse keys that collide after normalisation, lone surrogates, and any
+   float, unsafe integer or non-JSON value, with `hash_input_invalid`.
 5. Canonicalise with RFC 8785.
 6. Hash the UTF-8 bytes with SHA-256, written `sha256:<hex>`.
 
@@ -72,7 +72,7 @@ def _project(value: object) -> object:
 def normalise(value: object, pointer: str = "") -> object:
     """Step 4: NFC and LF for every string and key; refuse what cannot hash alike everywhere."""
     if isinstance(value, str):
-        return _text(value)
+        return _text(value, pointer)
     if value is None or isinstance(value, bool):
         return value
     if isinstance(value, int):
@@ -88,7 +88,7 @@ def normalise(value: object, pointer: str = "") -> object:
         for key, item in cast("dict[object, object]", value).items():
             if not isinstance(key, str):
                 raise HashInputError(f"object key {key!r} is not a string", pointer=pointer)
-            norm = _text(key)
+            norm = _text(key, pointer)
             if norm in out:
                 raise HashInputError(f"keys collide after normalisation: {norm!r}", pointer=pointer)
             out[norm] = normalise(item, f"{pointer}/{_escape(norm)}")
@@ -124,7 +124,10 @@ def blob_set_version(members: Iterable[BlobRef]) -> SemanticHash:
     return semantic_hash(BlobSetMembers(members=tuple(sorted({m.sha256 for m in members}))))
 
 
-def _text(value: str) -> str:
+def _text(value: str, pointer: str) -> str:
+    if any(0xD800 <= ord(ch) <= 0xDFFF for ch in value):
+        # A lone surrogate is not Unicode text, so no UTF-8 form exists to hash.
+        raise HashInputError("a string holds a lone surrogate", pointer=pointer)
     return unicodedata.normalize("NFC", value).replace("\r\n", "\n").replace("\r", "\n")
 
 

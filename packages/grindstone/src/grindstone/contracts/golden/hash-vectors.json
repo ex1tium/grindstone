@@ -218,6 +218,13 @@
         "pointer": "/x",
         "kind": "non_json"
       }
+    },
+    {
+      "name": "lone surrogate in a string",
+      "input": {
+        "x": "\ud800"
+      },
+      "code": "hash_input_invalid"
     }
   ]
 }
