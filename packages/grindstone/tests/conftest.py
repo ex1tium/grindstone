@@ -1,4 +1,4 @@
-"""Fixtures for the store's integration tests.
+"""Fixtures for every module's integration tests.
 
 They need PostgreSQL: `GRINDSTONE_TEST_DATABASE_URL` names a server and a role
 that may create databases (CI runs a `postgres` service). Each test gets a

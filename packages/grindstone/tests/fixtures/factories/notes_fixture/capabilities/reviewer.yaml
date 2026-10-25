@@ -1,0 +1,12 @@
+id: notes.reviewer
+version: "1"
+prompt: prompts/reviewer.md
+agent: {preset: claude, model: secondary}
+workspace: {mode: read_only}
+offers:
+  - {need: notes.review, modes: [check]}
+may_check:
+  - {method: notes.read_review}
+produces:
+  reports: [reports/review.json]
+tier: T0

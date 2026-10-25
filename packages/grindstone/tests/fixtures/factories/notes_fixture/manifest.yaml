@@ -1,0 +1,28 @@
+# A code-free factory in the `notes` style (SPEC-03 test plan): one kind, one
+# edge, a maker and a separate read-only prover, a review method, a template.
+name: notes
+version: 0.1.0
+sdk: ">=0.1.0,<0.2.0"
+kinds:
+  - name: notes.note
+    id: {pattern: "^N-[0-9]+$", examples: ["N-1"]}
+    fields:
+      body: {type: text}
+      summary: {type: text, presentation: true, required: false}
+      links: {type: ref, kinds: [notes.note], edge: notes.links, cardinality: many, required: false}
+edges:
+  - {name: notes.links, inverse: notes.linked_from, from_kinds: [notes.note], to_kinds: [notes.note], impact: render}
+capabilities:
+  - capabilities/writer.yaml
+  - capabilities/reviewer.yaml
+check_methods:
+  - {name: notes.read_review, shape: review}
+templates:
+  - name: notes.write
+    command: /write
+    steps:
+      - type: task
+        name: write
+        need: notes.write
+        checks:
+          - {method: notes.read_review, by: notes.review}
