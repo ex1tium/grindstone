@@ -14,9 +14,10 @@ from fastapi import FastAPI
 from grindstone import __version__
 from grindstone.contracts.platform import InstanceConfig
 from grindstone.intent import KindCatalog, sync_lifecycle_states
-from grindstone.platform import Registries, core_registries
+from grindstone.platform import CORE_ORIGIN, Category, Registries, core_registries
 from grindstone.platform.configuration import Platform, startup_instance_config
 from grindstone.platform.loader import LoadReport, discover, load_factories, record_loads
+from grindstone.stations import kernel_resolvers
 from grindstone.store import (
     DatabaseSettings,
     Schedule,
@@ -42,6 +43,8 @@ def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
     from it (SPEC-04, DEC-0405).
     """
     registries = core_registries()
+    for subject_kind, resolver in kernel_resolvers().items():
+        registries.register(Category.SUBJECT_RESOLVER, subject_kind, resolver, CORE_ORIGIN)
     report = load_factories(registries, discover())
     for line in report.lines():
         (_log.warning if line.startswith("refused") else _log.info)("factory %s", line)

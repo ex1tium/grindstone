@@ -39,18 +39,18 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | Ticket | Spec | Work | Depends on | State | PR |
 | --- | --- | --- | --- | --- | --- |
 | TKT-0104 | [SPEC-01](../specs/SPEC-01-contracts-ids-hashing.md) | TypeScript hashing against the golden vectors | TKT-0103 | done | #26 |
-| TKT-0203 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | External-step helper, kill points, crash harness, FF-10 | TKT-0202 | todo | |
+| TKT-0203 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | External-step helper, kill points, crash harness, FF-10 | TKT-0202 | done | #30 |
 | TKT-0204 | [SPEC-02](../specs/SPEC-02-store-runtime-lanes-blobs.md) | Lanes | TKT-0202 | todo | |
 | TKT-0302 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Loader in two phases, kinds as data, capability hashing, load-time rules including make and prove | TKT-0301 | done | #27 |
 | TKT-0304 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Event outbox, union, dispatcher | TKT-0202 | todo | |
-| TKT-0607 | [SPEC-06-1](../specs/SPEC-06-1-stations-agent-host.md) | SDK ports `WorkspaceProvider` and `SubjectResolver`, their contracts and the kernel's `blob`, `blob_set` and `item_revision` resolvers | TKT-0301 | todo | |
+| TKT-0607 | [SPEC-06-1](../specs/SPEC-06-1-stations-agent-host.md) | SDK ports `WorkspaceProvider` and `SubjectResolver`, their contracts and the kernel's `blob`, `blob_set` and `item_revision` resolvers | TKT-0301 | done | #32 |
 
 ## Layer 3
 
 | Ticket | Spec | Work | Depends on | State | PR |
 | --- | --- | --- | --- | --- | --- |
-| TKT-0303 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Instance and project configuration, secrets, `grindstone check` | TKT-0302, TKT-0201 | todo | |
-| TKT-0401 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Items, revisions, edges, lifecycles, ID allocation, rendering, `core` kinds | TKT-0302, TKT-0201 | review | #29 |
+| TKT-0303 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Instance and project configuration, secrets, `grindstone check` | TKT-0302, TKT-0201 | done | #31 |
+| TKT-0401 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Items, revisions, edges, lifecycles, ID allocation, rendering, `core` kinds | TKT-0302, TKT-0201 | done | #29 |
 | TKT-0402 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Decision records, kinds, answers, continuations | TKT-0304 | todo | |
 | TKT-0901 | [SPEC-09](../specs/SPEC-09-sdlc-skeleton-factory.md) | Manifest: kinds, edges, lifecycles, capabilities, prompts, report schemas, template, configuration schema | TKT-0302 | todo | |
 | TKT-1003 | [SPEC-10](../specs/SPEC-10-operator-surface.md) | Event streams | TKT-0304 | todo | |

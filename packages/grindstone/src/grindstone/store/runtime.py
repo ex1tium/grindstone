@@ -20,7 +20,9 @@ This module is the only place that configures DBOS (SPEC-02, DEC-0204):
   operator drains them on the old image or moves each with
   `grindstone workflows fork` (`grindstone.store.admin`).
 - `start` gives every workflow an ID derived from its record (REQ-0205), so
-  starting it twice runs it once.
+  starting it twice runs it once, and checks that the workflow's first input
+  is that record's ID, from which its external steps' idempotency keys are
+  built (REQ-0204, `grindstone.store.steps`).
 - `Schedule` states for every scheduled workflow whether missed periods are
   backfilled; the default skips them (REQ-0214, DEC-0205).
 """
@@ -42,6 +44,7 @@ from sqlalchemy import URL
 from grindstone.store.database import close_database, open_database
 from grindstone.store.errors import StoreError
 from grindstone.store.schema import MigrationSources
+from grindstone.store.steps import bind_record
 
 _log = logging.getLogger(__name__)
 
@@ -74,12 +77,14 @@ def workflow[**P, R](name: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
     The name, not the function's import path, is what DBOS records and
     recovers by, so moving or renaming the function keeps workflows in
     flight. The workflow-version check hashes every function registered here.
+    The workflow's first input is the causing record's ID, which keys its
+    external steps.
     """
 
     def register(func: Callable[P, R]) -> Callable[P, R]:
         if name in _registry.workflows:
             raise ValueError(f"workflow {name!r} is already registered")
-        registered = DBOS.workflow(name=name)(func)
+        registered = DBOS.workflow(name=name)(bind_record(func))
         _registry.workflows[name] = registered
         return registered
 
@@ -206,11 +211,14 @@ def start[**P, R](
     """Start `func` under `workflow_id`, an ID derived from the record that caused it.
 
     Starting the same ID again returns the existing workflow instead of
-    running it twice. Outside a workflow, a start while workflows of another
-    version are stranded is refused with `workflow_version_mismatch`; a
-    workflow that DBOS recovered may still start its children.
+    running it twice. The first positional argument is the causing record's
+    ID, which keys the workflow's external steps. Outside a workflow, a start
+    while workflows of another version are stranded is refused with
+    `workflow_version_mismatch`; a workflow that DBOS recovered may still
+    start its children.
     """
     _check_id(workflow_id)
+    _check_record(args)
     runtime = current_runtime()
     if not runtime.dispatching and DBOS.workflow_id is None:
         runtime.stranded = _stranded(_unfinished(), runtime.version)
@@ -222,6 +230,11 @@ def start[**P, R](
 def _check_id(workflow_id: str) -> None:
     if not workflow_id.strip():
         raise ValueError("a workflow is started with an ID derived from its record")
+
+
+def _check_record(args: Sequence[object]) -> None:
+    if not args or not isinstance(args[0], str) or not args[0].strip():
+        raise ValueError("a workflow takes the ID of the record that caused it as its first input")
 
 
 def _unfinished() -> list[DBOSWorkflowStatus]:

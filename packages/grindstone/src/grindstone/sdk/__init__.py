@@ -4,10 +4,8 @@ tab, Kernel SDK).
 
 SDK 0.1.0 holds no logic of its own; it re-exports the names in SPEC-03's
 export table. A name added is a minor version, a name changed or removed a
-major one (ADR-05). The port protocols and their models join with the
-specifications that own them: SPEC-06 part 1 (`WorkspaceProvider`,
-`SubjectResolver`, `RunContext`, `Materialization`, `CollectOutcome`) and
-SPEC-08 (`CheckMethod`, `DeliveryAdapter` and their models).
+major one (ADR-05). SPEC-08's port protocols (`CheckMethod`,
+`DeliveryAdapter`) and their models join with the ticket that defines them.
 """
 
 from grindstone.contracts.errors import ErrorEnvelope
@@ -22,8 +20,18 @@ from grindstone.contracts.platform import (
     KindDecl,
     TemplateDecl,
 )
-from grindstone.contracts.ports import BlobReader, Context, FactoryStorage, ItemReader, SecretReader
+from grindstone.contracts.ports import (
+    BlobReader,
+    Context,
+    FactoryStorage,
+    ItemReader,
+    RunContext,
+    SecretReader,
+    SubjectResolver,
+    WorkspaceProvider,
+)
 from grindstone.contracts.refs import BlobRef, ItemRef, SemanticHash, SubjectRef
+from grindstone.contracts.stations import CollectOutcome, Materialization
 from grindstone.platform.registries import SDK_VERSION, register_error_code
 
 __version__ = SDK_VERSION
@@ -33,6 +41,7 @@ __all__ = [
     "BlobRef",
     "CapabilityDecl",
     "CheckMethodDecl",
+    "CollectOutcome",
     "Context",
     "EdgeDecl",
     "ErrorEnvelope",
@@ -42,10 +51,14 @@ __all__ = [
     "ItemReader",
     "ItemRef",
     "KindDecl",
+    "Materialization",
+    "RunContext",
     "SecretReader",
     "SemanticHash",
     "SubjectRef",
+    "SubjectResolver",
     "TemplateDecl",
+    "WorkspaceProvider",
     "item_id_type",
     "register_error_code",
     "semantic_hash",
