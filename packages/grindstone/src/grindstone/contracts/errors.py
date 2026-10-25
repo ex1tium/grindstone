@@ -37,6 +37,9 @@ KERNEL_ERROR_CODES: Mapping[ErrorClass, frozenset[str]] = MappingProxyType(
                 "reference_unresolved",
                 "manifest_invalid",
                 "hash_input_invalid",  # SPEC-01
+                "config_invalid",  # SPEC-03
+                "name_conflict",  # SPEC-03
+                "secret_not_granted",  # SPEC-03
             }
         ),
         ErrorClass.RULE: frozenset(
@@ -60,6 +63,7 @@ KERNEL_ERROR_CODES: Mapping[ErrorClass, frozenset[str]] = MappingProxyType(
                 "station_unavailable",
                 "remote_rejected",
                 "database_unavailable",  # SPEC-02
+                "factory_unavailable",  # SPEC-03
             }
         ),
         ErrorClass.INTERNAL: frozenset(
