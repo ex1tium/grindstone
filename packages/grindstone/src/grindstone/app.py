@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from grindstone import __version__
+from grindstone.intent import KindCatalog, sync_lifecycle_states
 from grindstone.platform import Registries, core_registries
 from grindstone.platform.loader import LoadReport, discover, load_factories, record_loads
 from grindstone.store import (
@@ -30,18 +31,22 @@ _log = logging.getLogger(__name__)
 SCHEDULES: tuple[Schedule, ...] = ()
 
 
-def load_platform() -> tuple[Registries, LoadReport]:
+def load_platform() -> tuple[Registries, LoadReport, KindCatalog]:
     """The registries with the `core` names and every installed factory that passes.
 
     A refused factory is reported and recorded; the kernel and every other
-    factory still start (SPEC-03, REQ-0304).
+    factory still start (SPEC-03, REQ-0304). The kinds are compiled once into
+    a catalog, and the lifecycle states the database admits are rewritten
+    from it (SPEC-04, DEC-0405).
     """
     registries = core_registries()
     report = load_factories(registries, discover())
     for line in report.lines():
         (_log.warning if line.startswith("refused") else _log.info)("factory %s", line)
     unit_of_work(lambda uow: record_loads(uow, report))
-    return registries, report
+    catalog = KindCatalog.from_registries(registries)
+    unit_of_work(lambda uow: sync_lifecycle_states(uow, catalog))
+    return registries, report, catalog
 
 
 def create_app(
@@ -59,7 +64,8 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         app.state.runtime = await start_runtime(db.url(), schedules=schedules)
         try:
-            app.state.registries, app.state.factories = await asyncio.to_thread(load_platform)
+            platform = await asyncio.to_thread(load_platform)
+            app.state.registries, app.state.factories, app.state.kinds = platform
             yield
         finally:
             await stop_runtime()

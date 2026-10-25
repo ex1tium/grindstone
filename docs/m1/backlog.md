@@ -50,7 +50,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | Ticket | Spec | Work | Depends on | State | PR |
 | --- | --- | --- | --- | --- | --- |
 | TKT-0303 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Instance and project configuration, secrets, `grindstone check` | TKT-0302, TKT-0201 | todo | |
-| TKT-0401 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Items, revisions, edges, lifecycles, ID allocation, rendering, `core` kinds | TKT-0302, TKT-0201 | todo | |
+| TKT-0401 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Items, revisions, edges, lifecycles, ID allocation, rendering, `core` kinds | TKT-0302, TKT-0201 | review | #29 |
 | TKT-0402 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Decision records, kinds, answers, continuations | TKT-0304 | todo | |
 | TKT-0901 | [SPEC-09](../specs/SPEC-09-sdlc-skeleton-factory.md) | Manifest: kinds, edges, lifecycles, capabilities, prompts, report schemas, template, configuration schema | TKT-0302 | todo | |
 | TKT-1003 | [SPEC-10](../specs/SPEC-10-operator-surface.md) | Event streams | TKT-0304 | todo | |
