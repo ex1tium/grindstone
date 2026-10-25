@@ -51,7 +51,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | --- | --- | --- | --- | --- | --- |
 | TKT-0303 | [SPEC-03](../specs/SPEC-03-platform-registries-loader-configuration.md) | Instance and project configuration, secrets, `grindstone check` | TKT-0302, TKT-0201 | done | #31 |
 | TKT-0401 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Items, revisions, edges, lifecycles, ID allocation, rendering, `core` kinds | TKT-0302, TKT-0201 | done | #29 |
-| TKT-0402 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Decision records, kinds, answers, continuations | TKT-0304 | review | |
+| TKT-0402 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Decision records, kinds, answers, continuations | TKT-0304 | done | #36 |
 | TKT-0901 | [SPEC-09](../specs/SPEC-09-sdlc-skeleton-factory.md) | Manifest: kinds, edges, lifecycles, capabilities, prompts, report schemas, template, configuration schema | TKT-0302 | done | #34 |
 | TKT-1003 | [SPEC-10](../specs/SPEC-10-operator-surface.md) | Event streams | TKT-0304 | todo | |
 
@@ -62,7 +62,7 @@ At most two tickets run at once, each in its own worktree, because tickets in a 
 | TKT-0403 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | Bundle import, ChangeDrafts, walk, rules, approval, apply | TKT-0401, TKT-0402 | todo | |
 | TKT-0404 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | SQL enum generation for kernel lifecycles | TKT-0401 | todo | |
 | TKT-0405 | [SPEC-04](../specs/SPEC-04-items-changeset-decisions.md) | FF-08 single-writer check with fixtures | TKT-0401 | todo | |
-| TKT-0501 | [SPEC-05](../specs/SPEC-05-deployment-users-secrets.md) | Images, users, entrypoints, compose (with the runner off every network), `make secrets` and `scripts/hash_password.py`, instance file | TKT-0303 | doing | |
+| TKT-0501 | [SPEC-05](../specs/SPEC-05-deployment-users-secrets.md) | Images, users, entrypoints, compose (with the runner off every network), `make secrets` and `scripts/hash_password.py`, instance file | TKT-0303 | done | #35 |
 | TKT-0602 | [SPEC-06-1](../specs/SPEC-06-1-stations-agent-host.md) | Stations: agent-user bindings, sessions, workspaces, host client, host event intake, reconciliation, activity registry, runner job dispatch | TKT-0204, TKT-0205, TKT-0303 | todo | |
 | TKT-0801 | [SPEC-08](../specs/SPEC-08-check-station-evidence-delivery.md) | Evidence: plans with the task's current subject, records, freshness, gate, review recording, the `CheckMethod` port | TKT-0401, TKT-0302 | todo | |
 | TKT-0905 | [SPEC-09](../specs/SPEC-09-sdlc-skeleton-factory.md) | Testbed bundle, toolchain image with pytest, testbed project configuration; the `sdlc` package's `grindstone.factories` entry point, with the loader reading an editable install's files (TKT-0901 found the RECORD lists only the `.pth`) | TKT-0901 | todo | |
