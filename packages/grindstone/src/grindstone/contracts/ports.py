@@ -18,8 +18,10 @@ from typing import BinaryIO, Protocol
 from pydantic import Field, JsonValue
 
 from grindstone.contracts.base import Contract
-from grindstone.contracts.ids import ProjectId
-from grindstone.contracts.refs import BlobHash, ItemRef
+from grindstone.contracts.ids import ProjectId, RunId, TaskId
+from grindstone.contracts.platform import TaskMode
+from grindstone.contracts.refs import BlobHash, ItemRef, SubjectRef
+from grindstone.contracts.stations import CollectOutcome, Materialization
 
 
 class PinnedItem(Contract):
@@ -80,3 +82,54 @@ class Context(Protocol):
 
     @property
     def secrets(self) -> SecretReader: ...
+
+
+class RunContext(Context, Protocol):
+    """A context for one task run, which workspace providers receive (SPEC-06 part 1)."""
+
+    @property
+    def run(self) -> RunId: ...
+
+    @property
+    def task(self) -> TaskId: ...
+
+    @property
+    def mode(self) -> TaskMode: ...
+
+    @property
+    def workspace_ref(self) -> str:
+        """Where the provider keeps this run's working state, such as a worktree name."""
+        ...
+
+    @property
+    def base(self) -> SubjectRef | None:
+        """The subject the run starts from, once known."""
+        ...
+
+
+class WorkspaceProvider(Protocol):
+    """Prepares a writing workspace and collects it into a subject (ADR-27, REQ-0624)."""
+
+    def prepare(self, ctx: RunContext) -> Materialization:
+        """Stage the workspace as an archive and say what it starts from."""
+        ...
+
+    def collect(self, ctx: RunContext) -> CollectOutcome:
+        """Turn the finished workspace into a subject, or refuse it with paths and cause."""
+        ...
+
+    def discard(self, ctx: RunContext) -> None:
+        """Release whatever the provider holds for the run."""
+        ...
+
+
+class SubjectResolver(Protocol):
+    """Reads a subject kind: materializes it for a prover, or reads one file of it."""
+
+    def materialize(self, ctx: Context, subject: SubjectRef, directory: Path) -> None:
+        """Write the subject's contents into an empty `directory` (I-15: from the subject alone)."""
+        ...
+
+    def read_file(self, ctx: Context, subject: SubjectRef, path: str) -> bytes:
+        """One file of the subject, by its path within a materialization."""
+        ...
