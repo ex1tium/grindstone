@@ -18,7 +18,8 @@ Run `make check` before every push. `python -m scripts.ff.module_map > .importli
 - FF-13: every cited ID (I-, ADR-, QS-, M1-02, SPEC-, …) must exist in the foundation.
 
 ## Conventions
-- Conventional Commits; squash-merged pull requests into `main`. No model identifiers in commits or code.
+- Conventional Commits; squash-merged pull requests into `main`. No model identifiers in commits or code; the one exception is the operator's model choice in deployment configuration (`deploy/grindstone.toml`, `[agents.claude.models]`).
+- Background agents only when the operator asks, at most one beside the lead session, and only in a different role (they use too much quota).
 - Latest stable versions, pinned exactly, resolved from primary sources and recorded in `docs/m0/versions.md`.
 - Secrets never go into the repository or chat. Cloud sessions read them from environment variables prefixed `GRINDSTONE_`; never print their values.
 
