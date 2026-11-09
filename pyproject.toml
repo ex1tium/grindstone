@@ -25,11 +25,11 @@ dev = [
   "grindstone-runner",
   # `make secrets` hashes the operator password (SPEC-05); SPEC-10 verifies with it.
   "argon2-cffi==25.1.0",
-  "httpx2==2.13.1",
-  "hypothesis==6.170.1",
+  "httpx2==2.16.0",
+  "hypothesis==6.170.14",
   "import-linter==2.15",
-  "pytest==9.1.1",
-  "ruff==0.17.1",
+  "pytest==9.2.0",
+  "ruff==0.17.3",
 ]
 
 [tool.ruff]
