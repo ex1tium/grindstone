@@ -13,7 +13,7 @@ dependencies = []
 grindstone-runner = "grindstone_runner.__main__:main"
 
 [build-system]
-requires = ["uv_build==0.13.1"]
+requires = ["uv_build==0.13.6"]
 build-backend = "uv_build"
 
 [tool.ruff]
