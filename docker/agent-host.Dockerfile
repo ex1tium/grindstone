@@ -4,7 +4,7 @@
 # DEC-0502). The image starts as root only for its entrypoint, which copies
 # the secrets for `gs-host` and keeps it exactly CAP_SETUID and CAP_SETGID.
 
-FROM node:24.22.0-trixie-slim@sha256:7f486cabe892bff8fef04c0f7da8dba84a560be3e4e2740b7a86afc57ebec315 AS runtime
+FROM node:24.22.2-trixie-slim@sha256:0820eaa85e07d0490446dd01d14707e17e6108a36988cf374899cd057eb3812d AS runtime
 RUN groupadd --system --gid 10100 gs-workspaces \
  && groupadd --system --gid 10002 gs-host \
  && useradd --system --uid 10002 --gid gs-host --groups gs-workspaces \
